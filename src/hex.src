@@ -9,8 +9,6 @@ import_code("hex/prompt.src")
 import_code("hex/tools.src")
 import_code("hex/menu.src")
 
-import_code("hex/functions.src")
-
 if params.len > 0 then
 	if params[0] == "help" or params[0] == "-h" then
 		print(g.c.yellow + "Usage: hex [IP Address (Optional)] [Port (Optional)]" + g.c.ec)
