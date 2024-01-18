@@ -11,7 +11,7 @@ import_code("hex/menu.src")
 
 if params.len > 0 then
 	if params[0] == "help" or params[0] == "-h" then
-		print(g.c.yellow + "Usage: hex [IP Address (Optional)] [Port (Optional)]" + g.c.ec)
+		print(g.c.yellow + "Usage: hex {IP Address} {Port}" + g.c.ec)
 	else
 		g.target.ip = params[0]
 	end if
