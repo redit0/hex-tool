@@ -2,9 +2,7 @@ g = {}
 
 import_code("hex/constants.src")
 import_code("hex/banner.src")
-
 import_code("hex/functions.src")
-
 import_code("hex/prompt.src")
 import_code("hex/tools.src")
 import_code("hex/menu.src")

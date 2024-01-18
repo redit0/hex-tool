@@ -26,7 +26,7 @@ g.f.getPrompt = function()
 	
 	prompt = g.c.nl + g.c.orange +"<pos=40>————————" + u + "——————" + ips + "——————" + t + "————————"
 	
-	prompt = prompt + "<voffset=-0.5em><space=-" + spacing + "em><pos=36>|<voffset=-1em><space=-0.6em>|<voffset=-1.5em><pos=40>——" + char(187) + g.c.ec + " "
+	prompt = prompt + "<voffset=-0.5em><space=-" + spacing + "em><pos=36>|<voffset=-1em><space=-0.6em>|<voffset=-1.5em><space=-0.6em>|<voffset=-2em><space=-0.6em>|<voffset=-2.5em><pos=40>——" + char(187) + g.c.ec + " "
 
 	return prompt
 end function
