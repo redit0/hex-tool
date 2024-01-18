@@ -1,0 +1,66 @@
+if not g.hasIndex("t") then g.t = {}
+
+target = function(args)
+    text = g.c.nl + g.c.indent + g.c.yellow + "<b><u>Usage:</u></b>" + g.c.ec + g.c.nl
+    text = text + g.c.indent + g.c.green + "target" + g.c.ec + " " + g.c.cyan + "{-s/show}" + g.c.ec + " " + g.c.lightgray + "Displays the currently saved " + g.c.targettext + "." + g.c.ec + g.c.nl
+    text = text + g.c.indent + g.c.green + "target" + g.c.ec + " " + g.c.cyan + "[ip] {port}" + g.c.ec + " " + g.c.lightgray + "Sets the " + g.c.targettext + " ip address and/or port to the specified values.  If port is omitted and not already set, it will be set to 0." + g.c.ec + g.c.nl
+    text = text + g.c.indent + g.c.green + "target" + g.c.ec + " " + g.c.cyan + "[port]" + g.c.ec + " " + g.c.lightgray + "Sets the " + g.c.targettext + " port to the specified value." + g.c.ec + g.c.nl
+    text = text + g.c.indent + g.c.green + "target" + g.c.ec + " " + g.c.cyan + "[-h/help]" + g.c.ec + " " + g.c.lightgray + "Display this help text" + g.c.ec + g.c.nl
+
+    if args.len > 2 then
+        print(text)
+        return
+    end if
+
+    if args.len == 2 then
+        if is_valid_ip(args[0]) then
+            g.target.ip = args[0]
+        else
+            print(g.c.indent + g.c.red + "Error: invalid argument: " + args[0] + g.c.ec)
+            return
+        end if
+
+        if typeof(args[1].to_int) == "number" and args[1].to_int >= 0 and args[1].to_int <= 65535 then
+            g.target.port = args[1].to_int
+        else
+            print(g.c.indent + g.c.red + "Error: invalid argument: " + args[1] + g.c.ec)
+            return
+        end if
+
+        g.target.print
+        return
+    end if
+
+    if args.len == 1 then
+        if args[0] == "-h" or args[0] == "help" then
+            print(text)
+            return
+        else if is_valid_ip(args[0]) then
+            g.target.ip = args[0]
+            g.target.print
+            return
+        else if typeof(args[0].to_int) == "number" and args[0].to_int >= 0 and args[0].to_int <= 65535 then
+            g.target.port = args[0].to_int
+            g.target.print
+            return
+        else if args[0] == "-s" or args[0] == "show" then
+            g.target.print
+            return
+        else
+            print(g.c.indent + g.c.red + "Error: invalid argument: " + args[0] + g.c.ec)
+            return
+        end if
+    end if
+
+    if args.len == 0 then
+        g.target.print
+        return
+    end if
+end function
+
+g.t.target = {
+    "name": "target",
+    "text": g.c.targettext,
+    "sortOrder": 998,
+    "exec": @target
+}

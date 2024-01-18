@@ -1,0 +1,73 @@
+if not g.hasIndex("f") then g.f = {}
+if not g.hasIndex("target") then g.target = {}
+
+g.f.user = function(obj)
+    if typeof(obj) == "shell" then
+        comp = obj.host_computer
+    else if typeof(obj) == "computer" then
+        comp = obj
+    else
+        return "Error: Incorrect Object Type"
+    end if
+
+    access = "guest"
+
+    if comp.File("/root").has_permission("w") then
+        return "root"
+    end if
+
+    for user in comp.File("/home").get_folders
+        uName = user.name
+
+        if comp.File("/home/" + uName).has_permission("w") then
+            return uName
+        end if
+    end for
+
+    return "guest"
+end function
+
+g.f.shellMap = function(shell)
+    map = {}
+
+    map.shell = shell
+    map.user = g.f.user(shell)
+    map.pip = shell.host_computer.public_ip
+    map.lip = shell.host_computer.local_ip
+    map.skey = map.pip + ":" + map.lip + ":"
+
+    if map.user == "root" then
+        map.skey = map.skey + "!!!"
+    else if map.user == "guest" then
+        map.skey = map.skey + map.user
+    else
+        map.skey = map.skey + "zzz"
+    end if
+
+    return map
+end function
+
+g.target.print = function()
+    if not g.target.hasIndex("ip") or not is_valid_ip(g.target.ip) then
+        print(g.c.indent + "There is currently no saved " + g.c.targettext + ".")
+        return
+    end if
+
+    if not g.target.hasIndex("port") or typeof(g.target.port) != "number" or g.target.port < 0 or g.target.port > 65535 then g.target.port = 0
+
+    print(g.c.indent + g.c.green + "The current " + g.c.targettext + " is: " + g.target.ip + ":" + g.target.port + g.c.ec)
+end function
+
+g.f.init = function()
+    g.shells = []
+    g.shells.push(g.f.shellMap(get_shell))
+
+    g.current = {}
+    g.current.context = "home"
+    g.current.obj = g.shells[0].shell
+    g.current.comp = g.current.obj.host_computer
+    g.current.hostname = g.current.comp.get_name
+    g.current.pip = g.current.comp.public_ip
+    g.current.lip = g.current.comp.local_ip
+    g.current.user = g.shells[0].user
+end function

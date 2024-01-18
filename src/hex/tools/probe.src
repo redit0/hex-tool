@@ -1,0 +1,35 @@
+if not g.hasIndex("t") then g.t = {}
+
+probe = function(args)
+    if args.len == 0 or args.len > 1 or args[0] == "-h" or args[0] == "help" then
+        text = g.c.nl + g.c.indent + g.c.yellow + "<b><u>Usage:</u></b>" + g.c.ec + g.c.nl
+        text = text + g.c.indent + g.c.green + "probe" + g.c.ec + " " + g.c.cyan + "[ip]" + g.c.ec + " " + g.c.lightgray + "Displays port and whois information for the specified ip address (also initializes " + g.c.targettext + " to specified ip address and port 0)." + g.c.ec + g.c.nl
+        text = text + g.c.indent + g.c.green + "probe" + g.c.ec + " " + g.c.cyan + "[-s/show]" + g.c.ec + " " + g.c.lightgray + "Displays previously scanned port and whois information" + g.c.ec + g.c.nl
+        text = text + g.c.indent + g.c.green + "probe" + g.c.ec + " " + g.c.cyan + "[-h/help]" + g.c.ec + " " + g.c.lightgray + "Displays this help text" + g.c.ec + g.c.nl
+        print(text)
+        return
+    end if
+
+    if args[0] == "-s" or args[0] == "show" then
+        if g.t.probe.hasIndex("saved") then
+            print(g.t.probe.saved)
+        else
+            print(g.c.indent + g.c.orange + "No saved probe information." + g.c.ec)
+        end if
+        return
+    end if
+
+    if not is_valid_ip(args[0]) then
+        print(g.c.indent + g.c.indent + "Error: invalid argument: " + args[0] + g.c.ec)
+        return
+    end if
+
+    print(g.c.indent + "Not implemented")
+end function
+
+g.t.probe = {
+    "name": "probe",
+    "text": g.c.cyan + "<b>probe</b>" + g.c.ec,
+    "sortOrder": 0,
+    "exec": @probe
+}

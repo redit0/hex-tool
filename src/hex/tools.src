@@ -1,0 +1,6 @@
+if not g.hasIndex("t") then g.t = {}
+
+import_code("tools/probe.src")
+import_code("tools/scan.src")
+import_code("tools/target.src")
+import_code("tools/quit.src")

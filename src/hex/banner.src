@@ -1,0 +1,29 @@
+if not g.hasIndex("f") then g.f = {}
+
+g.f.getBanner = function()
+    bannercolor = g.c.bannercolor
+
+    banner = ""
+    banner = banner + bannercolor + "        __    __    __    __    __    __    __    __    __    __    __    __    " + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "     __/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__ " + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    /  \__/                                                              \__/  \" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    \__/  \ __/\\\________/\\\____/\\\\\\\\\\___/\\\_______/\\\_         /  \__/" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    /  \__/  _\/\\\_______\/\\\___\/\\\//////___\///\\\___/\\\/__        \__/  \" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    \__/  \   _\/\\\_______\/\\\___\/\\\___________\///\\\\\\/____       /  \__/" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    /  \__/    _\/\\\\\\\\\\\\\\\___\/\\\\\\\\________\//\\\\______      \__/  \" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    \__/  \     _\/\\\/////////\\\___\/\\\////__________/\\\\\\_____     /  \__/" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    /  \__/      _\/\\\_______\/\\\___\/\\\____________/\\\////\\\___    \__/  \" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    \__/  \       _\/\\\_______\/\\\___\/\\\\\\\\\\___/\\\/___\///\\\_   /  \__/" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    /  \__/        _\///________\///____\//////////___\///_______\///__  \__/  \" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    \__/  \                                                              /  \__/" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    /  \__/   " + g.c.lightgray + g.c.vhex + g.c.ec + "                                         "
+    banner = banner + g.c.lightgray + "by" + g.c.ec + " " + g.c.orange + "redit0" + g.c.ec + "   \__/  \" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    \__/  \__    __    __    __    __    __    __    __    __    __    __/  \__/" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/" + g.c.nl + g.c.ec
+    banner = banner + bannercolor + "       \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/   " + g.c.nl + g.c.ec
+
+    return banner
+end function

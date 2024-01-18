@@ -1,0 +1,24 @@
+
+if not g.hasIndex("f") then g.f = {}
+
+g.f.getMenu = function()
+	menu = g.c.yellow + "<b><u><size=22>Menu</size></u></b>" + g.c.ec
+
+	for index in g.t.indexes
+		menu = menu + g.c.nl + g.t[index].text
+	end for
+
+	menu = format_columns(menu)
+	
+	lines = menu.split("\n")
+	
+	menu = ""
+	
+	for line in lines
+		menu = menu + g.c.indent + line + g.c.nl
+	end for
+	
+	menu = slice(menu, 0, menu.lastIndexOf(g.c.nl))
+	
+	return menu
+end function

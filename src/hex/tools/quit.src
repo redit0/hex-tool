@@ -1,0 +1,15 @@
+if not g.hasIndex("t") then g.t = {}
+
+quit = function(args)
+    print(g.c.nl + g.c.indent + g.c.cyan + "<b>Goodbye!!</b>" + g.c.ec)
+    wait
+    clear_screen
+    exit()
+end function
+
+g.t.quit = {
+    "name": "quit",
+    "text": g.c.red + "<b>quit</b>" + g.c.ec,
+    "sortOrder": 999,
+    "exec": @quit
+}
