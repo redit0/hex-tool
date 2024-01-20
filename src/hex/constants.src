@@ -3,13 +3,13 @@ if not g.hasIndex("c") then
 end if
 
 g.c.vhex = "v1.0.0"
-g.c.green = "<color=#00cc00>"
-g.c.darkgreen = "<color=#006600>"
+g.c.green = "<color=#81eb00>"
+g.c.darkgreen = "<color=#007700>"
 g.c.cyan = "<color=#0cddf2>"
 g.c.blue = "<color=#3366ff>"
 g.c.yellow = "<color=#dcdcaa>"
 g.c.darkyellow = "<color=#dbd700>"
-g.c.orange = "<color=#f29816>"
+g.c.orange = "<color=#ffa500>"
 g.c.magenta = "<color=#b0509e>"
 g.c.red = "<color=#C30000>"
 g.c.white = "<color=#eeeeee>"

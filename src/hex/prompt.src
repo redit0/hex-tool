@@ -6,7 +6,7 @@ g.f.getPrompt = function()
 
 	t = "[" + g.c.lightgray + g.current.context + g.c.ec + "]"
 	u = "[" + g.c.yellow + g.current.user + g.c.ec + "@" + g.current.hostname + "]"
-	ips = "[" + g.c.cyan + g.current.pip + g.c.ec + " : " + g.c.lightgray + g.current.lip + g.c.ec + "]"
+	ips = "[" + g.c.cyan + g.current.pip + g.c.ec + ":" + g.c.lightgray + g.current.lip + g.c.ec + "]"
 	
 	if g.current.user == "root" then
 		u = "[" + g.c.green + g.current.user + g.c.ec + "@" + g.current.hostname + "]"		
@@ -16,15 +16,33 @@ g.f.getPrompt = function()
 		u = "[" + g.c.red + g.current.user + g.c.ec + "@" + g.current.hostname + "]"		
 	end if
 
-	if g.current.context == "shell" then
+	if g.current.context == "home" then
 		t = "[" + g.c.green + g.current.context + g.c.ec + "]"
 	end if
 
-	if g.current.context == "computer" then
+	if g.current.context == "shell" then
 		t = "[" + g.c.cyan + g.current.context + g.c.ec + "]"
 	end if
-	
-	prompt = g.c.nl + g.c.orange +"<pos=40>————————" + u + "——————" + ips + "——————" + t + "————————"
+
+	if g.current.context == "computer" then
+		t = "[" + g.c.orange + g.current.context + g.c.ec + "]"
+	end if
+
+	if g.current.context == "file" then
+		t = "[" + g.c.magenta + g.current.context + g.c.ec + "]"
+	end if
+
+	nonPrinting = 111
+
+	prompt = g.c.nl + g.c.orange +"<pos=40>————————" + u + "——————" + ips + "——————" + t
+
+	promptLength = prompt.len - nonPrinting
+
+	extraChars = 77 - promptLength
+
+	for count in range(1, extraChars)
+		prompt = prompt + "—"
+	end for
 	
 	prompt = prompt + "<voffset=-0.5em><space=-" + spacing + "em><pos=36>|<voffset=-1em><space=-0.6em>|<voffset=-1.5em><space=-0.6em>|<voffset=-2em><space=-0.6em>|<voffset=-2.5em><pos=40>——" + char(187) + g.c.ec + " "
 
