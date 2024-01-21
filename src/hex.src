@@ -1,15 +1,15 @@
 g = {}
 
+import_code("hex/functions.src")
 import_code("hex/constants.src")
 import_code("hex/banner.src")
-import_code("hex/functions.src")
 import_code("hex/prompt.src")
 import_code("hex/tools.src")
 import_code("hex/menu.src")
 
 if params.len > 0 then
 	if params[0] == "help" or params[0] == "-h" then
-		print(g.c.yellow + "Usage: hex {IP Address} {Port}" + g.c.ec)
+		print(yellow("Usage: hex {IP Address} {Port}"))
 	else
 		g.target.ip = params[0]
 	end if
@@ -22,10 +22,9 @@ end if
 
 g.f.init()
 
+g.t.clear.exec()
+
 while true
-	clear_screen
-	print(g.f.getBanner)
-	print(g.f.getMenu)
 	input = user_input(g.f.getPrompt)
 
 	if input == "" then
@@ -40,8 +39,6 @@ while true
 	else
 		get_shell.launch(args)
 	end if
-
-	user_input(g.c.indent + g.c.cyan + "Press any key to continue..." + g.c.ec)
 end while
 
 exit

@@ -2,10 +2,11 @@ if not g.hasIndex("t") then g.t = {}
 
 probe = function(args)
     if args.len == 0 or args.len > 1 or args[0] == "-h" or args[0] == "help" then
-        text = g.c.nl + g.c.indent + g.c.yellow + "<b><u>Usage:</u></b>" + g.c.ec + g.c.nl
-        text = text + g.c.indent + g.c.green + "probe" + g.c.ec + " " + g.c.cyan + "[ip]" + g.c.ec + " " + g.c.lightgray + "Displays port and whois information for the specified ip address (also initializes " + g.c.targettext + " to specified ip address and port 0)." + g.c.ec + g.c.nl
-        text = text + g.c.indent + g.c.green + "probe" + g.c.ec + " " + g.c.cyan + "[-s/show]" + g.c.ec + " " + g.c.lightgray + "Displays previously scanned port and whois information" + g.c.ec + g.c.nl
-        text = text + g.c.indent + g.c.green + "probe" + g.c.ec + " " + g.c.cyan + "[-h/help]" + g.c.ec + " " + g.c.lightgray + "Displays this help text" + g.c.ec + g.c.nl
+        text = g.c.ni + "Usage:".yellow("bu") + g.c.ni
+        text = text + "probe".green + " [ip]".cyan + lightgray(" Displays port and whois information for the specified ip address")
+        text = text + lightgray(" (also initializes " + g.c.targettext + " to specified ip address and port 0).") + g.c.ni
+        text = text + "probe".green + " [-s/show]".cyan + lightgray(" Displays previously scanned port and whois information") + g.c.ni
+        text = text + "probe".green + " [-h/help]".cyan + lightgray(" Displays this help text") + g.c.nl
         print(text)
         return
     end if
@@ -14,22 +15,179 @@ probe = function(args)
         if g.t.probe.hasIndex("saved") then
             print(g.t.probe.saved)
         else
-            print(g.c.indent + g.c.orange + "No saved probe information." + g.c.ec)
+            print(g.c.indent + orange("No saved probe information.", "b"))
         end if
         return
     end if
 
-    if not is_valid_ip(args[0]) then
-        print(g.c.indent + g.c.indent + "Error: invalid argument: " + args[0] + g.c.ec)
+    if is_valid_ip(args[0]) then
+        g.target.ip = args[0]
+        g.target.port = 0
+    else
+        print(g.c.indent + red("Error: invalid argument: " + args[0], "b"))
         return
     end if
 
-    print(g.c.indent + "Not implemented")
+    isLan = is_lan_ip(g.target.ip)
+
+    if isLan then
+        router = get_router(g.target.ip)
+        if router then
+            isRouter = 1
+        else
+            isRouter = 0
+            router = get_router
+        end if
+    else
+        router = get_router(g.target.ip)
+        isRouter = 1
+    end if
+
+    if not router then
+        print(g.c.indent + red("[Error] Could not connect to IP: " + g.target.ip, "b"))
+        return
+    end if
+
+    adminInfo = whois(g.target.ip)
+    infoLines = adminInfo.split(char(10))
+
+    infoObject = {}
+    
+    infoObject.domain = infoLines[0].split(":")[1].trim
+    infoObject.admin = infoLines[1].split(":")[1].trim
+    infoObject.email = infoLines[2].split(":")[1].trim
+    infoObject.phone = infoLines[3].split(":")[1].trim
+
+    output = g.c.nl + g.c.indent + g.c.llb + g.c.ni
+    output = output + format("[" + router.public_ip.cyan + "] [" + green("kernel_router.so: " + router.kernel_version) + "]", "b") + g.c.ni
+    output = output + format("[" + magenta("admin: " + infoObject.admin) + "] [" + orange("email: " + infoObject.email) + "]", "b") + g.c.ni
+    output = output + format("[" + yellow("domain: " + infoObject.domain) + "] [" + red("phone: " + infoObject.phone) + "]", "b") + g.c.ni
+    output = output + g.c.llb + g.c.nl + g.c.ni
+    
+    if router.firewall_rules.len > 0 then
+        output = output + g.c.yellow + "<b><size=18>Firewall Rules</size><b/>" + g.c.ec + g.c.ni
+
+        for rule in router.firewall_rules
+            output = output + rule + g.c.ni
+        end for
+        
+        output = output + g.c.nl + g.c.ni + g.c.lb + g.c.nl + g.c.ni
+    end if
+
+    sPorts = []
+
+    if not isRouter then
+        ports = router.device_ports(g.target.ip)
+
+        sPorts = sPorts + ports
+
+        output = output + g.target.ip + g.c.ni
+
+        for port in ports
+            output = output + g.c.indent + green("- " + port.port_number + g.c.tab + "[open]" + g.c.tab + "(" + router.port_info(port) + ")", "b") + g.c.ni
+        end for
+    else
+        ports = []
+
+        for address in router.devices_lan_ip
+            ports = ports + router.device_ports(address)
+        end for
+
+        rPorts = []
+
+        sPorts = sPorts + router.used_ports
+
+        for rPort in router.used_ports
+            rPorts.push(rPort.port_number + ":" + rPort.get_lan_ip)
+        end for
+
+        ports.sort("get_lan_ip")
+
+        devices = {}
+
+        if isRouter then
+            if not devices.hasIndex(router.local_ip) then devices[router.local_ip] = []
+
+            devices[router.local_ip].push(g.c.indent + green("- 0" + g.c.tab + g.c.tab + "[open]" + g.c.tab + g.c.tab + "(kernel " + router.kernel_version + ")", "b") + g.c.ni)
+        end if
+
+        for port in ports
+            if not devices.hasIndex(port.get_lan_ip) then devices[port.get_lan_ip] = []
+
+            isClosed = 1
+
+            if rPorts.indexOf(port.port_number + ":" + port.get_lan_ip) != null then isClosed = 0
+
+            if port.port_number == 8080 and port.get_lan_ip != router.local_ip then
+                devices[port.get_lan_ip].push(g.c.indent + red("- 0" + g.c.tab + g.c.tab + "[closed]" + g.c.tab + "(kernel " + router.kernel_version + ")", "b") + g.c.ni)
+            end if
+
+            if not isClosed then
+                line = g.c.indent + green("- " + port.port_number + g.c.tab + "[open]" + g.c.tab + g.c.tab + "(" + router.port_info(port) + ")", "b") + g.c.ni
+            else
+                if port.is_closed then
+                    line = g.c.indent + red("- " + port.port_number + g.c.tab + "[closed]" + g.c.tab + "(" + router.port_info(port) + ")", "b") + g.c.ni
+                else
+                    line = g.c.indent + orange("- " + port.port_number + g.c.tab + "[internal]" + g.c.tab + "(" + router.port_info(port) + ")", "b") + g.c.ni
+                end if
+            end if
+
+            if devices[port.get_lan_ip].indexOf(line) == null then devices[port.get_lan_ip].push(line)
+        end for
+
+        for index in devices.indexes
+            output = output + index.white("b") + g.c.ni
+
+            lines = devices[index]
+
+            lines.sort
+
+            for line in lines
+                output = output + line
+            end for
+        end for
+    end if
+
+    output = output + g.c.nl
+
+    g.t.probe.saved = output
+    g.t.probe.ports = sPorts
+
+    output = output + g.c.ni + "Enter a port to scan or a lan ip address:" + g.c.ni
+
+    print(output)
+
+    choices = g.c.indent + yellow("a" + g.c.tab + g.c.tab + "(all open ports)", "b") + g.c.ni
+
+    choices = choices + cyan("0" + g.c.tab + g.c.tab +  "(kernel " + router.kernel_version + ")", "b") + g.c.ni
+
+
+    for port in sPorts
+        if port.port_number > 999 then
+            choices = choices + cyan(port.port_number + g.c.tab + "(" + router.port_info(port) + ")", "b") + g.c.ni
+        else
+            choices = choices + cyan(port.port_number + g.c.tab + g.c.tab + "(" + router.port_info(port) + ")", "b") + g.c.ni
+        end if
+    end for
+
+    choices = choices + red("q" + g.c.tab + g.c.tab + "(quit)", "b") + g.c.nl + g.c.ni + char(187) + " "
+
+    choice = user_input(choices)
+
+    if (choice == "q") then return
+
+    if is_valid_ip(choice) then
+        g.t.scan.exec(g.target.ip + " 0 " + choice)
+    else
+        g.t.scan.exec(g.target.ip + " " + choice)
+    end if
 end function
 
 g.t.probe = {
     "name": "probe",
-    "text": g.c.cyan + "<b>probe</b>" + g.c.ec,
+    "text": "probe".cyan("b"),
     "sortOrder": 0,
-    "exec": @probe
+    "exec": @probe,
+    "ports": [],
+    "saved": ""
 }

@@ -1,0 +1,14 @@
+if not g.hasIndex("t") then g.t = {}
+
+clear = function(args = null)
+    clear_screen
+    print(g.f.getBanner)
+    print(g.f.getMenu)
+end function
+
+g.t.clear = {
+    "name": "clear",
+    "text": "clear".white("b"),
+    "sortOrder": 998,
+    "exec": @clear
+}

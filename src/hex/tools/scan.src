@@ -1,11 +1,11 @@
 if not g.hasIndex("t") then g.t = {}
 
 scan = function(args)
-    text = g.c.nl + g.c.indent + g.c.yellow + "<b><u>Usage:</u></b>" + g.c.ec + g.c.nl
-    text = text + g.c.indent + g.c.green + "scan" + g.c.ec + " " + g.c.lightgray + "Scans for vulnerabilities at the ip address and port saved as the current " + g.c.targettext + "." + g.c.ec + g.c.nl
-    text = text + g.c.indent + g.c.green + "scan" + g.c.ec + " " + g.c.cyan + "[ip] {port}" + g.c.ec + " " + g.c.lightgray + "Scans for vulnerabilities at the specified ip address and port. If the port is omitted it will scan kernel_router instead." + g.c.ec + g.c.nl
-    text = text + g.c.indent + g.c.green + "scan" + g.c.ec + " " + g.c.cyan + "[-s/show]" + g.c.ec + " " + g.c.lightgray + "Displays list of previously scanned vulnerabilities for the " + g.c.targettext + " ip address" + g.c.ec + g.c.nl
-    text = text + g.c.indent + g.c.green + "scan" + g.c.ec + " " + g.c.cyan + "[-h/help]" + g.c.ec + " " + g.c.lightgray + "Display this help text" + g.c.ec + g.c.nl
+    text = g.c.ni + "Usage:".yellow("bu") + g.c.ni
+    text = text + "scan".green + lightgray(" Scans for vulnerabilities at the ip address and port saved as the current " + g.c.targettext + ".") + g.c.ni
+    text = text + "scan".green + " [ip] {port}".cyan + lightgray(" Scans for vulnerabilities at the specified ip address and port. If the port is omitted it will scan kernel_router instead.") + g.c.ni
+    text = text + "scan".green + " [-s/show]".cyan + lightgray(" Displays list of previously scanned vulnerabilities for the " + g.c.targettext + " ip address") + g.c.ni
+    text = text + "scan".green + " [-h/help]".cyan + lightgray(" Display this help text") + g.c.nl
 
     if args.len > 2 then
         print(text)
@@ -17,10 +17,10 @@ scan = function(args)
             g.target.ip = args[0]
             g.target.port = args[1].to_int
         else if not is_valid_ip(args[0]) then
-            print(g.c.indent + g.c.red + "Error: invalid argument: " + args[0] + g.c.ec)
+            print(g.c.indent + red("[Error] Invalid argument: " + args[0], "b"))
             return
         else if typeof(args[1].to_int) != "number" or args[1].to_int < 0 or args[1].to_int > 65535 then
-            print(g.c.indent + g.c.red + "Error: invalid argument: " + args[1] + g.c.ec)
+            print(g.c.indent + red("[Error] Invalid argument: " + args[1], "b"))
             return
         end if
     end if
@@ -32,26 +32,24 @@ scan = function(args)
         else if is_valid_ip(args[0]) then
             g.target.ip = args[0]
         else
-            print(g.c.indent + g.c.red + "Error: invalid argument: " + args[0] + g.c.ec)
+            print(g.c.indent + red("[Error] Invalid argument: " + args[0], "b"))
             return
         end if
     end if
 
-    if args.len == 0 then
-        if not g.target.hasIndex("ip") or not is_valid_ip(g.target.ip) then
-            print(g.c.indent + g.c.red + "There is currently no saved " + g.c.targettext + "." + g.c.ec)
-            return
-        end if
-
-        if not g.target.hasIndex("port") or typeof(g.target.port) != "number" or g.target.port < 0 or g.target.port > 65535 then g.target.port = 0
-
-        print(g.c.indent + "Not implemented")
+    if not g.target.hasIndex("ip") or not is_valid_ip(g.target.ip) then
+        print(g.c.indent + red("[Error] There is currently no saved " + g.c.targettext + ".", "b"))
+        return
     end if
+
+    if not g.target.hasIndex("port") or typeof(g.target.port) != "number" or g.target.port < 0 or g.target.port > 65535 then g.target.port = 0
+
+    print("not implemented")
 end function
 
 g.t.scan = {
     "name": "scan",
-    "text": g.c.cyan + "<b>scan</b>" + g.c.ec,
+    "text": "scan".cyan("b"),
     "sortOrder": 1,
     "exec": @scan
 }

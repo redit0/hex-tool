@@ -2,23 +2,28 @@
 if not g.hasIndex("f") then g.f = {}
 
 g.f.getMenu = function()
-	menu = g.c.yellow + "<b><u><size=22>Menu</size></u></b>" + g.c.ec
+	menu = g.c.indent + "<size=22>Menu</size>".yellow("bu") + g.c.nl + g.c.ni
+
+	items = []
 
 	for index in g.t.indexes
-		menu = menu + g.c.nl + g.t[index].text
+		items.push({"name": g.t[index].name, "sort": g.t[index].sortOrder})
 	end for
 
-	menu = format_columns(menu)
-	
-	lines = menu.split("\n")
-	
-	menu = ""
-	
-	for line in lines
-		menu = menu + g.c.indent + line + g.c.nl
+	items.sort("sort")
+
+	count = 1
+
+	for item in items
+		menu = menu + g.t[item.name].text + char(9) + char(9)
+
+		if count == 5 then
+			menu = menu + g.c.ni
+			count = 1
+		else
+			count = count + 1
+		end if
 	end for
-	
-	menu = slice(menu, 0, menu.lastIndexOf(g.c.nl))
 	
 	return menu
 end function

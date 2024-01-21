@@ -1,21 +1,26 @@
-if not g.hasIndex("c") then
-    g.c = {}
-end if
+if not g.hasIndex("c") then g.c = {}
 
 g.c.vhex = "v1.0.0"
-g.c.green = "<color=#81eb00>"
-g.c.darkgreen = "<color=#007700>"
-g.c.cyan = "<color=#0cddf2>"
-g.c.blue = "<color=#3366ff>"
-g.c.yellow = "<color=#dcdcaa>"
-g.c.darkyellow = "<color=#dbd700>"
-g.c.orange = "<color=#ffa500>"
-g.c.magenta = "<color=#b0509e>"
-g.c.red = "<color=#C30000>"
-g.c.white = "<color=#eeeeee>"
-g.c.lightgray = "<color=#b3b3b3>"
-g.c.ec = "</color>"
-g.c.bannercolor = g.c.green
+g.c.green = "#81eb00"
+g.c.darkgreen = "#007700"
+g.c.cyan = "#0cddf2"
+g.c.blue = "#3366ff"
+g.c.yellow = "#dcdcaa"
+g.c.darkyellow = "#dbd700"
+g.c.orange = "#ffa500"
+g.c.magenta = "#b0509e"
+g.c.red = "#C30000"
+g.c.white = "#eeeeee"
+g.c.lightgray = "#b3b3b3"
 g.c.indent = "    "
 g.c.nl = char(10)
-g.c.targettext = g.c.yellow + "<b><i>target</i></b>" + g.c.ec
+g.c.tab = char(9)
+g.c.ni = g.c.nl + g.c.indent
+g.c.ll = 80
+g.c.lb = "————————————————————————————————————————————————————————————————————————————"
+g.c.llb = "============================================================================"
+g.c.slb = "****************************************************************************"
+g.c.hlb = "                   ——————————————————————————————————————                   "
+g.c.hllb = "                   ======================================                   "
+g.c.hslb = "                   **************************************                   "
+g.c.targettext = "target".yellow("bi")
