@@ -1,14 +1,18 @@
 if not g.hasIndex("t") then g.t = {}
 
-target = function(args)
-    text = g.c.nl + g.c.indent + "Usage:".yellow("bu") + g.c.nl
-    text = text + g.c.indent + "target".green + " " + "{-s/show}".cyan + " " + lightgray("Displays the currently saved " + g.c.targettext + ".") + g.c.nl
-    text = text + g.c.indent + "target".green + " " + "[ip] {port}".cyan + " " + lightgray("Sets the " + g.c.targettext + " ip address and/or port to the specified values.  If port is omitted and not already set, it will be set to 0.") + g.c.nl
-    text = text + g.c.indent + "target".green + " " + "[port]".cyan + " " + lightgray("Sets the " + g.c.targettext + " port to the specified value.") + g.c.nl
-    text = text + g.c.indent + "target".green + " " + "[-h/help]".cyan + " " + lightgray("Display this help text") + g.c.nl
+help = function()
+    text = g.c.ni + "Usage:".yellow("bu") + g.c.ni
+    text = text + "target".green + " " + "{-s/show}".cyan + " " + lightgray("Displays the currently saved " + g.c.targettext + ".") + g.c.ni
+    text = text + "target".green + " " + "[ip] {port}".cyan + " " + lightgray("Sets the " + g.c.targettext + " ip address and/or port to the specified values.  If port is omitted and not already set, it will be set to 0.") + g.c.ni
+    text = text + "target".green + " " + "[port]".cyan + " " + lightgray("Sets the " + g.c.targettext + " port to the specified value.") + g.c.ni
+    text = text + "target".green + " " + "[-h/help]".cyan + " " + lightgray("Display this help text") + g.c.nl
 
+    print(text)
+end function
+
+target = function(args)
     if args.len > 2 then
-        print(text)
+        g.t.target.help
         return
     end if
 
@@ -33,7 +37,7 @@ target = function(args)
 
     if args.len == 1 then
         if args[0] == "-h" or args[0] == "help" then
-            print(text)
+            g.t.target.help
             return
         else if is_valid_ip(args[0]) then
             g.target.ip = args[0]
@@ -62,5 +66,6 @@ g.t.target = {
     "name": "target",
     "text": g.c.targettext,
     "sortOrder": 990,
-    "exec": @target
+    "exec": @target,
+    "help": @help
 }

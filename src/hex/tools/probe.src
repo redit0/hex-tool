@@ -1,13 +1,18 @@
 if not g.hasIndex("t") then g.t = {}
 
+help = function() 
+    text = g.c.ni + "Usage:".yellow("bu") + g.c.ni
+    text = text + "probe".green + " [ip]".cyan + lightgray(" Displays port and whois information for the specified ip address")
+    text = text + lightgray(" (also initializes " + g.c.targettext + " to specified ip address and port 0).") + g.c.ni
+    text = text + "probe".green + " [-s/show]".cyan + lightgray(" Displays previously scanned port and whois information") + g.c.ni
+    text = text + "probe".green + " [-h/help]".cyan + lightgray(" Displays this help text") + g.c.nl
+
+    print(text)
+end function
+
 probe = function(args)
     if args.len == 0 or args.len > 1 or args[0] == "-h" or args[0] == "help" then
-        text = g.c.ni + "Usage:".yellow("bu") + g.c.ni
-        text = text + "probe".green + " [ip]".cyan + lightgray(" Displays port and whois information for the specified ip address")
-        text = text + lightgray(" (also initializes " + g.c.targettext + " to specified ip address and port 0).") + g.c.ni
-        text = text + "probe".green + " [-s/show]".cyan + lightgray(" Displays previously scanned port and whois information") + g.c.ni
-        text = text + "probe".green + " [-h/help]".cyan + lightgray(" Displays this help text") + g.c.nl
-        print(text)
+        g.t.probe.help
         return
     end if
 
@@ -188,6 +193,7 @@ g.t.probe = {
     "text": "probe".cyan("b"),
     "sortOrder": 0,
     "exec": @probe,
+    "help": @help,
     "ports": [],
     "saved": ""
 }

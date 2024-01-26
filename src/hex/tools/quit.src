@@ -1,5 +1,12 @@
 if not g.hasIndex("t") then g.t = {}
 
+help function()
+    text = g.c.ni + "Usage:".yellow("bu") + g.c.ni
+    text = text + "quit".green + lightgray(" Clears the screen and exits the program.") + g.c.nl
+
+    print(text)
+end function
+
 quit = function(args)
     print(g.c.ni + "Goodbye!!".cyan("b"))
     wait
@@ -11,5 +18,6 @@ g.t.quit = {
     "name": "quit",
     "text": "quit".red("b"),
     "sortOrder": 999,
-    "exec": @quit
+    "exec": @quit,
+    "help": @help
 }

@@ -1,5 +1,12 @@
 if not g.hasIndex("t") then g.t = {}
 
+help function()
+    text = g.c.ni + "Usage:".yellow("bu") + g.c.ni
+    text = text + "clear".green + lightgray(" Clears the screen and prints the banner and menu.") + g.c.nl
+
+    print(text)
+end function
+
 clear = function(args = null)
     clear_screen
     print(g.f.getBanner)
@@ -10,5 +17,6 @@ g.t.clear = {
     "name": "clear",
     "text": "clear".white("b"),
     "sortOrder": 998,
-    "exec": @clear
+    "exec": @clear,
+    "help": @help
 }

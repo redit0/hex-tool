@@ -13,7 +13,6 @@ if params.len > 0 then
 	else
 		g.target.ip = params[0]
 	end if
-
 end if
 
 if params.len > 1 then
@@ -40,5 +39,3 @@ while true
 		get_shell.launch(args)
 	end if
 end while
-
-exit
