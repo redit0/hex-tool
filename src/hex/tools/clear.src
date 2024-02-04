@@ -1,6 +1,6 @@
 if not g.hasIndex("t") then g.t = {}
 
-help function()
+help = function()
     text = g.c.ni + "Usage:".yellow("bu") + g.c.ni
     text = text + "clear".green + lightgray(" Clears the screen and prints the banner and menu.") + g.c.nl
 
