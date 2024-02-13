@@ -109,8 +109,6 @@ g.f.user = function(obj)
         return red("[Error] Incorrect Object Type", "b")
     end if
 
-    access = "guest"
-
     if comp.File("/root").has_permission("w") then
         return "root"
     end if
