@@ -4,27 +4,31 @@ import_code("hex/functions.src")
 import_code("hex/constants.src")
 import_code("hex/banner.src")
 import_code("hex/prompt.src")
-import_code("hex/tools.src")
+
+#include "hex/tools.src"
+
 import_code("hex/menu.src")
 
 if params.len > 0 then
 	if params[0] == "help" or params[0] == "-h" then
 		print(yellow("Usage: hex {IP Address} {Port}"))
+	else if is_valid_ip(params[0]) then
+		target.ip = params[0]
 	else
-		g.target.ip = params[0]
+		exit(yellow("Usage: hex {IP Address} {Port}"))
 	end if
 end if
 
 if params.len > 1 then
-	g.target.port = params[1].to_int
+	target.port = params[1].to_int
 end if
 
-g.f.init()
+func.init
 
-g.t.clear.exec()
+tools.clear.exec
 
 while true
-	input = user_input(g.f.getPrompt)
+	input = user_input(func.getPrompt)
 
 	if input == "" then
 		continue
@@ -33,9 +37,9 @@ while true
 	key = input.split(" ")[0]
 	args = input.split(" ")[1:]
 
-	if g.t.hasIndex(key) then
-		g.t[key].exec(args)
+	if tools.hasIndex(key) then
+		tools[key].exec(args)
 	else
-		get_shell.launch(args)
+		print(const.indent + error("Invalid argument: " + key))
 	end if
 end while

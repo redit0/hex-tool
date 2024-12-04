@@ -1,5 +1,5 @@
-if not g.hasIndex("f") then g.f = {}
-if not g.hasIndex("target") then g.target = {}
+if not globals.hasIndex("func") then func = {}
+if not globals.hasIndex("target") then target = {}
 
 format = function(str, args = null)
     if args then
@@ -12,101 +12,104 @@ end function
 
 //colors
 green = function(str, args = null)
-    return format("<color=" + g.c.green + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.green + "><b>" + str + "</b></color>", args)
+end function
 
 string.green = function(args = null)
-    return format("<color=" + g.c.green + ">" + self + "</color>", args)
-    end function
+    return green(self, args)
+end function
 
 darkgreen = function(str, args = null)
-    return format("<color=" + g.c.darkgreen + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.darkgreen + "><b>" + str + "</b></color>", args)
+end function
 
 string.darkgreen = function(args = null)
-    return format("<color=" + g.c.darkgreen + ">" + self + "</color>", args)
-    end function
+    return darkgreen(self, args)
+end function
 
 cyan = function(str, args = null)
-    return format("<color=" + g.c.cyan + ">" + str + "</color>", args)
+    return format("<color=" + const.cyan + "><b>" + str + "</b></color>", args)
     end function
 
 string.cyan = function(args = null)
-    return format("<color=" + g.c.cyan + ">" + self + "</color>", args)
-    end function
+    return cyan(self, args)
+end function
 
 blue = function(str, args = null)
-    return format("<color=" + g.c.blue + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.blue + "><b>" + str + "</b></color>", args)
+end function
 
 string.blue = function(args = null)
-    return format("<color=" + g.c.blue + ">" + self + "</color>", args)
-    end function
+    return blue(self, args)
+end function
 
 yellow = function(str, args = null)
-    return format("<color=" + g.c.yellow + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.yellow + "><b>" + str + "</b></color>", args)
+end function
 
 string.yellow = function(args = null)
-    return format("<color=" + g.c.yellow + ">" + self + "</color>", args)
-    end function
+    return yellow(self, args)
+end function
 
 darkyellow = function(str, args = null)
-    return format("<color=" + g.c.darkyellow + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.darkyellow + "><b>" + str + "</b></color>", args)
+end function
 
 string.darkyellow = function(args = null)
-    return format("<color=" + g.c.darkyellow + ">" + self + "</color>", args)
-    end function
+    return darkyellow(self, args)
+end function
 
 orange = function(str, args = null)
-    return format("<color=" + g.c.orange + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.orange + "><b>" + str + "</b></color>", args)
+end function
 
 string.orange = function(args = null)
-    return format("<color=" + g.c.orange + ">" + self + "</color>", args)
-    end function
+    return orange(self, args)
+end function
 
 magenta = function(str, args = null)
-    return format("<color=" + g.c.magenta + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.magenta + "><b>" + str + "</b></color>", args)
+end function
 
 string.magenta = function(args = null)
-    return format("<color=" + g.c.magenta + ">" + self + "</color>", args)
-    end function
+    return magenta(self, args)
+end function
 
 red = function(str, args = null)
-    return format("<color=" + g.c.red + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.red + "><b>" + str + "</b></color>", args)
+end function
 
 string.red = function(args = null)
-    return format("<color=" + g.c.red + ">" + self + "</color>", args)
-    end function
+    return red(self, args)
+end function
 
 white = function(str, args = null)
-    return format("<color=" + g.c.white + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.white + "><b>" + str + "</b></color>", args)
+end function
 
 string.white = function(args = null)
-    return format("<color=" + g.c.white + ">" + self + "</color>", args)
-    end function
+    return white(self, args)
+end function
 
 lightgray = function(str, args = null)
-    return format("<color=" + g.c.lightgray + ">" + str + "</color>", args)
-    end function
+    return format("<color=" + const.lightgray + "><b>" + str + "</b></color>", args)
+end function
 
 string.lightgray = function(args = null)
-    return format("<color=" + g.c.lightgray + ">" + self + "</color>", args)
-    end function
+    return lightgray(self, args)
+end function
 
+error = function(str)
+    return red("[Error] " + str)
+end function
 
-g.f.user = function(obj)
+func.user = function(obj)
     if typeof(obj) == "shell" then
         comp = obj.host_computer
     else if typeof(obj) == "computer" then
         comp = obj
     else
-        return red("[Error] Incorrect Object Type", "b")
+        return error("Incorrect Object Type")
     end if
 
     if comp.File("/root").has_permission("w") then
@@ -124,11 +127,11 @@ g.f.user = function(obj)
     return "guest"
 end function
 
-g.f.shellMap = function(shell)
+func.shellMap = function(shell)
     map = {}
 
     map.shell = shell
-    map.user = g.f.user(shell)
+    map.user = func.user(shell)
     map.pip = shell.host_computer.public_ip
     map.lip = shell.host_computer.local_ip
     map.skey = map.pip + ":" + map.lip + ":"
@@ -144,22 +147,22 @@ g.f.shellMap = function(shell)
     return map
 end function
 
-g.target.print = function()
-    if not g.target.hasIndex("ip") or not is_valid_ip(g.target.ip) then
-        print(g.c.indent + "There is currently no saved " + g.c.targettext + ".")
+target.print = function()
+    if not target.hasIndex("ip") or not is_valid_ip(target.ip) then
+        print(const.indent + error("There is currently no saved " + const.targettext + "."))
         return
     end if
 
-    if not g.target.hasIndex("port") or typeof(g.target.port) != "number" or g.target.port < 0 or g.target.port > 65535 then g.target.port = 0
+    if not target.hasIndex("port") or typeof(target.port) != "number" or target.port < 0 or target.port > 65535 then target.port = 0
 
-    t = g.c.indent + "The current " + g.c.targettext + " is: " + g.target.ip + ":" + g.target.port
+    t = const.indent + "The current " + const.targettext + " is: " + target.ip + ":" + target.port
 
     print(t.green)
 end function
 
-g.f.init = function()
+func.init = function()
     g.shells = []
-    g.shells.push(g.f.shellMap(get_shell))
+    g.shells.push(func.shellMap(get_shell))
 
     g.current = {}
     g.current.context = "home"

@@ -1,4 +1,4 @@
-if not g.hasIndex("t") then g.t = {}
+if not globals.hasIndex("tools") then globals.tools = {}
 
 import_code("tools/probe.src")
 import_code("tools/scan.src")

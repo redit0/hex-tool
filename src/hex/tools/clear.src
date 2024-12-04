@@ -1,22 +1,21 @@
-if not g.hasIndex("t") then g.t = {}
-
 help = function()
-    text = g.c.ni + "Usage:".yellow("bu") + g.c.ni
-    text = text + "clear".green + lightgray(" Clears the screen and prints the banner and menu.") + g.c.nl
+    text = const.ni + "Usage:".yellow("u") + const.ni
+    text = text + "clear".green + " Clears the screen and prints the banner and menu.".lightgray + const.nl
 
     print(text)
 end function
 
 clear = function(args = null)
     clear_screen
-    print(g.f.getBanner)
-    print(g.f.getMenu)
+    print(func.getBanner)
+    print(func.getMenu)
 end function
 
-g.t.clear = {
+tools.clear = {
     "name": "clear",
-    "text": "clear".white("b"),
+    "text": white("clear"),
     "sortOrder": 998,
     "exec": @clear,
-    "help": @help
+    "help": @help,
+    "data": {}
 }

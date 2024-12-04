@@ -1,6 +1,6 @@
-if not g.hasIndex("f") then g.f = {}
+if not globals.hasIndex("func") then func = {}
 
-g.f.getPrompt = function()
+func.getPrompt = function()
 	spacing = 3.9
 	spacing = spacing+(g.current.user.len + g.current.hostname.len)*0.6
 
@@ -21,7 +21,7 @@ g.f.getPrompt = function()
 	end if
 
 	if g.current.context == "shell" then
-		t = "[" + g.c.cyan + g.current.context + g.c.ec + "]"
+		t = "[" + g.current.context.cyan + "]"
 	end if
 
 	if g.current.context == "computer" then
@@ -32,7 +32,7 @@ g.f.getPrompt = function()
 		t = "[" + g.current.context.magenta + "]"
 	end if
 
-	nonPrinting = 122
+	nonPrinting = 158
 
 	prompt = "<pos=40>————————" + u + "——————" + ips + "——————" + t
 
@@ -44,10 +44,10 @@ g.f.getPrompt = function()
 		prompt = prompt + "—"
 	end for
 	
-	prompt = prompt + "<voffset=-0.5em><space=-" + spacing + "em><pos=36>|<voffset=-1em><space=-0.6em>|<voffset=-1.5em><space=-0.6em>|<voffset=-2em><space=-0.6em>|<voffset=-2.5em><pos=40>——"
-	prompt = prompt + "[" + g.current.dir.white + "]—" + char(187) + " "
+	prompt = prompt + "<voffset=-0.5em><space=-" + spacing + "em><pos=36>|<voffset=-1.5em><space=-0.5em><pos=36>|<voffset=-2em><pos=40>——"
+	prompt = prompt + "[" + g.current.dir.white + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
 
-	prompt = g.c.nl + prompt.orange
+	prompt = const.nl + prompt.orange
 
 	return prompt
 end function
