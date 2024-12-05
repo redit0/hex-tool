@@ -1,26 +1,24 @@
-if not globals.hasIndex("const") then const = {}
-
-const.vhex = "v1.0.0"
-const.green = "#81eb00"
-const.darkgreen = "#007700"
-const.cyan = "#0cddf2"
-const.blue = "#3366ff"
-const.yellow = "#dcdcaa"
-const.darkyellow = "#dbd700"
-const.orange = "#ffa500"
-const.magenta = "#b0509e"
-const.red = "#c30000"
-const.white = "#eeeeee"
-const.lightgray = "#b3b3b3"
-const.indent = "    "
-const.nl = char(10)
-const.tab = char(9)
-const.ni = const.nl + const.indent
-const.ll = 80
-const.lb = "—————————————————————————————————————————————————————————————————————————————————————"
-const.llb = "====================================================================================="
-const.slb = "*************************************************************************************"
-const.hlb = "                       ———————————————————————————————————————                       "
-const.hllb = "                       =======================================                       "
-const.hslb = "                       ***************************************                       "
-const.targettext = "target".yellow("i")
+g.const.vhex = "v1.0.0"
+g.const.green = "#81eb00"
+g.const.darkgreen = "#007700"
+g.const.cyan = "#0cddf2"
+g.const.blue = "#3366ff"
+g.const.yellow = "#dcdcaa"
+g.const.darkyellow = "#dbd700"
+g.const.orange = "#ff9900"
+g.const.magenta = "#b0509e"
+g.const.red = "#c30000"
+g.const.white = "#eeeeee"
+g.const.lightgray = "#b3b3b3"
+g.const.indent = "    "
+g.const.nl = char(10)
+g.const.tab = char(9)
+g.const.ni = g.const.nl + g.const.indent
+g.const.ll = 86
+g.const.lb = "—"*g.const.ll
+g.const.llb = "="*g.const.ll
+g.const.slb = "*"*g.const.ll
+g.const.hlb = "<align=center>" + "———————————————————————————————————————"*g.const.ll/2
+g.const.hllb = "<align=center>" + "======================================="*g.const.ll/2
+g.const.hslb = "<align=center>" + "***************************************"*g.const.ll/2
+g.const.targettext = "target".yellow("i")

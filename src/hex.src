@@ -1,4 +1,7 @@
-g = {}
+g = get_custom_object
+g.tools = {}
+g.const = {}
+g.target = {}
 
 import_code("hex/functions.src")
 import_code("hex/constants.src")
@@ -11,24 +14,28 @@ import_code("hex/menu.src")
 
 if params.len > 0 then
 	if params[0] == "help" or params[0] == "-h" then
-		print(yellow("Usage: hex {IP Address} {Port}"))
+		exit(yellow("Usage: hex {IP Address} {Port}"))
 	else if is_valid_ip(params[0]) then
-		target.ip = params[0]
+		g.target.ip = params[0]
 	else
 		exit(yellow("Usage: hex {IP Address} {Port}"))
 	end if
 end if
 
 if params.len > 1 then
-	target.port = params[1].to_int
+	if params[1] isa number and params[1].to_int >= 0 and params[1].to_int <= 65535 then
+		g.target.port = params[1].to_int
+	else
+		exit(yellow("Usage: hex {IP Address} {Port}"))
+	end if
 end if
 
-func.init
+init
 
-tools.clear.exec
+g.tools.clear.exec
 
 while true
-	input = user_input(func.getPrompt)
+	input = user_input(getPrompt)
 
 	if input == "" then
 		continue
@@ -37,9 +44,9 @@ while true
 	key = input.split(" ")[0]
 	args = input.split(" ")[1:]
 
-	if tools.hasIndex(key) then
-		tools[key].exec(args)
+	if g.tools.hasIndex(key) then
+		g.tools[key].exec(args)
 	else
-		print(const.indent + error("Invalid argument: " + key))
+		print(g.const.indent + error("Invalid argument: " + key))
 	end if
 end while

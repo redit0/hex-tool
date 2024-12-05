@@ -1,21 +1,21 @@
-help = function()
-    text = const.ni + "Usage:".yellow("u") + const.ni
-    text = text + "clear".green + " Clears the screen and prints the banner and menu.".lightgray + const.nl
+clearHelp = function()
+    text = g.const.ni + "Usage:".yellow("u") + g.const.ni
+    text = text + "clear".green + " Clears the screen and prints the banner and menu.".lightgray + g.const.nl
 
     print(text)
 end function
 
 clear = function(args = null)
     clear_screen
-    print(func.getBanner)
-    print(func.getMenu)
+    print(getBanner)
+    print(getMenu)
 end function
 
-tools.clear = {
+g.tools.clear = {
     "name": "clear",
-    "text": white("clear"),
+    "text": "clear".white,
     "sortOrder": 998,
     "exec": @clear,
-    "help": @help,
+    "help": @clearHelp,
     "data": {}
 }

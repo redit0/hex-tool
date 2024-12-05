@@ -1,13 +1,10 @@
-
-if not globals.hasIndex("func") then func = {}
-
-func.getMenu = function()
-	menu = const.indent + "<size=22>Menu</size>".yellow("u") + const.nl + const.ni
+getMenu = function()
+	menu = g.const.indent + "<size=20>Menu</size>".blue + g.const.nl + g.const.ni
 
 	items = []
 
-	for index in tools.indexes
-		items.push({"name": tools[index].name, "sort": tools[index].sortOrder})
+	for index in g.tools.indexes
+		items.push({"name": g.tools[index].name, "sort": g.tools[index].sortOrder})
 	end for
 
 	items.sort("sort")
@@ -15,14 +12,13 @@ func.getMenu = function()
 	count = 1
 
 	for item in items
-		menu = menu + tools[item.name].text + char(9) + char(9)
+		menu = menu + g.tools[item.name].text + char(9) + char(9)
 
-		if count == 5 then
-			menu = menu + const.ni
-			count = 1
-		else
-			count = count + 1
+		if count % 8 == 0 and count != items.len then
+			menu = menu + g.const.ni
 		end if
+
+		count = count + 1
 	end for
 	
 	return menu

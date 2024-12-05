@@ -1,22 +1,22 @@
-help = function()
-    text = const.ni + "Usage:".yellow("u") + const.ni
-    text = text + "quit".green + " Clears the screen and exits the program.".lightgray + const.nl
+quitHelp = function()
+    text = g.const.ni + "Usage:".yellow("u") + g.const.ni
+    text = text + "quit".green + " Clears the screen and exits the program.".lightgray + g.const.nl
 
     print(text)
 end function
 
 quit = function(args)
-    print(const.ni + "Goodbye!!".cyan("b"))
+    print(g.const.ni + "Goodbye!!".cyan("b"))
     wait
     clear_screen
     exit()
 end function
 
-tools.quit = {
+g.tools.quit = {
     "name": "quit",
     "text": "quit".red,
     "sortOrder": 999,
     "exec": @quit,
-    "help": @help,
+    "help": @quitHelp,
     "data": {}
 }

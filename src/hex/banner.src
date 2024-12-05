@@ -1,27 +1,25 @@
-if not globals.hasIndex("func") then func = {}
-
-func.getBanner = function()
+getBanner = function()
     banner = ""
-    banner = banner + green("        __    __    __    __    __    __    __    __    __    __    __    __    ") + const.nl
-    banner = banner + green("     __/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__ ") + const.nl
-    banner = banner + green("    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \") + const.nl
-    banner = banner + green("    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/") + const.nl
-    banner = banner + green("    /  \__/                                                              \__/  \") + const.nl
-    banner = banner + green("    \__/  \  " + red("   /\\\      /\\\    /\\\\\\\\\   /\\\       /\\\         ") + "  /  \__/") + const.nl
-    banner = banner + green("    /  \__/  " + red("   \/\\\     \/\\\   \/\\\/////   \///\\\   /\\\/         ") + "  \__/  \") + const.nl
-    banner = banner + green("    \__/  \  " + red("    \/\\\     \/\\\   \/\\\          \///\\\\\\/          ") + "  /  \__/") + const.nl
-    banner = banner + green("    /  \__/  " + red("     \/\\\\\\\\\\\\\   \/\\\\\\\        \//\\\\           ") + "  \__/  \") + const.nl
-    banner = banner + green("    \__/  \  " + red("      \/\\\///////\\\   \/\\\///          /\\\\\\         ") + "  /  \__/") + const.nl
-    banner = banner + green("    /  \__/  " + red("       \/\\\     \/\\\   \/\\\           /\\\////\\\      ") + "  \__/  \") + const.nl
-    banner = banner + green("    \__/  \  " + red("        \/\\\     \/\\\   \/\\\\\\\\\   /\\\/   \///\\\   ") + "  /  \__/") + const.nl
-    banner = banner + green("    /  \__/  " + red("         \///      \///    \/////////   \///       \///   ") + "  \__/  \") + const.nl
-    banner = banner + green("    \__/  \                                                              /  \__/") + const.nl
-    banner = banner + green("    /  \__/     " + const.vhex.lightgray + "                                     ")
-    banner = banner + green("by".lightgray + " " + "redit0".orange + "     \__/  \") + const.nl
-    banner = banner + green("    \__/  \__    __    __    __    __    __    __    __    __    __    __/  \__/") + const.nl
-    banner = banner + green("    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \") + const.nl
-    banner = banner + green("    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/") + const.nl
-    banner = banner + green("       \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/   ") + const.nl
+    banner = banner + darkgreen("        __    __    __    __    __    __    __    __    __    __    __    __    ") + g.const.nl
+    banner = banner + darkgreen("     __/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__ ") + g.const.nl
+    banner = banner + darkgreen("    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \") + g.const.nl
+    banner = banner + darkgreen("    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/") + g.const.nl
+    banner = banner + darkgreen("    /  \__/                                                              \__/  \") + g.const.nl
+    banner = banner + darkgreen("    \__/  \  " + red("   /\\\      /\\\    /\\\\\\\\\   /\\\       /\\\         ") + "  /  \__/") + g.const.nl
+    banner = banner + darkgreen("    /  \__/  " + red("   \/\\\     \/\\\   \/\\\/////   \///\\\   /\\\/         ") + "  \__/  \") + g.const.nl
+    banner = banner + darkgreen("    \__/  \  " + red("    \/\\\     \/\\\   \/\\\          \///\\\\\\/          ") + "  /  \__/") + g.const.nl
+    banner = banner + darkgreen("    /  \__/  " + red("     \/\\\\\\\\\\\\\   \/\\\\\\\        \//\\\\           ") + "  \__/  \") + g.const.nl
+    banner = banner + darkgreen("    \__/  \  " + red("      \/\\\///////\\\   \/\\\///          /\\\\\\         ") + "  /  \__/") + g.const.nl
+    banner = banner + darkgreen("    /  \__/  " + red("       \/\\\     \/\\\   \/\\\           /\\\////\\\      ") + "  \__/  \") + g.const.nl
+    banner = banner + darkgreen("    \__/  \  " + red("        \/\\\     \/\\\   \/\\\\\\\\\   /\\\/   \///\\\   ") + "  /  \__/") + g.const.nl
+    banner = banner + darkgreen("    /  \__/  " + red("         \///      \///    \/////////   \///       \///   ") + "  \__/  \") + g.const.nl
+    banner = banner + darkgreen("    \__/  \                                                              /  \__/") + g.const.nl
+    banner = banner + darkgreen("    /  \__/     " + g.const.vhex.lightgray + "                                     ")
+    banner = banner + darkgreen("by".lightgray + " " + "redit0".orange + "     \__/  \") + g.const.nl
+    banner = banner + darkgreen("    \__/  \__    __    __    __    __    __    __    __    __    __    __/  \__/") + g.const.nl
+    banner = banner + darkgreen("    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \") + g.const.nl
+    banner = banner + darkgreen("    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/") + g.const.nl
+    banner = banner + darkgreen("       \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/   ") + g.const.nl
 
     return banner
 end function

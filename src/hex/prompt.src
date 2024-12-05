@@ -1,6 +1,4 @@
-if not globals.hasIndex("func") then func = {}
-
-func.getPrompt = function()
+getPrompt = function()
 	spacing = 3.9
 	spacing = spacing+(g.current.user.len + g.current.hostname.len)*0.6
 
@@ -9,7 +7,7 @@ func.getPrompt = function()
 	ips = "[" + g.current.pip.cyan + ":" + g.current.lip.darkyellow + "]"
 	
 	if g.current.user == "root" then
-		u = "[" + g.current.user.green + "@" + g.current.hostname.white + "]"
+		u = "[" + g.current.user.darkgreen + "@" + g.current.hostname.white + "]"
 	end if
 	
 	if g.current.user == "guest" then
@@ -17,7 +15,7 @@ func.getPrompt = function()
 	end if
 
 	if g.current.context == "home" then
-		t = "[" + g.current.context.green + "]"
+		t = "[" + g.current.context.darkgreen + "]"
 	end if
 
 	if g.current.context == "shell" then
@@ -25,29 +23,27 @@ func.getPrompt = function()
 	end if
 
 	if g.current.context == "computer" then
-		t = "[" + g.current.context.orange + "]"
-	end if
-
-	if g.current.context == "file" then
 		t = "[" + g.current.context.magenta + "]"
 	end if
 
-	nonPrinting = 158
+	if g.current.context == "file" then
+		t = "[" + g.current.context.yellow + "]"
+	end if
+
+	nonPrinting = 149
 
 	prompt = "<pos=40>————————" + u + "——————" + ips + "——————" + t
 
 	promptLength = prompt.len - nonPrinting
 
-	extraChars = 77 - promptLength
+	extraChars = g.const.ll - promptLength
 
-	for count in range(1, extraChars)
-		prompt = prompt + "—"
-	end for
+	prompt = prompt + "—"*extraChars
 	
 	prompt = prompt + "<voffset=-0.5em><space=-" + spacing + "em><pos=36>|<voffset=-1.5em><space=-0.5em><pos=36>|<voffset=-2em><pos=40>——"
 	prompt = prompt + "[" + g.current.dir.white + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
 
-	prompt = const.nl + prompt.orange
+	prompt = g.const.nl + prompt.orange
 
 	return prompt
 end function
