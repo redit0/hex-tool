@@ -1,6 +1,6 @@
 getPrompt = function()
-	spacing = 3.9
-	spacing = spacing+(g.current.user.len + g.current.hostname.len)*0.6
+	//spacing = 3.9
+	//spacing = spacing+(g.current.user.len + g.current.hostname.len)*0.6
 
 	t = "[" + g.current.context.lightgray + "]"
 	u = "[" + g.current.user.yellow + "@" + g.current.hostname.white + "]"
@@ -40,7 +40,8 @@ getPrompt = function()
 
 	prompt = prompt + "—"*extraChars
 	
-	prompt = prompt + "<voffset=-0.5em><space=-" + spacing + "em><pos=36>|<voffset=-1.5em><space=-0.5em><pos=36>|<voffset=-2em><pos=40>——"
+	//prompt = prompt + "<voffset=-0.5em><space=-" + spacing + "em><pos=36>|<voffset=-1.5em><space=-0.5em><pos=36>|<voffset=-2em><pos=40>——"
+	prompt = prompt + "<voffset=-0.5em><pos=36>|<voffset=-1.5em><space=-0.5em><pos=36>|<voffset=-2em><pos=40>——"
 	prompt = prompt + "[" + g.current.dir.white + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
 
 	prompt = g.const.nl + prompt.orange

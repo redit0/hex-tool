@@ -1,0 +1,15 @@
+map.user = function(color = false)
+    if typeof(self) != "shell" and typeof(self) != "computer" then
+        print(error("Invalid object type: " + typeof(self)))
+
+        return ""
+    end if
+
+    comp = self
+
+    if typeof(self) == "shell" then comp = self.host_computer
+
+
+
+
+end function

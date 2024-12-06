@@ -1,0 +1,23 @@
+toolNameHelp = function(self)
+    text = g.const.ni + "Usage:".yellow("u") + g.const.ni
+    text = text + self.name.green + " {Text explaining the usage of this tool}".lightgray + g.const.nl
+
+    print(text)
+end function
+
+tree = function(args = null)
+    // Put functionality here for what this tool does.
+end function
+
+// Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.
+// You can leave it as src code (name it with a .src file extension), otherwise hex will attempt to load it as a binary file that has been built with the
+// 'allow import' flag set.
+
+g.tools.tree = {
+    "name": "tree",         // Unformatted tool name text
+    "text": "tree".cyan,    // Tool name text with any formatting you want to use when its name is displayed
+    "sortOrder": 500,           // This number will be used to sort this tool in the menu.  Quit is the last built-in item, with sort order 999.
+    "exec": @tree,          // A function reference to the toolName function above.
+    "help": @toolNameHelp,      // A function reference to the help function above.
+    "data": {}                  // This map can be used to store any data or additional functions used by the tool that might need to be accessed outside of the tool itself.
+}
