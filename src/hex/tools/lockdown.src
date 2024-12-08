@@ -1,0 +1,76 @@
+lockdownHelp = function(self)
+    text = g.const.ni + "Usage:".yellow("u") + g.const.ni
+    text = text + self.name.green + " Secures the system by changing permissions on all files and folders to -rwx.".lightgray + g.const.ni
+    text = text + "If this is your home system, it leaves the ability to run terminal, sudo, mail, map, and chat.".lightgray + g.const.ni
+    text = text + "Also deletes all files named mail.txt, bank.txt, and any binary files named passwd. ".lightgray + g.const.nl
+
+    print(text)
+end function
+
+setPerms = function(obj)
+    obj.chmod("u-rwx")
+    obj.chmod("g-rwx")
+    obj.chmod("o-rwx")
+end function
+
+doLockdown = function(dir, home)
+    for folder in dir.get_folders
+        doLockdown(folder)
+
+        setPerms(folder)
+    end for
+
+    for file in dir.get_files
+        if file.name == "mail.txt" or file.name == "bank.txt" or (file.is_binary and file.name == "passwd") then
+            file.delete
+        end if
+
+        if home and file.name != "Terminal.exe" and file.name != "Mail.exe" and file.name != "Map.exe" and file.name != "Chat.exe" and file.name != "sudo" then
+            setPerms(file)
+        else
+            setPerms(file)
+        end if
+    end for
+
+    return
+end function
+
+lockdown = function(args = null)
+    comp = get_shell.host_computer
+
+    comp.file("/home/guest").delete
+
+    procs = comp.show_procs.split(char(10))
+
+    xorg = 0
+    kernel = 0
+
+    for proc in procs
+        name = proc.split(" ")[4]
+
+        if name == "Xorg" then xorg = 1
+        if name == "kernel_task" then kernel = 1
+    end for
+
+    root = comp.file("/")
+
+    doLockdown(root, xorg and kernel)
+
+    print(g.const.ni + "System locked down.".green)
+    wait(2)
+    g.tools.clear.exec
+    return
+end function
+
+// Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.
+// You can leave it as src code (name it with a .src file extension), otherwise hex will attempt to load it as a binary file that has been built with the
+// 'allow import' flag set.
+
+g.tools.toolName = {
+    "name": "lockdown",         // Unformatted tool name text
+    "text": "lockdown".cyan,    // Tool name text with any formatting you want to use when its name is displayed
+    "sortOrder": 500,           // This number will be used to sort this tool in the menu.  Quit is the last built-in item, with sort order 999.
+    "exec": @lockdown,          // A function reference to the toolName function above.
+    "help": @lockdownHelp,      // A function reference to the help function above.
+    "data": {}                  // This map can be used to store any data or additional functions used by the tool that might need to be accessed outside of the tool itself.
+}
