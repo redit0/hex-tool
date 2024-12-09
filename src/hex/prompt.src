@@ -1,34 +1,9 @@
 getPrompt = function()
-	//spacing = 3.9
-	//spacing = spacing+(g.current.user.len + g.current.hostname.len)*0.6
-
-	t = "[" + g.current.context.lightgray + "]"
-	u = "[" + g.current.user.yellow + "@" + g.current.hostname.white + "]"
-	ips = "[" + g.current.pip.cyan + ":" + g.current.lip.darkyellow + "]"
+	idx = g.context.index
 	
-	if g.current.user == "root" then
-		u = "[" + g.current.user.darkgreen + "@" + g.current.hostname.white + "]"
-	end if
-	
-	if g.current.user == "guest" then
-		u = "[" + g.current.user.red + "@" + g.current.hostname.white + "]"
-	end if
-
-	if g.current.context == "home" then
-		t = "[" + g.current.context.darkgreen + "]"
-	end if
-
-	if g.current.context == "shell" then
-		t = "[" + g.current.context.cyan + "]"
-	end if
-
-	if g.current.context == "computer" then
-		t = "[" + g.current.context.magenta + "]"
-	end if
-
-	if g.current.context == "file" then
-		t = "[" + g.current.context.yellow + "]"
-	end if
+	t = "[" + g.stack[idx].getType(1) + "]"
+	u = "[" + g.stack[idx].getUser(1) + "@" + g.stack[idx].getHostname(1) + "]"
+	ips = "[" + g.stack[idx].getPublic(1) + ":" + g.stack[idx].getLocal(1) + "]"
 
 	nonPrinting = 149
 
@@ -40,11 +15,10 @@ getPrompt = function()
 
 	prompt = prompt + "—"*extraChars
 	
-	//prompt = prompt + "<voffset=-0.5em><space=-" + spacing + "em><pos=36>|<voffset=-1.5em><space=-0.5em><pos=36>|<voffset=-2em><pos=40>——"
 	prompt = prompt + "<voffset=-0.5em><pos=36>|<voffset=-1.5em><space=-0.5em><pos=36>|<voffset=-2em><pos=40>——"
-	prompt = prompt + "[" + g.current.dir.white + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
+	prompt = prompt + "[" + g.func.white(g.context.dir) + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
 
-	prompt = g.const.nl + prompt.orange
+	prompt = g.const.nl + g.func.orange(prompt)
 
 	return prompt
 end function

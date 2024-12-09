@@ -1,12 +1,20 @@
 quitHelp = function()
-    text = g.const.ni + "Usage:".yellow("u") + g.const.ni
-    text = text + "quit".green + " Clears the screen and exits the program.".lightgray + g.const.nl
+    text = g.const.ni + g.func.yellow("Usage:","u") + g.const.ni
+    text = text + g.func.green(self.name) + g.func.lightgray(" Clears the screen and exits the program.") + g.const.nl
+    text = text + g.func.green(self.name) + g.func.cyan(" [-h/help]") + g.func.lightgray(" Displays this help text") + g.const.nl
 
     print(text)
 end function
 
 quit = function(args)
-    print(g.const.ni + "Goodbye!!".cyan("b"))
+    if args != null and args.len > 0 then
+        if args[0] == "help" or args[0] == "-h" then
+            self.help
+            return
+        end if
+    end if
+
+    print(g.const.ni + g.func.cyan("Goodbye!!"))
     wait
     clear_screen
     exit()
@@ -14,7 +22,7 @@ end function
 
 g.tools.quit = {
     "name": "quit",
-    "text": "quit".red,
+    "text": g.func.red("quit"),
     "sortOrder": 999,
     "exec": @quit,
     "help": @quitHelp,

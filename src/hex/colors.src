@@ -1,5 +1,5 @@
-format = function(str, args = null)
-    if args then
+g.func.format = function(str, args = null)
+    if args and args.len > 0 then
         for x in range(args.len-1)
             str = "<" + args[x] + ">" + str + "</" + args[x] + ">"
         end for
@@ -8,94 +8,50 @@ format = function(str, args = null)
 end function
 
 //colors
-green = function(str, args = null)
-    return format("<color=" + g.const.green + "><b>" + str + "</b></color>", args)
+g.func.green = function(str, args = null)
+    return g.func.format("<color=" + g.const.green + "><b>" + str + "</b></color>", args)
 end function
 
-string.green = function(args = null)
-    return green(self, args)
+g.func.darkgreen = function(str, args = null)
+    return g.func.format("<color=" + g.const.darkgreen + "><b>" + str + "</b></color>", args)
 end function
 
-darkgreen = function(str, args = null)
-    return format("<color=" + g.const.darkgreen + "><b>" + str + "</b></color>", args)
+g.func.cyan = function(str, args = null)
+    return g.func.format("<color=" + g.const.cyan + "><b>" + str + "</b></color>", args)
 end function
 
-string.darkgreen = function(args = null)
-    return darkgreen(self, args)
+g.func.blue = function(str, args = null)
+    return g.func.format("<color=" + g.const.blue + "><b>" + str + "</b></color>", args)
 end function
 
-cyan = function(str, args = null)
-    return format("<color=" + g.const.cyan + "><b>" + str + "</b></color>", args)
+g.func.yellow = function(str, args = null)
+    return g.func.format("<color=" + g.const.yellow + "><b>" + str + "</b></color>", args)
 end function
 
-string.cyan = function(args = null)
-    return cyan(self, args)
+g.func.darkyellow = function(str, args = null)
+    return g.func.format("<color=" + g.const.darkyellow + "><b>" + str + "</b></color>", args)
 end function
 
-blue = function(str, args = null)
-    return format("<color=" + g.const.blue + "><b>" + str + "</b></color>", args)
+g.func.orange = function(str, args = null)
+    return g.func.format("<color=" + g.const.orange + "><b>" + str + "</b></color>", args)
 end function
 
-string.blue = function(args = null)
-    return blue(self, args)
+g.func.magenta = function(str, args = null)
+    return g.func.format("<color=" + g.const.magenta + "><b>" + str + "</b></color>", args)
 end function
 
-yellow = function(str, args = null)
-    return format("<color=" + g.const.yellow + "><b>" + str + "</b></color>", args)
+g.func.red = function(str, args = null)
+    return g.func.format("<color=" + g.const.red + "><b>" + str + "</b></color>", args)
 end function
 
-string.yellow = function(args = null)
-    return yellow(self, args)
+g.func.white = function(str, args = null)
+    return g.func.format("<color=" + g.const.white + "><b>" + str + "</b></color>", args)
 end function
 
-darkyellow = function(str, args = null)
-    return format("<color=" + g.const.darkyellow + "><b>" + str + "</b></color>", args)
+g.func.lightgray = function(str, args = null)
+    return g.func.format("<color=" + g.const.lightgray + "><b>" + str + "</b></color>", args)
 end function
 
-string.darkyellow = function(args = null)
-    return darkyellow(self, args)
-end function
-
-orange = function(str, args = null)
-    return format("<color=" + g.const.orange + "><b>" + str + "</b></color>", args)
-end function
-
-string.orange = function(args = null)
-    return orange(self, args)
-end function
-
-magenta = function(str, args = null)
-    return format("<color=" + g.const.magenta + "><b>" + str + "</b></color>", args)
-end function
-
-string.magenta = function(args = null)
-    return magenta(self, args)
-end function
-
-red = function(str, args = null)
-    return format("<color=" + g.const.red + "><b>" + str + "</b></color>", args)
-end function
-
-string.red = function(args = null)
-    return red(self, args)
-end function
-
-white = function(str, args = null)
-    return format("<color=" + g.const.white + "><b>" + str + "</b></color>", args)
-end function
-
-string.white = function(args = null)
-    return white(self, args)
-end function
-
-lightgray = function(str, args = null)
-    return format("<color=" + g.const.lightgray + "><b>" + str + "</b></color>", args)
-end function
-
-string.lightgray = function(args = null)
-    return lightgray(self, args)
-end function
-
-error = function(str)
-    return red("[Error] " + str)
+g.func.error = function(str)
+    return g.func.red("[Error] " + str)
 end function

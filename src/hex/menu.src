@@ -1,5 +1,5 @@
-getMenu = function()
-	menu = g.const.indent + "<size=20>Menu</size>".blue + g.const.nl + g.const.ni
+g.func.getMenu = function()
+	menu = g.const.indent + g.func.blue("<size=20>Menu</size>") + g.const.nl + g.const.ni
 
 	items = []
 

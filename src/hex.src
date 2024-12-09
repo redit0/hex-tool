@@ -1,11 +1,15 @@
 g = get_custom_object
-g.tools = {}
 g.const = {}
+g.context = {}
+g.func = {}
+g.stack = []
 g.target = {}
+g.tools = {}
 
 import_code("hex/colors.src")
 import_code("hex/constants.src")
 import_code("hex/functions.src")
+import_code("hex/extensions.src")
 import_code("hex/banner.src")
 import_code("hex/prompt.src")
 
@@ -15,11 +19,11 @@ import_code("hex/menu.src")
 
 if params.len > 0 then
 	if params[0] == "help" or params[0] == "-h" then
-		exit(yellow("Usage: hex {IP Address} {Port}"))
+		exit(g.func.yellow("Usage: hex [IP Address] {Port}"))
 	else if is_valid_ip(params[0]) then
 		g.target.ip = params[0]
 	else
-		exit(yellow("Usage: hex {IP Address} {Port}"))
+		exit(g.func.yellow("Usage: hex [IP Address] {Port}"))
 	end if
 end if
 
@@ -27,11 +31,11 @@ if params.len > 1 then
 	if params[1] isa number and params[1].to_int >= 0 and params[1].to_int <= 65535 then
 		g.target.port = params[1].to_int
 	else
-		exit(yellow("Usage: hex {IP Address} {Port}"))
+		exit(g.func.yellow("Usage: hex [IP Address] {Port}"))
 	end if
 end if
 
-init
+g.func.init
 
 g.tools.clear.exec
 

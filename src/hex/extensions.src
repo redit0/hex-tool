@@ -1,15 +1,103 @@
-map.user = function(color = false)
-    if typeof(self) != "shell" and typeof(self) != "computer" then
-        print(error("Invalid object type: " + typeof(self)))
+map.getUser = function(color = 0)
+    type = typeof(self)
 
-        return ""
+    if type == "shell" then
+        return g.func.getUser(self.host_computer.File("/"), color)
     end if
 
-    comp = self
+    if type == "computer" then
+        return g.func.getUser(self.File("/"), color)
+    end if
 
-    if typeof(self) == "shell" then comp = self.host_computer
+    if type == "file" then
+        return g.func.getUser(self, color)
+    end if
 
+    print(g.func.error(g.const.indent + "Invalid object type: " + type + g.const.ni))
 
+    return g.func.red("null")
+end function
 
+map.getHostname = function(color = 0)
+    type = typeof(self)
 
+    if type == "shell" then
+        if color then return g.func.white(self.host_computer.get_name) else return self.host_computer.get_name
+    end if
+
+    if type == "computer" then
+        if color then return g.func.white(self.get_name) else return self.get_name
+    end if
+
+    return g.func.lightgray("unknown")
+end function
+
+map.getLocal = function(color = 0)
+    type = typeof(self)
+
+    if type == "shell" then
+        if color then return g.func.yellow(self.host_computer.local_ip) else return self.host_computer.local_ip
+    end if
+
+    if type == "computer" then
+        if color then return g.func.yellow(self.local_ip) else return self.local_ip
+    end if
+
+    if g.target.hasIndex("ip") then
+        if is_lan_ip(g.target.ip) then
+            if color then return g.func.yellow(g.target.ip) else return g.target.ip
+        end if
+    end if
+
+    return g.func.lightgray("unknown")
+end function
+
+map.getPublic = function(color = 0)
+    type = typeof(self)
+
+    if type == "shell" then
+        if color then return g.func.cyan(self.host_computer.public_ip) else return self.host_computer.public_ip
+    end if
+
+    if type == "computer" then
+        if color then return g.func.cyan(self.public_ip) else return self.public_ip
+    end if
+
+    if g.target.hasIndex("ip") then
+        if not is_lan_ip(g.target.ip) then
+            if color then return g.func.cyan(g.target.ip) else return g.target.ip
+        end if
+    end if
+
+    return g.func.lightgray("unknown")
+end function
+
+map.getType = function(color = 0)
+    type = typeof(self)
+
+    if type == "shell" then
+        procs = self.host_computer.show_procs.split(char(10))
+
+        for proc in procs
+            name = proc.split(" ")[4]
+
+            if name == "Xorg" then
+                if color then return g.func.darkgreen("home") else return "home"
+            end if
+        end for
+
+        if color then return g.func.cyan(type) else return type
+    end if
+
+    if type == "computer" then
+        if color then return g.func.magenta(type) else return type
+    end if
+
+    if type == "file" then
+        if color then return g.func.yellow(type) else return type
+    end if
+
+    print(g.func.error(g.const.indent + "Invalid object type: " + type + g.const.ni))
+
+    return g.func.red("null")
 end function

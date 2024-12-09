@@ -21,4 +21,4 @@ g.const.slb = "*"*g.const.ll
 g.const.hlb = "<align=center>" + "—"*g.const.ll/2
 g.const.hllb = "<align=center>" + "="*g.const.ll/2
 g.const.hslb = "<align=center>" + "*"*g.const.ll/2
-g.const.targettext = "target".yellow("i")
+g.const.targettext = g.func.yellow("target", "i")

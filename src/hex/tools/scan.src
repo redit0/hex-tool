@@ -1,16 +1,16 @@
 scanHelp = function()
-    text = g.const.ni + "Usage:".yellow("u") + g.const.ni
-    text = text + "scan".green + lightgray(" Scans for vulnerabilities at the ip address and port saved as the current " + g.const.targettext + ".") + g.const.ni
-    text = text + "scan".green + " [ip] {port}".cyan + lightgray(" Scans for vulnerabilities at the specified ip address and port. If the port is omitted it will scan kernel_router instead.") + g.const.ni
-    text = text + "scan".green + " [-s/show]".cyan + lightgray(" Displays list of previously scanned vulnerabilities for the " + g.const.targettext + " ip address") + g.const.ni
-    text = text + "scan".green + " [-h/help]".cyan + lightgray(" Display this help text") + g.const.nl
+    text = g.const.ni + g.func.yellow("Usage:","u") + g.const.ni
+    text = text + g.func.green(self.name) + g.func.lightgray(" Scans for vulnerabilities at the ip address and port saved as the current " + g.const.targettext + ".") + g.const.ni
+    text = text + g.func.green(self.name) + g.func.cyan(" [ip] {port}") + g.func.lightgray(" Scans for vulnerabilities at the specified ip address and port. If the port is omitted it will scan kernel_router instead.") + g.const.ni
+    text = text + g.func.green(self.name) + g.func.cyan(" [-s/show]") + g.func.lightgray(" Displays list of previously scanned vulnerabilities for the " + g.const.targettext + " ip address") + g.const.ni
+    text = text + g.func.green(self.name) + g.func.cyan(" [-h/help]") + g.func.lightgray(" Display this help text") + g.const.nl
 
     print(text)
 end function
 
-scan = function(args)
+doScan = function(args)
     if args.len > 3 then
-        g.tools.scan.help
+        self.help
         return
     end if
 
@@ -19,44 +19,44 @@ scan = function(args)
             g.target.ip = args[0]
             g.target.port = args[1].to_int
         else if not is_valid_ip(args[0]) then
-            print(g.const.indent + error("Invalid argument: " + args[0]))
+            print(g.const.indent + g.func.error("Invalid argument: " + args[0]))
             return
         else if not args[1] isa number or args[1].to_int < 0 or args[1].to_int > 65535 then
-            print(g.const.indent + error("Invalid argument: " + args[1]))
+            print(g.const.indent + g.func.error("Invalid argument: " + args[1]))
             return
         end if
     end if
 
     if args.len == 1 then
         if args[0] == "-h" or args[0] == "help" then
-            g.tools.scan.help
+            self.help
             return
         else if is_valid_ip(args[0]) then
             g.target.ip = args[0]
             g.target.port = 0
         else
-            print(g.const.indent + error("Invalid argument: " + args[0]))
+            print(g.const.indent + g.func.error("Invalid argument: " + args[0]))
             return
         end if
     end if
 
     if args.len == 0 then
         if not g.target.hasIndex("ip") or not is_valid_ip(g.target.ip) then
-            print(g.const.indent + error("There is currently no saved " + g.const.targettext + "."))
+            print(g.const.indent + g.func.error("There is currently no saved " + g.const.targettext + "."))
             return
         end if
 
         if not g.target.hasIndex("port") or not target.port isa number or target.port < 0 or target.port > 65535 then target.port = 0
     end if
 
-    error("Not implemented")
+    g.func.error("Not implemented")
 end function
 
 g.tools.scan = {
     "name": "scan",
-    "text": "scan".cyan,
+    "text": g.func.cyan("scan"),
     "sortOrder": 1,
-    "exec": @scan,
+    "exec": @doScan,
     "help": @scanHelp,
     "data": {}
 }
