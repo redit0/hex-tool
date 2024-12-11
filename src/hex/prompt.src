@@ -1,11 +1,11 @@
 getPrompt = function()
 	idx = g.context.index
 	
-	t = "[" + g.stack[idx].getType(1) + "]"
-	u = "[" + g.stack[idx].getUser(1) + "@" + g.stack[idx].getHostname(1) + "]"
-	ips = "[" + g.stack[idx].getPublic(1) + ":" + g.stack[idx].getLocal(1) + "]"
+	t = g.s3("[") + g.stack[idx].getType(1) + g.s3("]")
+	u = g.s3("[") + g.stack[idx].getUser(1) + g.s3("@") + g.stack[idx].getHostname(1) + g.s3("]")
+	ips = g.s3("[") + g.stack[idx].getPublic(1) + g.s3(":") + g.stack[idx].getLocal(1) + g.s3("]")
 
-	nonPrinting = 149
+	nonPrinting = 389
 
 	prompt = "<pos=40>————————" + u + "——————" + ips + "——————" + t
 
@@ -16,9 +16,9 @@ getPrompt = function()
 	prompt = prompt + "—"*extraChars
 	
 	prompt = prompt + "<voffset=-0.5em><pos=36>|<voffset=-1.5em><space=-0.5em><pos=36>|<voffset=-2em><pos=40>——"
-	prompt = prompt + "[" + g.func.white(g.context.dir) + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
+	prompt = prompt + "[" + g.l1(g.context.dir) + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
 
-	prompt = g.const.nl + g.func.orange(prompt)
+	prompt = g.const.nl + g.s2(prompt)
 
 	return prompt
 end function

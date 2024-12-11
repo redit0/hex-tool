@@ -4,20 +4,20 @@ g.func.getUser = function(file, color = 0)
     end while
 
     if file.has_permission("w") then
-        if color then return g.func.darkgreen("root") else return "root"
+        if color then return g.r1("root") else return "root"
     end if
 
     for folder in file.get_folders
         if folder.name == "home" then
             for userDir in folder.get_folders
                 if userDir.has_permission("w") and userDir.name != "guest" then
-                    if color then return g.func.yellow(userDir.name) else return userDir.name
+                    if color then return g.b2(userDir.name) else return userDir.name
                 end if
             end for
         end if
     end for
 
-    if color then return g.func.red("guest") else return "guest"
+    if color then return g.l3("guest") else return "guest"
 end function
 
 g.func.init = function()

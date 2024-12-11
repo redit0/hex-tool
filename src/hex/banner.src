@@ -1,25 +1,25 @@
 g.func.getBanner = function()
     banner = ""
-    banner = banner + g.func.darkgreen("        __    __    __    __    __    __    __    __    __    __    __    __    ") + g.const.nl
-    banner = banner + g.func.darkgreen("     __/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__ ") + g.const.nl
-    banner = banner + g.func.darkgreen("    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \") + g.const.nl
-    banner = banner + g.func.darkgreen("    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/") + g.const.nl
-    banner = banner + g.func.darkgreen("    /  \__/                                                              \__/  \") + g.const.nl
-    banner = banner + g.func.darkgreen("    \__/  \  " + g.func.red("   /\\\      /\\\    /\\\\\\\\\   /\\\       /\\\         ") + "  /  \__/") + g.const.nl
-    banner = banner + g.func.darkgreen("    /  \__/  " + g.func.red("   \/\\\     \/\\\   \/\\\/////   \///\\\   /\\\/         ") + "  \__/  \") + g.const.nl
-    banner = banner + g.func.darkgreen("    \__/  \  " + g.func.red("    \/\\\     \/\\\   \/\\\          \///\\\\\\/          ") + "  /  \__/") + g.const.nl
-    banner = banner + g.func.darkgreen("    /  \__/  " + g.func.red("     \/\\\\\\\\\\\\\   \/\\\\\\\        \//\\\\           ") + "  \__/  \") + g.const.nl
-    banner = banner + g.func.darkgreen("    \__/  \  " + g.func.red("      \/\\\///////\\\   \/\\\///          /\\\\\\         ") + "  /  \__/") + g.const.nl
-    banner = banner + g.func.darkgreen("    /  \__/  " + g.func.red("       \/\\\     \/\\\   \/\\\           /\\\////\\\      ") + "  \__/  \") + g.const.nl
-    banner = banner + g.func.darkgreen("    \__/  \  " + g.func.red("        \/\\\     \/\\\   \/\\\\\\\\\   /\\\/   \///\\\   ") + "  /  \__/") + g.const.nl
-    banner = banner + g.func.darkgreen("    /  \__/  " + g.func.red("         \///      \///    \/////////   \///       \///   ") + "  \__/  \") + g.const.nl
-    banner = banner + g.func.darkgreen("    \__/  \                                                              /  \__/") + g.const.nl
-    banner = banner + g.func.darkgreen("    /  \__/     " + g.func.lightgray(g.const.vhex) + "                                     ")
-    banner = banner + g.func.darkgreen(g.func.lightgray("by") + " " + g.func.orange("redit0") + "     \__/  \") + g.const.nl
-    banner = banner + g.func.darkgreen("    \__/  \__    __    __    __    __    __    __    __    __    __    __/  \__/") + g.const.nl
-    banner = banner + g.func.darkgreen("    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \") + g.const.nl
-    banner = banner + g.func.darkgreen("    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/") + g.const.nl
-    banner = banner + g.func.darkgreen("       \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/   ") + g.const.nl
+    banner = banner + g.s2("        __    __    __    __    __    __    __    __    __    __    __    __    ") + g.const.nl
+    banner = banner + g.s2("     __/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__ ") + g.const.nl
+    banner = banner + g.s2("    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \") + g.const.nl
+    banner = banner + g.s2("    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/") + g.const.nl
+    banner = banner + g.s2("    /  \__/                                                              \__/  \") + g.const.nl
+    banner = banner + g.s2("    \__/  \  " + g.r1("   /\\\      /\\\    /\\\\\\\\\   /\\\       /\\\         ") + "  /  \__/") + g.const.nl
+    banner = banner + g.s2("    /  \__/  " + g.r1("   \/\\\     \/\\\   \/\\\/////   \///\\\   /\\\/         ") + "  \__/  \") + g.const.nl
+    banner = banner + g.s2("    \__/  \  " + g.r1("    \/\\\     \/\\\   \/\\\          \///\\\\\\/          ") + "  /  \__/") + g.const.nl
+    banner = banner + g.s2("    /  \__/  " + g.r1("     \/\\\\\\\\\\\\\   \/\\\\\\\        \//\\\\           ") + "  \__/  \") + g.const.nl
+    banner = banner + g.s2("    \__/  \  " + g.r1("      \/\\\///////\\\   \/\\\///          /\\\\\\         ") + "  /  \__/") + g.const.nl
+    banner = banner + g.s2("    /  \__/  " + g.r1("       \/\\\     \/\\\   \/\\\           /\\\////\\\      ") + "  \__/  \") + g.const.nl
+    banner = banner + g.s2("    \__/  \  " + g.r1("        \/\\\     \/\\\   \/\\\\\\\\\   /\\\/   \///\\\   ") + "  /  \__/") + g.const.nl
+    banner = banner + g.s2("    /  \__/  " + g.r1("         \///      \///    \/////////   \///       \///   ") + "  \__/  \") + g.const.nl
+    banner = banner + g.s2("    \__/  \                                                              /  \__/") + g.const.nl
+    banner = banner + g.s2("    /  \__/     " + g.l2(g.const.vhex) + "                                     ")
+    banner = banner + g.s2(g.l2("by") + " " + g.b4("redit0") + "     \__/  \") + g.const.nl
+    banner = banner + g.s2("    \__/  \__    __    __    __    __    __    __    __    __    __    __/  \__/") + g.const.nl
+    banner = banner + g.s2("    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \") + g.const.nl
+    banner = banner + g.s2("    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/") + g.const.nl
+    banner = banner + g.s2("       \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/   ") + g.const.nl
 
     return banner
 end function

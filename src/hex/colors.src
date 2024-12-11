@@ -1,3 +1,21 @@
+g.colors.b1 = "#00709d"
+g.colors.b2 = "#2394b2"
+g.colors.b3 = "#37b3cc"
+g.colors.b4 = "#51cce0"
+g.colors.b5 = "#92dff0"
+g.colors.s1 = "#3c4a8b"
+g.colors.s2 = "#5c7bc1"
+g.colors.s3 = "#85b8ff"
+g.colors.s4 = "#c2dfff"
+g.colors.r1 = "#c30000"
+g.colors.o1 = "#ff9900"
+g.colors.g1 = "#007700"
+g.colors.g2 = "#77aa33"
+g.colors.l1 = "#eeeeee"
+g.colors.l2 = "#b3b3b3"
+g.colors.l3 = "#dcdcaa"
+g.colors.d1 = "#666666"
+
 g.func.format = function(str, args = null)
     if args and args.len > 0 then
         for x in range(args.len-1)
@@ -7,51 +25,16 @@ g.func.format = function(str, args = null)
     return str
 end function
 
-//colors
-g.func.green = function(str, args = null)
-    return g.func.format("<color=" + g.const.green + "><b>" + str + "</b></color>", args)
+initColor = function(idx)
+    g[idx] = function(str, args = null)
+        return g.func.format("<color=" + g.colors[idx] + "><b>" + str + "</b></color>", args)
+    end function
 end function
 
-g.func.darkgreen = function(str, args = null)
-    return g.func.format("<color=" + g.const.darkgreen + "><b>" + str + "</b></color>", args)
-end function
+for idx in g.colors.indexes
+    initColor(idx)
+end for
 
-g.func.cyan = function(str, args = null)
-    return g.func.format("<color=" + g.const.cyan + "><b>" + str + "</b></color>", args)
-end function
-
-g.func.blue = function(str, args = null)
-    return g.func.format("<color=" + g.const.blue + "><b>" + str + "</b></color>", args)
-end function
-
-g.func.yellow = function(str, args = null)
-    return g.func.format("<color=" + g.const.yellow + "><b>" + str + "</b></color>", args)
-end function
-
-g.func.darkyellow = function(str, args = null)
-    return g.func.format("<color=" + g.const.darkyellow + "><b>" + str + "</b></color>", args)
-end function
-
-g.func.orange = function(str, args = null)
-    return g.func.format("<color=" + g.const.orange + "><b>" + str + "</b></color>", args)
-end function
-
-g.func.magenta = function(str, args = null)
-    return g.func.format("<color=" + g.const.magenta + "><b>" + str + "</b></color>", args)
-end function
-
-g.func.red = function(str, args = null)
-    return g.func.format("<color=" + g.const.red + "><b>" + str + "</b></color>", args)
-end function
-
-g.func.white = function(str, args = null)
-    return g.func.format("<color=" + g.const.white + "><b>" + str + "</b></color>", args)
-end function
-
-g.func.lightgray = function(str, args = null)
-    return g.func.format("<color=" + g.const.lightgray + "><b>" + str + "</b></color>", args)
-end function
-
-g.func.error = function(str)
-    return g.func.red("[Error] " + str)
+g.error = function(str)
+    return g.r1("[Error] " + str)
 end function

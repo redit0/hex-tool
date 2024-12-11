@@ -1,7 +1,7 @@
 treeHelp = function(self)
-    text = g.const.ni + g.func.yellow("Usage:","u") + g.const.ni
-    text = text + g.func.green(self.name) + g.func.cyan(" {path}") + g.func.lightgray(" Displays the file system contents in a tree view starting from the specified path, or the root if a path is not specified") + g.const.ni
-    text = text + g.func.green(self.name) + g.func.cyan(" [-h/help]") + g.func.lightgray(" Displays this help text") + g.const.nl
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" {path}") + g.l2(" Displays the file system contents in a tree view starting from the specified path, or the root if a path is not specified") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
 end function
@@ -23,7 +23,7 @@ end function
 
 g.tools.tree = {
     "name": "tree",         // Unformatted tool name text
-    "text": g.func.cyan("tree"),    // Tool name text with any formatting you want to use when its name is displayed
+    "text": g.s2("tree"),    // Tool name text with any formatting you want to use when its name is displayed
     "sortOrder": 500,       // This number will be used to sort this tool in the menu.  Quit is the last built-in item, with sort order 999.
     "exec": @tree,          // A function reference to the toolName function above.
     "help": @treeHelp,      // A function reference to the help function above.

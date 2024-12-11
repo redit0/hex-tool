@@ -1,9 +1,8 @@
 probeHelp = function() 
-    text = g.const.ni + g.func.yellow("Usage:","u") + g.const.ni
-    text = text + g.func.green(self.name) + g.func.cyan(" [ip]") + g.func.lightgray(" Displays port and whois information for the specified ip address")
-    text = text + g.func.lightgray(" (also sets " + g.const.targettext + " to specified ip address and port 0).") + g.const.ni
-    text = text + g.func.green(self.name) + g.func.cyan(" [-s/show]") + g.func.lightgray(" Displays previously scanned port and whois information") + g.const.ni
-    text = text + g.func.green(self.name) + g.func.cyan(" [-h/help]") + g.func.lightgray(" Displays this help text") + g.const.nl
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [ip]") + g.l2(" Displays port and whois information for the specified ip address")
+    text = text + g.g2(self.name) + g.b3(" [-s/show]") + g.l2(" Displays previously scanned port and whois information") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
 end function
@@ -18,23 +17,22 @@ probe = function(args)
         if self.data.hasIndex("saved") then
             print(self.data.saved)
         else
-            print(g.const.indent + g.func.error("No saved probe information."))
+            print(g.const.indent + g.error("No saved probe information."))
         end if
         return
     end if
 
-    if is_valid_ip(args[0]) then
-        g.target.ip = args[0]
-        g.target.port = 0
-    else
-        print(g.const.indent + g.func.error("Invalid argument: " + args[0]))
+    if not is_valid_ip(args[0]) then
+        print(g.const.indent + g.error("Invalid argument: " + args[0]))
         return
     end if
 
-    isLan = is_lan_ip(g.target.ip)
+    address = args[0]
+
+    isLan = is_lan_ip(address)
 
     if isLan then
-        router = get_router(g.target.ip)
+        router = get_router(address)
         if router then
             isRouter = 1
         else
@@ -42,16 +40,16 @@ probe = function(args)
             router = get_router
         end if
     else
-        router = get_router(g.target.ip)
+        router = get_router(address)
         isRouter = 1
     end if
 
     if not router then
-        print(g.const.indent + g.func.error("Could not connect to IP: " + g.target.ip))
+        print(g.const.indent + g.error("Could not connect to IP: " + address))
         return
     end if
 
-    adminInfo = whois(g.target.ip)
+    adminInfo = whois(address)
     infoLines = adminInfo.split(char(10))
 
     infoObject = {}
@@ -62,13 +60,12 @@ probe = function(args)
     infoObject.phone = infoLines[3].split(":")[1].trim
 
     output = g.const.nl + g.const.indent + g.const.llb + g.const.ni
-    output = output + format("[" + g.func.cyan(router.public_ip) + "] [" + g.func.green("kernel_router.so: " + router.kernel_version) + "]", "b") + g.const.ni
-    output = output + format("[" + g.func.magenta("admin: " + infoObject.admin) + "] [" + g.func.orange("email: " + infoObject.email) + "]", "b") + g.const.ni
-    output = output + format("[" + g.func.yellow("domain: " + infoObject.domain) + "] [" + g.func.red("phone: " + infoObject.phone) + "]", "b") + g.const.ni
+    output = output + g.s4("[" + g.b3("public ip: " + router.public_ip) + "] [" + g.b3("domain: " + infoObject.domain) + "] [" + g.b3("kernel_router.so: " + router.kernel_version) + "]") + g.const.ni
+    output = output + g.s4("[" + g.b3("admin: " + infoObject.admin) + "] [" + g.b3("email: " + infoObject.email) + "] [" + g.b3("phone: " + infoObject.phone) + "]") + g.const.ni
     output = output + g.const.llb + g.const.nl + g.const.ni
     
     if router.firewall_rules.len > 0 then
-        output = output + g.func.yellow("<size=18>Firewall Rules</size>") + g.const.ec + g.const.ni
+        output = output + g.b1("<size=18>Firewall Rules</size>") + g.const.ec + g.const.ni
 
         for rule in router.firewall_rules
             output = output + rule + g.const.ni
@@ -80,20 +77,20 @@ probe = function(args)
     sPorts = []
 
     if not isRouter then
-        ports = router.device_ports(g.target.ip)
+        ports = router.device_ports(address)
 
         sPorts = sPorts + ports
 
-        output = output + g.target.ip + g.const.ni
+        output = output + address + g.const.ni
 
         for port in ports
-            output = output + g.func.green("- " + port.port_number + g.const.tab + "[open]" + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
+            output = output + g.g2("- " + port.port_number + g.const.tab + g.const.tab + "[open]" + g.const.tab + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
         end for
     else
         ports = []
 
-        for address in router.devices_lan_ip
-            ports = ports + router.device_ports(address)
+        for add in router.devices_lan_ip
+            ports = ports + router.device_ports(add)
         end for
 
         rPorts = []
@@ -111,7 +108,7 @@ probe = function(args)
         if isRouter then
             if not devices.hasIndex(router.local_ip) then devices[router.local_ip] = []
 
-            devices[router.local_ip].push(g.func.green("- 0" + g.const.tab + g.const.tab + "[open]" + g.const.tab + g.const.tab + "(kernel " + router.kernel_version + ")") + g.const.ni)
+            devices[router.local_ip].push(g.g2("- 0" + g.const.tab + g.const.tab + g.const.tab + "[open]" + g.const.tab + g.const.tab + g.const.tab + "(kernel " + router.kernel_version + ")") + g.const.ni)
         end if
 
         for port in ports
@@ -122,16 +119,16 @@ probe = function(args)
             if rPorts.indexOf(port.port_number + ":" + port.get_lan_ip) != null then isClosed = 0
 
             if port.port_number == 8080 and port.get_lan_ip != router.local_ip then
-                devices[port.get_lan_ip].push(g.func.red("- 0" + g.const.tab + g.const.tab + "[closed]" + g.const.tab + "(kernel " + router.kernel_version + ")") + g.const.ni)
+                devices[port.get_lan_ip].push(g.d1("- 0" + g.const.tab + g.const.tab + g.const.tab + "[closed]" + g.const.tab + g.const.tab + "(kernel " + router.kernel_version + ")") + g.const.ni)
             end if
 
             if not isClosed then
-                line = g.func.green("- " + port.port_number + g.const.tab + "[open]" + g.const.tab + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
+                line = g.g2("- " + port.port_number + g.const.tab + g.const.tab + "[open]" + g.const.tab + g.const.tab + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
             else
                 if port.is_closed then
-                    line = g.func.red("- " + port.port_number + g.const.tab + "[closed]" + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
+                    line = g.d1("- " + port.port_number + g.const.tab + g.const.tab + "[closed]" + g.const.tab + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
                 else
-                    line = g.func.orange("- " + port.port_number + g.const.tab + "[internal]" + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
+                    line = g.b1("- " + port.port_number + g.const.tab + g.const.tab + "[internal]" + g.const.tab + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
                 end if
             end if
 
@@ -139,7 +136,7 @@ probe = function(args)
         end for
 
         for index in devices.indexes
-            output = output + g.func.white(index) + g.const.ni
+            output = output + g.l1(index) + g.const.ni
 
             lines = devices[index]
 
@@ -156,24 +153,24 @@ probe = function(args)
     self.data.saved = output
     self.data.ports = sPorts
 
-    output = output + g.const.ni + "Enter a port to scan or a lan ip address:" + g.const.ni
+    output = output + g.const.indent + g.const.llb + g.const.nl + g.const.ni + g.b3("<size=20>Enter a port to scan or a lan ip address:</size>") + g.const.nl + g.const.ni + g.const.llb + g.const.ni
 
     print(output)
 
-    choices = g.const.indent + g.func.yellow("a" + g.const.tab + g.const.tab + "(all open ports)") + g.const.ni
+    choices = g.const.indent + g.b3(address + ":*" + g.const.tab + g.const.tab + "(All Open Ports)") + g.const.ni
 
-    choices = choices + g.func.cyan("0" + g.const.tab + g.const.tab +  "(kernel " + router.kernel_version + ")") + g.const.ni
+    choices = choices + g.s2(address + ":0" + g.const.tab + g.const.tab +  "(kernel " + router.kernel_version + ")") + g.const.ni
 
 
     for port in sPorts
         if port.port_number > 999 then
-            choices = choices + g.func.cyan(port.port_number + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
+            choices = choices + g.s2(address + ":" + port.port_number + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
         else
-            choices = choices + g.func.cyan(port.port_number + g.const.tab + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
+            choices = choices + g.s2(address + ":" + port.port_number + g.const.tab + g.const.tab + "(" + router.port_info(port) + ")") + g.const.ni
         end if
     end for
 
-    choices = choices + g.func.red("q" + g.const.tab + g.const.tab + "(quit)") + g.const.nl + g.const.ni + char(187) + " "
+    choices = choices + g.r1("Return to Main Menu") + g.const.nl + g.const.ni + char(187) + " "
 
     choice = user_input(choices)
 
@@ -183,15 +180,15 @@ probe = function(args)
     end if
 
     if is_valid_ip(choice) then
-        g.tools.scan.exec(g.target.ip + " 0 " + choice)
+        g.tools.scan.exec(address + " 0 " + choice)
     else
-        g.tools.scan.exec(g.target.ip + " " + choice)
+        g.tools.scan.exec(address + " " + choice)
     end if
 end function
 
 g.tools.probe = {
     "name": "probe",
-    "text": g.func.cyan("probe"),
+    "text": g.s2("probe"),
     "sortOrder": 0,
     "exec": @probe,
     "help": @probeHelp,

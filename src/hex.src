@@ -1,4 +1,5 @@
 g = get_custom_object
+g.colors = {}
 g.const = {}
 g.context = {}
 g.func = {}
@@ -18,20 +19,18 @@ import_code("hex/prompt.src")
 import_code("hex/menu.src")
 
 if params.len > 0 then
-	if params[0] == "help" or params[0] == "-h" then
-		exit(g.func.yellow("Usage: hex [IP Address] {Port}"))
-	else if is_valid_ip(params[0]) then
-		g.target.ip = params[0]
+	if is_valid_ip(params[0]) then
+		// Probably do something with this... maybe probe immediately or scan immediately, idk.
 	else
-		exit(g.func.yellow("Usage: hex [IP Address] {Port}"))
+		exit(g.l3("Usage: hex [IP Address] {Port}"))
 	end if
 end if
 
 if params.len > 1 then
 	if params[1] isa number and params[1].to_int >= 0 and params[1].to_int <= 65535 then
-		g.target.port = params[1].to_int
+		// Probably do something with this... maybe scan immediately or hack immediately, idk.
 	else
-		exit(g.func.yellow("Usage: hex [IP Address] {Port}"))
+		exit(g.l3("Usage: hex [IP Address] {Port}"))
 	end if
 end if
 
@@ -52,6 +51,6 @@ while true
 	if g.tools.hasIndex(key) then
 		g.tools[key].exec(args)
 	else
-		print(g.const.indent + error("Invalid argument: " + key))
+		print(g.const.indent + g.error("Invalid argument: " + key))
 	end if
 end while

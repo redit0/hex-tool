@@ -1,7 +1,7 @@
 lockdownHelp = function(self)
-    text = g.const.ni + g.func.yellow("Usage:","u") + g.const.ni
-    text = text + g.func.green(self.name) + g.func.lightgray(" Secures the system by changing permissions on all files and folders to u-rwx, g-rwx, o-rwx. If this is your home system, it leaves the ability to run terminal, sudo, mail, map, chat, settings, and manual. Also deletes all files named Mail.txt, Bank.txt, and passwd.") + g.const.ni
-    text = text + g.func.green(self.name) + g.func.cyan(" [-h/help]") + g.func.lightgray(" Displays this help text") + g.const.nl
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Secures the system by changing permissions on all files and folders to u-rwx, g-rwx, o-rwx. If this is your home system, it leaves the ability to run terminal, sudo, mail, map, chat, settings, and manual. Also deletes all files named Mail.txt, Bank.txt, and passwd.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
 end function
@@ -18,7 +18,7 @@ setHomePerms = function(obj)
 end function
 
 doLockdown = function(dir, home, excludes)
-    print(g.const.indent + g.func.lightgray("Locking " + dir.path + "..."))
+    print(g.const.indent + g.l2("Locking " + dir.path + "..."))
 
     for folder in dir.get_folders
         doLockdown(folder, home, excludes)
@@ -27,8 +27,8 @@ doLockdown = function(dir, home, excludes)
     end for
 
     for file in dir.get_files
-        if file.name == "Mail.txt" or file.name == "Bank.txt" or file.name == "passwd" then
-            print(g.const.indent + g.func.orange("Deleting " + file.path + "..."))
+        if file.name == "Mail.txt" or file.name == "Bank.txt" or (file.name == "passwd" and file.path != "/bin/passwd") then
+            print(g.const.indent + g.o1("Deleting " + file.path + "..."))
             file.delete
         end if
 
@@ -60,7 +60,7 @@ lockdown = function(args = null)
     guest = comp.File("/home/guest")
 
     if (guest != null) then
-        print(g.const.indent + g.func.orange("Deleting guest directory..."))
+        print(g.const.indent + g.o1("Deleting guest directory..."))
         guest.delete
     end if
 
@@ -76,11 +76,11 @@ lockdown = function(args = null)
 
     root = comp.File("/")
 
-    if (home) then print(g.const.indent + g.func.cyan("Home computer detected...") + g.const.nl)
+    if (home) then print(g.const.indent + g.b3("Home computer detected...") + g.const.nl)
 
     doLockdown(root, home, excludes)
 
-    print(g.const.ni + g.func.green("System locked down."))
+    print(g.const.ni + g.g2("System locked down."))
     wait(2)
     g.tools.clear.exec
     return
@@ -92,7 +92,7 @@ end function
 
 g.tools.lockdown = {
     "name": "lockdown",         // Unformatted tool name text
-    "text": g.func.cyan("lockdown"),    // Tool name text with any formatting you want to use when its name is displayed
+    "text": g.s2("lockdown"),    // Tool name text with any formatting you want to use when its name is displayed
     "sortOrder": 500,           // This number will be used to sort this tool in the menu.  Quit is the last built-in item, with sort order 999.
     "exec": @lockdown,          // A function reference to the toolName function above.
     "help": @lockdownHelp,      // A function reference to the help function above.
