@@ -1,5 +1,5 @@
 scanHelp = function()
-    text = g.const.ni + g.func.yellow("Usage:","u") + g.const.ni
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [ip] {port}") + g.l2(" Scans for vulnerabilities at the specified ip address and port. If the port is omitted it will scan kernel_router instead.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-s/show]") + g.l2(" Displays list of previously scanned vulnerabilities") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Display this help text") + g.const.nl

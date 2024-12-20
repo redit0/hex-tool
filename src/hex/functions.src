@@ -20,6 +20,16 @@ g.func.getUser = function(file, color = 0)
     if color then return g.l3("guest") else return "guest"
 end function
 
+g.func.heading = function(str)
+    pos = (g.const.ll - str.len) / 2
+
+    heading = g.const.indent + g.const.llb + g.const.ni
+    heading = heading + g.b3(" "*pos + "<size=20>" + str + "</size>") + g.const.ni
+    heading = heading + g.const.llb + g.const.nl
+
+    return heading
+end function
+
 g.func.init = function()
     g.stack.push(get_shell)
 

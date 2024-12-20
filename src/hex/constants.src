@@ -3,7 +3,7 @@ g.const.indent = "    "
 g.const.nl = char(10)
 g.const.tab = char(9)
 g.const.ni = g.const.nl + g.const.indent
-g.const.ll = 86
+g.const.ll = 76
 g.const.lb = g.s2("—"*g.const.ll)
 g.const.llb = g.s2("="*g.const.ll)
 g.const.slb = g.s2("*"*g.const.ll)

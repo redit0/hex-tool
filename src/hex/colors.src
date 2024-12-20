@@ -15,6 +15,7 @@ g.colors.l1 = "#eeeeee"
 g.colors.l2 = "#b3b3b3"
 g.colors.l3 = "#dcdcaa"
 g.colors.d1 = "#666666"
+g.colors.y1 = "#dbd700"
 
 g.func.format = function(str, args = null)
     if args and args.len > 0 then
