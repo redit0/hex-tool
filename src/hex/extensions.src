@@ -13,9 +13,57 @@ map.getUser = function(color = 0)
         return g.func.getUser(self, color)
     end if
 
+    if self isa g.Target then
+        return g.func.getUser(self.file, color)
+    end if
+
     print(g.error(g.const.indent + "Invalid object type: " + type + g.const.ni))
 
     return g.r1("null")
+end function
+
+map.getGuestFolder = function
+    if typeof(self) != "file" then
+        print(g.error("Invalid type: " + typeof(self)))
+        return null
+    end if
+
+    file = self.getRootFolder
+
+    for folder in file.get_folders
+        if folder.name == "home" then
+            for userFolder in folder.get_folders
+                if userFolder.name == "guest" then return userFolder
+            end for
+            return null
+        end if
+    end for
+end function
+
+map.getRootFolder = function
+    if typeof(self) != "file" then
+        print(g.error("Invalid type: " + typeof(self)))
+        return null
+    end if
+
+    file = self
+
+    while file.path != "/"
+        file = file.parent
+    end while
+    
+    return file
+end function
+
+map.getFolder = function(path)
+    if typeof(self) != "file" then
+        print(g.error("Invalid type: " + typeof(self)))
+        return null
+    end if
+
+    file = self.getRootFolder
+
+    return g.func.findFolder(file, path)
 end function
 
 map.getHostname = function(color = 0)
@@ -27,6 +75,10 @@ map.getHostname = function(color = 0)
 
     if type == "computer" then
         if color then return g.l1(self.get_name) else return self.get_name
+    end if
+
+    if self isa g.Target then
+        if color then return g.l1(self.comp.get_name) else return self.comp.get_name
     end if
 
     if color then return g.l2("unknown") else return "unknown"
@@ -45,6 +97,10 @@ map.getLocal = function(color = 0)
         address = self.local_ip
     end if
 
+    if self isa g.Target then
+        address = self.comp.local_ip
+    end if
+
     if color then return g.b3(address) else return address
 end function
 
@@ -61,14 +117,22 @@ map.getPublic = function(color = 0)
         address = self.public_ip
     end if
 
+    if self isa g.Target then
+        address = self.comp.public_ip
+    end if
+
     if color then return g.b3(address) else return address
 end function
 
 map.getType = function(color = 0)
     type = typeof(self)
 
-    if type == "shell" then
-        procs = self.host_computer.show_procs.split(char(10))
+    if type == "shell" or (self isa g.Target and self.shell != null) then
+        if type == "shell" then
+            procs = self.host_computer.show_procs.split(char(10))
+        else
+            procs = self.comp.show_procs.split(char(10))
+        end if
 
         for proc in procs
             name = proc.split(" ")[4]
@@ -81,15 +145,74 @@ map.getType = function(color = 0)
         if color then return g.s3(type) else return type
     end if
 
-    if type == "computer" then
-        if color then return g.b1(type) else return type
+    if type == "computer" or (self isa g.Target and self.comp != null) then
+        if color then return g.b1("computer") else return "computer"
     end if
 
-    if type == "file" then
-        if color then return g.l1(type) else return type
+    if type == "file" or (self isa g.Target and self.file != null) then
+        if color then return g.l1("file") else return "file"
     end if
 
     print(g.error(g.const.indent + "Invalid object type: " + type + g.const.ni))
 
-    return g.red("null")
+    return g.r1("null")
+end function
+
+string.formatPermissions = function
+    if not self isa string then
+        print(g.error("Invalid type: " + typeof(self)))
+        return null
+    end if
+
+    if self == "d---------" or self == "----------" then
+        return g.d1("[" + self + "]")
+    else
+        return g.o1("[" + self + "]")
+    end if
+end function
+
+map.sortKey = function(self)
+    if typeof(self) == "file" then
+        return self.path.replace("[^a-zA-Z0-9]","")
+    end if
+
+    return ""
+end function
+
+map.getFileColor = function
+    if typeof(self) != "file" then
+        print(g.error("Invalid type: " + typeof(self)))
+        return null
+    end if
+
+    names = ["Mail.txt","Bank.txt","Map.conf","sources.txt"]
+
+    file = self
+
+    if file.is_folder then return g.s2(file.name)
+
+    if file.is_binary and not file.is_folder then
+        if file.name == "passwd" and file.path != "/bin/passwd" then
+            if file.has_permission("r") then return g.g1(file.name) else return g.o1(file.name)
+        else if file.is_symlink then
+            return g.l2(file.name)
+        else if file.name[-3:] == ".so" then
+            return g.l3(file.name)
+        else
+            return g.d1(file.name)
+        end if
+    end if
+
+    if not file.is_binary then
+        if names.indexOf(file.name) != null then
+            if file.has_permission("r") then
+                return g.g1(file.name)
+            else
+                return g.o1(file.name)
+            end if
+        else
+            return g.b1(file.name)
+        end if
+
+    end if
 end function

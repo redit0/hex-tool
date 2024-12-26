@@ -16,7 +16,7 @@ getPrompt = function()
 	prompt = prompt + "—"*extraChars
 	
 	prompt = prompt + "<voffset=-0.5em><pos=35>|<voffset=-1.5em><space=-0.5em><pos=35>|<voffset=-2em><pos=40>——"
-	prompt = prompt + "[" + g.l1(g.context.dir) + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
+	prompt = prompt + "[" + g.l1(g.stack[idx].path) + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
 
 	prompt = g.const.nl + g.s2(prompt)
 

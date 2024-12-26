@@ -6,15 +6,86 @@ treeHelp = function(self)
     print(text)
 end function
 
+getTree = function(path)
+    files = path.get_folders + path.get_files
+
+    for file in files
+        g.tools.tree.data.files.push(file)
+
+        if file.is_folder then getTree(file)
+    end for
+end function
+
 tree = function(args = null)
-if args != null and args.len > 0 then
-    if args[0] == "help" or args[0] == "-h" then
-        self.help
-        return
+    idx = g.context.index
+
+    path = "/"
+
+    if args != null and args.len > 0 then
+        if args[0] == "help" or args[0] == "-h" or args.len > 1 then
+            self.help
+            return
+        else if args[0] == "." then
+            path = g.stack[idx].path
+        else
+            if not g.stack[idx].file then
+                print g.const.indent + g.error("Current context does not have a file object available")
+                return
+            end if
+            tempFile = g.stack[idx].file.getFolder(args[0])
+
+            if typeof(tempFile) == "file" then
+                path = tempFile.path
+            else
+                print(g.const.indent + g.error("Could not find folder at path: " + args[0] + g.const.ni + g.r1("Setting path to ""/"".")))
+            end if
+        end if
     end if
-end if
 
+    start = g.stack[idx].file.getFolder(path)
 
+    self.data.files = []
+
+    getTree(start)
+
+    startingLevel = path.matches("/").indexes.len
+
+    if path != "/" then startingLevel = startingLevel + 1
+
+    output = "<space=2.1em><size=120%>" + start.permissions.formatPermissions + "<space=1.7em>.<space=2.2em>" + g.s2(start.path) + g.const.nl
+
+    files = {}
+
+    for temp in self.data.files
+        files[temp.sortKey] = temp
+    end for
+    
+    indices = files.indexes
+
+    indices.sort
+
+    for index in indices
+        file = files[index]
+
+        line = "<space=2.1em><size=120%>" + file.permissions.formatPermissions + "<space=2em>"
+
+        // Calculate the number of levels down we are from the starting path and add the indents
+        levels = file.path.matches("/").indexes.len - startingLevel
+
+        line = line + g.const.tt*levels
+
+        // Write the file indicator and file name
+        line = line + g.d1("<mark=#666666><mspace=0.1>" + char(160) + "</mspace></mark>" + char(160) + "<space=-0.6em><cspace=-0.1em>———</cspace> " + file.getFileColor)
+
+        // Add symlink info if needed
+        if file.is_symlink then line = line + "<space=1em>" + g.d1(g.const.arrow + "<space=1em>" + file.path(1))
+
+        line = line + g.const.nl
+
+        output = output + line
+    end for
+
+    print(output)
 end function
 
 // Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.

@@ -20,6 +20,18 @@ g.func.getUser = function(file, color = 0)
     if color then return g.l3("guest") else return "guest"
 end function
 
+g.func.findFolder = function(folder, path)
+    if folder.path == path or folder.name == path then return folder
+
+    for subFolder in folder.get_folders
+        result = g.func.findFolder(subFolder, path)
+
+        if result then return result
+    end for
+
+    return null
+end function
+
 g.func.heading = function(str)
     pos = (g.const.ll - str.len) / 2
 
@@ -31,8 +43,16 @@ g.func.heading = function(str)
 end function
 
 g.func.init = function()
-    g.stack.push(get_shell)
-
     g.context.index = 0
-    g.context.dir = current_path
+
+    item = new g.Target
+    item.shell = get_shell
+    item.comp = get_shell.host_computer
+    item.path = current_path
+    item.file = get_shell.host_computer.File(item.path)
+    item.user = g.func.getUser(item.file)
+
+    print(item)
+
+    g.stack.push(item)
 end function

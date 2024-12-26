@@ -13,11 +13,8 @@ quit = function(args)
             return
         end if
     end if
-
-    print(g.const.ni + g.s2("Goodbye!!"))
-    wait
     clear_screen
-    exit()
+    exit(g.const.nl*2 + g.s2("[HEX] Goodbye!!") + g.const.nl)
 end function
 
 g.tools.quit = {

@@ -7,29 +7,39 @@ lockdownHelp = function(self)
 end function
 
 setPerms = function(obj)
-    obj.chmod("u-rwx")
-    obj.chmod("g-rwx")
-    obj.chmod("o-rwx")
+    result = obj.chmod("u-rwx")
+    if result != "" then print(g.error(result))
+    result = obj.chmod("g-rwx")
+    if result != "" then print(g.error(result))
+    result = obj.chmod("o-rwx")
+    if result != "" then print(g.error(result))
 end function
 
 setHomePerms = function(obj)
-    obj.chmod("u+rx")
-    obj.chmod("g+rx")
+    result = obj.chmod("u+rx")
+    if result != "" then print(g.error(result))
+    result = obj.chmod("g+rx")
+    if result != "" then print(g.error(result))
 end function
 
 doLockdown = function(dir, home, excludes)
     print(g.const.indent + g.l2("Locking " + dir.path + "..."))
 
+    setPerms(dir)
+
     for folder in dir.get_folders
         doLockdown(folder, home, excludes)
-
-        setPerms(folder)
     end for
 
     for file in dir.get_files
         if file.name == "Mail.txt" or file.name == "Bank.txt" or (file.name == "passwd" and file.path != "/bin/passwd") then
             print(g.const.indent + g.o1("Deleting " + file.path + "..."))
-            file.delete
+            result = file.delete
+            if result != "" then
+                print(g.error(result))
+            else
+                continue
+            end if
         end if
 
         if home and typeof(excludes.indexOf(file.name)) != "number" then
@@ -53,35 +63,41 @@ lockdown = function(args = null)
         end if
     end if
 
+    idx = g.context.index
+
     excludes = ["sudo","Terminal","Terminal.exe","Mail","Mail.exe","Map","Map.exe","Chat","Chat.exe","Settings.exe","Manual","Manual.exe"]
 
-    comp = get_shell.host_computer
+    file = g.stack[idx].file
+    comp = g.stack[idx].comp
 
-    guest = comp.File("/home/guest")
+    guest = file.getGuestFolder
 
     if (guest != null) then
-        print(g.const.indent + g.o1("Deleting guest directory..."))
-        guest.delete
+            print(g.const.indent + g.o1("Deleting guest directory..."))
+            result = guest.delete
+            if result != "" then print(g.error(result))
     end if
-
-    procs = comp.show_procs.split(char(10))
 
     home = 0
 
-    for proc in procs
-        name = proc.split(" ")[4]
+    if comp != null then
+        procs = comp.show_procs.split(char(10))
 
-        if name == "Xorg" then home = 1
-    end for
+        for proc in procs
+            name = proc.split(" ")[4]
 
-    root = comp.File("/")
+            if name == "Xorg" then home = 1
+        end for
+    end if
+
+    root = file.getRootFolder
 
     if (home) then print(g.const.indent + g.b3("Home computer detected...") + g.const.nl)
 
     doLockdown(root, home, excludes)
 
     print(g.const.ni + g.g2("System locked down."))
-    wait(2)
+    wait(3)
     g.tools.clear.exec
     return
 end function
