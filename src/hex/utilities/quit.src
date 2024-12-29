@@ -1,29 +1,27 @@
-clearHelp = function()
+quitHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
-    text = text + g.g2(self.name) + g.l2(" Clears the screen and prints the banner and menu.") + g.const.nl
+    text = text + g.g2(self.name) + g.l2(" Clears the screen and exits the program.") + g.const.nl
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
 end function
 
-clear = function(args = null)
+quit = function(args)
     if args != null and args.len > 0 then
         if args[0] == "help" or args[0] == "-h" then
             self.help
             return
         end if
     end if
-
     clear_screen
-    print(g.func.getBanner)
-    print(g.func.getMenu)
+    exit(g.const.nl*2 + g.s2("[HEX] Goodbye!!") + g.const.nl)
 end function
 
-g.tools.clear = {
-    "name": "clear",
-    "text": g.l1("clear"),
-    "sortOrder": 998,
-    "exec": @clear,
-    "help": @clearHelp,
+g.util.quit = {
+    "name": "quit",
+    "text": g.r1("quit"),
+    "sortOrder": 999,
+    "exec": @quit,
+    "help": @quitHelp,
     "data": {}
 }

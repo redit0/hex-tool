@@ -1,0 +1,25 @@
+map.createContext = function(self, currentPath = null)
+    if not currentPath then currentPath = "/"
+
+    item = new g.Target
+
+    item.path = currentPath
+
+    if typeof(self) == "shell" then
+        item.shell = self
+        item.comp = self.host_computer
+        item.file = self.host_computer.File(currentPath)
+    else if typeof(self) == "computer" then
+        item.comp = self
+        item.file = self.File(currentPath)
+    else if typeof(self) == "file" then
+        item.file = self
+    else
+        print(g.error("Invalid object type: " + typeof(self)))
+        return null
+    end if
+
+    item.user = g.func.getUser(item.file)
+
+    return item
+end function

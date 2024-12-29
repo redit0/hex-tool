@@ -1,45 +1,187 @@
 scanHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [ip] {port}") + g.l2(" Scans for vulnerabilities at the specified ip address and port. If the port is omitted it will scan kernel_router instead.") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [-s/show]") + g.l2(" Displays list of previously scanned vulnerabilities") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [ip] {port}") + g.l2(" Scans for vulnerabilities at the specified ip address and port. If the port is omitted it will scan all open ports instead.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [library.so]") + g.l2(" Scans for vulnerabilities in the specified local library.  Use the full file name for the library, including the '.so' extension.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Display this help text") + g.const.nl
 
     print(text)
 end function
 
 doScan = function(args)
-    if args.len == 0 or args.len > 3 then
-        self.help
+    idx = g.context.index
+    context = g.stack[idx]
+
+    doOutput = function(metaLibs)
+        results = {}
+
+        for metaLib in metaLibs
+            if not results.hasIndex(metaLib.lib_name) then
+                results[metaLib.lib_name] = {}
+            end if
+
+            if not results[metaLib.lib_name].hasIndex(metaLib.version) then
+                results[metaLib.lib_name][metaLib.version] = {}
+            end if
+        end for
+
+        libs = results.indexes
+        libs.sort
+
+        output = g.const.nl + g.func.heading("Scan Results") + g.const.nl
+        for lib in libs
+            output = output + g.const.indent + g.s2("Library: " + lib) + g.const.nl
+
+            versions = results[lib].indexes
+            versions.sort
+
+            for version in versions
+                output = output + g.const.indent + "  " + g.s3("Version: " + version) + g.const.nl
+
+                mems = g.database[lib][version].indexes
+                mems.sort
+
+                for mem in mems
+                    output = output + g.const.indent + "    " + g.s4("Address: " + mem) + g.const.nl
+
+                    values = g.database[lib][version][mem].indexes
+                    values.sort
+
+                    for value in values
+                        output = output + g.const.indent + "      <size=80%>" + g.o1("Value: " + value + "<pos=550>Result: " + g.database[lib][version][mem][value]) + g.const.nl
+                    end for
+                end for
+            end for
+        end for
+        print output
         return
-    end if
+    end function
 
-    if args.len == 2 then
-        if is_valid_ip(args[0]) and args[1] isa number and args[1].to_int >= 0 and args[1].to_int <= 65535 then
-            address = args[0]
-            port = args[1].to_int
-        else if not is_valid_ip(args[0]) then
-            print(g.const.indent + g.error("Invalid argument: " + args[0]))
-            return
-        else if not args[1] isa number or args[1].to_int < 0 or args[1].to_int > 65535 then
-            print(g.const.indent + g.error("Invalid argument: " + args[1]))
+    scanMetaLibs = function(metaLibs)
+        for metaLib in metaLibs
+            if not g.database.hasIndex(metaLib.lib_name) then
+                g.database[metaLib.lib_name] = {}
+            end if
+
+            if not g.database[metaLib.lib_name].hasIndex(metaLib.version) then
+                g.database[metaLib.lib_name][metaLib.version] = {}
+
+                mems = g.metax.scan(metaLib)
+
+                for mem in mems
+                    g.database[metaLib.lib_name][metaLib.version][mem] = {}
+
+                    vulns = g.metax.scan_address(metaLib, mem).split("Unsafe check: ")[1:]
+                    for vuln in vulns
+                        value = vuln[vuln.indexOf("<b>")+3:vuln.indexOf("</b>")]
+
+                        g.database[metaLib.lib_name][metaLib.version][mem][value] = ""
+                    end for
+                end for
+            end if
+        end for
+    end function
+
+    scanLocal = function(libName)
+        if not context.shell then
+            print(g.error("No shell available"))
             return
         end if
-    end if
 
-    if args.len == 1 then
-        if args[0] == "-h" or args[0] == "help" then
+        metaLib = context.metax.load(libName)
+
+        metaLibs = [metaLib]
+        scanMetaLibs(metaLibs)
+        doOutput(metaLibs)
+    end function
+
+    scanRemote = function(ip, port)
+        if not context.shell then
+            print(g.error("No shell available"))
+            return
+        end if
+
+        netSession = context.metax.net_use(ip, port)
+
+        if netSession isa string then
+            print g.error(netSession)
+            return
+        else if netSession == null then
+            print g.error("Could not connect to " + ip + ":" + port + " (" + typeof(port) + ")")
+            return
+        end if
+
+        metaLib = netSession.dump_lib
+
+        metaLibs = [metaLib]
+
+        scanMetaLibs(metaLibs)
+        doOutput(metaLibs)
+    end function
+
+    scanAllPorts = function(ip)
+        if not context.shell then
+            print(g.error("No shell available"))
+            return
+        end if
+
+        router = get_router(ip)
+
+        ports = router.used_ports
+
+        metaLibs = []
+
+        for port in ports
+            netSession = context.metax.net_use(ip, port.port_number)
+
+            metaLib = netSession.dump_lib
+
+            metaLibs.push(metaLib)
+        end for
+
+        netSession = context.metax.net_use(ip, 0)
+
+        metaLib = netSession.dump_lib
+
+        metaLibs.push(metaLib)
+
+        scanMetaLibs(metaLibs)
+        doOutput(metaLibs)
+    end function
+
+    if not args or args == [] then
+        self.help
+    else if args.len == 1 then
+        arg = args[0]
+
+        if arg == "-h" or arg == "help" then
             self.help
-            return
-        else if is_valid_ip(args[0]) then
-            address = args[0]
-            port = 0
+        else if not is_valid_ip(arg) then
+            if not arg.is_match(".+\.so") then
+                print(g.error("Invalid library name. (Usage: scan [library.so])"))
+                return
+            end if
+            scanLocal("/lib/" + arg)
+        else if is_valid_ip(arg) then
+            scanAllPorts(arg)
         else
-            print(g.const.indent + g.error("Invalid argument: " + args[0]))
+            print(g.error("Invalid argument: " + arg))
+        end if
+    else if args.len == 2 then
+        address = args[0]
+        port = args[1]
+
+        if not is_valid_ip(address) then
+            print(g.error("Invalid IP address: " + address))
             return
         end if
-    end if
 
-    g.error("Not implemented")
+        if port.val == null or port.to_int < 0 or port.to_int > 65535 then
+            print(g.error("Invalid port number: " + port))
+            return
+        end if
+
+        scanRemote(address, port.to_int)
+    end if
 end function
 
 g.tools.scan = {

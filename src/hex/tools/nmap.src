@@ -42,11 +42,12 @@ getChoices = function(data)
 
     choices = []
 
-    count = 0
-
-    choices.push(count + "." + g.const.tab + router.local_ip + "<pos=280>:0<pos=380>(kernel " + router.kernel_version + ")")
+    choices.push("1." + g.const.tab + "Try for a computer<pos=380>(bounce)")
+    choices.push("2." + g.const.tab + router.local_ip + "<pos=280>:0<pos=380>(kernel " + router.kernel_version + ")")
 
     ports = ports.sort("get_lan_ip")
+
+    count = 2
 
     for port in ports
         if not port.is_closed then
@@ -56,8 +57,7 @@ getChoices = function(data)
         end if
     end for
 
-    choices.push((count + 1) + "." + g.const.tab + "Try for a computer<pos=380>(bounce)")
-    choices.push((count + 2) + "." + g.const.tab + "Return to main menu")
+    choices.push((count + 1) + "." + g.const.tab + "Return to main menu")
 
     return choices
 end function
@@ -288,7 +288,7 @@ end function
 nmap = function(args)
     if not args or (args.len == 0 or (args.len == 1 and (args[0] == "-s" or args[0] == "show"))) then
         if not self.data.hasIndex("saved") then
-            print(g.const.indent + g.error("No saved data to display."))
+            print(g.error("No saved data to display."))
         else
             doChoices
         end if

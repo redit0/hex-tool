@@ -1,3 +1,7 @@
+// Retrieves the user based on file permissions.
+// @param {file} file - The file to check permissions on.
+// @param {number} color - Whether to return the username in color (1) or not (0).
+// @return {string} - The username.
 g.func.getUser = function(file, color = 0)
     while file.path != "/"
         file = file.parent
@@ -20,6 +24,10 @@ g.func.getUser = function(file, color = 0)
     if color then return g.l3("guest") else return "guest"
 end function
 
+// Recursively finds a folder by path.
+// @param {folder} folder - The starting folder.
+// @param {string} path - The path to search for.
+// @return {folder|null} - The found folder or null if not found.
 g.func.findFolder = function(folder, path)
     if folder.path == path or folder.name == path then return folder
 
@@ -32,6 +40,50 @@ g.func.findFolder = function(folder, path)
     return null
 end function
 
+// Recursively finds a file by name.
+// @param {file} file - The starting file or folder.
+// @param {string} name - The name of the file to search for.
+// @return {file|null} - The found file or null if not found.
+g.func.findFile = function(file, name)
+    if file.name == name and not file.is_folder then return file
+
+    files = file.get_files + file.get_folders
+
+    for temp in files
+        if temp.name == name and not temp.is_folder then return temp
+
+        if temp.is_folder then
+            result = g.func.findFile(temp, name)
+
+            if result then return result
+        end if
+    end for
+
+    return null
+end function
+
+// Generates a random valid IP address that is not a LAN IP.
+// @return {string} - The generated IP address.
+g.func.getRandomIp = function
+    ip = ""
+
+    while not is_valid_ip(ip) or is_lan_ip(ip)
+        min = 0
+        max = 255
+        first = floor(rnd * (max - min + 1) + min)
+        second = floor(rnd * (max - min + 1) + min)
+        third = floor(rnd * (max - min + 1) + min)
+        fourth = floor(rnd * (max - min + 1) + min)
+
+        ip = first + "." + second + "." + third + "." + fourth
+    end while
+
+    return ip
+end function
+
+// Creates a heading string centered within two lines of ='s.
+// @param {string} str - The string to center.
+// @return {string} - The formatted heading.
 g.func.heading = function(str)
     pos = (g.const.ll - str.len) / 2
 
@@ -42,17 +94,177 @@ g.func.heading = function(str)
     return heading
 end function
 
+// Retrieves repository addresses from sources.txt.
+// @return {list<string>} - A list of repository addresses.
+g.func.getRepos = function()
+    sources = get_shell.host_computer.File("/etc/apt/sources.txt")
+
+    if not sources then
+        print(g.error("Could not locate sources.txt"))
+        return null
+    end if
+
+    matches = sources.get_content.matches(g.const.ipPattern)
+
+    addresses = []
+
+    for index in matches.indexes
+        addresses.push(matches[index])
+    end for
+
+    return addresses
+end function
+
+// Retrieves the apt client library.
+// @return {aptclientLib|null} - The apt client object or null if not found.
+g.func.getApt = function()
+    libFile = g.func.findFile(get_shell.host_computer.File("/"), "aptclient.so")
+
+    if not libFile then
+        print(g.error("Could not locate aptclient.so"))
+        return null
+    end if
+
+    aptClient = include_lib(libFile.path)
+
+    if aptClient.classID == "aptclientLib" then
+        return aptClient
+    else
+        print(g.error("Invalid library file.  The file loaded is not an aptclient library. (" + aptClient.classID + ")"))
+        return null
+    end if
+end function
+
+// Updates the apt repositories.
+// @return {none}
+g.func.updateApt = function
+    aptClient = g.func.getApt()
+
+    aptClient.update
+end function
+
+// Updates the metaxploit and crypto libraries. Also adds a hackshop repository if none are found.
+// @return {none}
+g.func.updateLibs = function
+    updateMetax = 0
+    aptClient = g.func.getApt()
+
+    repos = g.func.getRepos
+
+    if repos.len == 0 then
+        ip = g.func.getHackshop
+
+        print g.const.indent + "No repositories found. Adding " + ip + "..."
+
+        aptClient.add_repo(ip)
+        aptClient.update
+    end if
+    
+    metax = get_shell.host_computer.File(current_path + "/metaxploit.so")
+
+    if not metax then
+        updateMetax = 1
+    else        
+        updateMetax = aptClient.check_upgrade(metax.path)
+        if updateMetax isa string then print(g.error(updateMetax))
+
+        metaxLib = include_lib(current_path + "/metaxploit.so")
+
+        metaMetax = metaxLib.load(current_path + "/metaxploit.so")
+
+        print(g.const.indent + "Found metaxploit.so at version " + metaMetax.version)
+    end if
+
+    if updateMetax == 1 then
+        result = aptClient.install("metaxploit.so", current_path)
+        if result isa string then
+            print(g.error(result))
+        else if result == 1 then
+            metaxLib = include_lib(current_path + "/metaxploit.so")
+
+            metaMetax = metaxLib.load(current_path + "/metaxploit.so")
+
+            print(g.const.indent + g.g1("Installed metaxploit.so at version: " + metaMetax.version))
+        else
+            print(g.error("An unknown error occurred"))
+        end if
+    end if
+
+    updateCrypto = 0
+
+    crypto = get_shell.host_computer.File(current_path + "/crypto.so")
+
+    if not crypto then
+        updateCrypto = 1
+    else
+        updateCrypto = aptClient.check_upgrade(crypto.path)
+        if updateCrypto isa string then print(g.error(updateCrypto))
+
+        cryptoLib = include_lib(current_path + "/crypto.so")
+
+        metaCrypto = metaxLib.load(current_path + "/crypto.so")
+        
+        print(g.const.indent + "Found crypto.so at version " + metaCrypto.version)
+    end if
+
+    if updateCrypto == 1 then
+        result = aptClient.install("crypto.so", current_path)
+        if result isa string then
+            print(g.error(result))
+        else if result == 1 then
+            cryptoLib = include_lib(current_path + "/crypto.so")
+
+            metaCrypto = metaxLib.load(current_path + "/crypto.so")
+
+            print(g.const.indent + g.g1("Installed crypto.so at version: " + metaCrypto.version))
+        else
+            print(g.error("An unknown error occurred"))
+        end if
+    end if
+
+    print g.const.nl
+end function
+
+// Checks random IP addresses for an open port 1542 and then returns that IP address as a string.
+// @return {string} - The IP address of the hackshop.
+g.func.getHackshop = function
+    ip = null
+    hackshop = 0
+
+    while not hackshop
+        ip = g.func.getRandomIp
+
+        if not is_lan_ip(ip) then
+            router = get_router(ip)
+
+            if not router then continue
+
+            ports = router.used_ports
+
+            for port in ports
+                if port.port_number == 1542 and not port.is_closed then
+                    hackshop = 1
+                    return router.public_ip
+                end if
+            end for
+        end if
+    end while
+end function
+
+// Sets some initial values for **HEX**.
+// @return {none}
 g.func.init = function()
+    g.func.updateLibs
+
+    g.metax = include_lib(current_path + "/metaxploit.so")
+    g.crypto = include_lib(current_path + "/crypto.so")
+
     g.context.index = 0
 
-    item = new g.Target
-    item.shell = get_shell
-    item.comp = get_shell.host_computer
-    item.path = current_path
-    item.file = get_shell.host_computer.File(item.path)
-    item.user = g.func.getUser(item.file)
+    context = get_shell.createContext(current_path)
 
-    print(item)
+    context.metax = include_lib(current_path + "/metaxploit.so")
+    context.crypto = include_lib(current_path + "/crypto.so")
 
-    g.stack.push(item)
+    g.stack.push(context)
 end function

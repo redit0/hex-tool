@@ -2,19 +2,23 @@ g = get_custom_object
 g.colors = {}
 g.const = {}
 g.context = {}
+g.database = {}
 g.func = {}
 g.stack = []
 g.target = {}
 g.tools = {}
+g.util = {}
 
 import_code("hex/colors.src")
 import_code("hex/constants.src")
+import_code("hex/context.src")
 import_code("hex/functions.src")
 import_code("hex/extensions.src")
 import_code("hex/banner.src")
 import_code("hex/prompt.src")
 
 #include "hex/tools.src"
+#include "hex/utilities.src"
 
 import_code("hex/menu.src")
 
@@ -34,9 +38,11 @@ if params.len > 1 then
 	end if
 end if
 
+g.func.updateApt
+clear_screen
+print g.func.getBanner
 g.func.init
-
-g.tools.clear.exec
+print g.func.getMenu
 
 while true
 	input = user_input(getPrompt)
@@ -50,7 +56,9 @@ while true
 
 	if g.tools.hasIndex(key) then
 		g.tools[key].exec(args)
+	else if g.util.hasIndex(key) then
+		g.util[key].exec(args)
 	else
-		print(g.const.indent + g.error("Invalid argument: " + key))
+		print(g.error("Invalid argument: " + key))
 	end if
 end while

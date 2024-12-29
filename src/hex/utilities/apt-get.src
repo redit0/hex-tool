@@ -1,0 +1,175 @@
+aptHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-i/install] [library.so] {path}") + g.l2(" Installs whichever library or program is specified in the parameters.  If a path is provided, the library is installed at that location, otherwise, it is installed in whatever location Hex is run from.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-l/list]") + g.l2(" Lists all available libraries and programs from all sources.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-s/sources]") + g.l2(" Lists all apt repositories that have been added to sources.txt.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-a/add] [ip]") + g.l2(" Adds the specified IP address as a repository in sources.txt.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-r/remove] [ip]") + g.l2(" Removes the specified IP address from the list of repositories in sources.txt.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text.") + g.const.nl
+
+    print(text)
+end function
+
+apt = function(args)
+
+///////////////////////////////////////////////////////////////////////////
+//                               Functions                               //
+///////////////////////////////////////////////////////////////////////////
+
+    sources = function
+        repos = g.func.getRepos
+
+        output = g.const.nl
+        for repo in repos
+            output = output + g.const.indent + g.l1(repo) + g.const.nl
+        end for
+
+        print output
+    end function
+
+    add = function(address)
+        aptClient = g.func.getApt()
+
+        return aptClient.add_repo(address)
+    end function
+
+    remove = function(address)
+        aptClient = g.func.getApt()
+
+        return aptClient.del_repo(address)
+    end function
+
+    getPackageList = function
+        repos = g.func.getRepos
+        aptClient = g.func.getApt()
+
+        packages = {}
+
+        for repo in repos
+            packageList = aptClient.show(repo)
+
+            if packageList.is_match(char(10) + char(10)) then
+                tempList = packageList.split(char(10) + char(10))
+
+                for package in tempList
+                    if package == "" then continue
+                    parts = package.split(char(10))
+
+                    name = parts[0]
+                    desc = parts[1]
+
+                    packages[name] = desc
+                end for
+            else
+                print g.error(packageList)
+            end if
+        end for
+
+        return packages
+    end function
+
+
+    if args == null or args == [] then
+        self.help
+        return
+    else
+        cmd = args[0]
+
+        opt = null
+        if args.len >= 2 then opt = args[1]
+
+        if cmd == "help" or cmd == "-h" then
+            self.help
+            return
+        else if cmd == "sources" or cmd == "-s" then
+            sources()
+            return
+        else if cmd == "add" or cmd == "-a" then
+            if not opt then
+                print(g.error("Invalid number of arguments. (Usage: 'apt-get -a [ip address]')"))
+                return
+            else if not is_valid_ip(opt) then
+                print(g.error("Invalid parameter: " + opt))
+                return
+            else
+                result = add(opt)
+
+                if result isa string and result.len > 0 then
+                    print(g.error(result))
+                else
+                    aptClient = g.func.getApt()
+                    result = aptClient.update()
+                    if result isa string and result != "" then
+                        print(g.error(result))
+                    else
+                        print(g.const.indent + g.g1("Successfully added repository: " + opt))
+                    end if
+                end if
+                return
+            end if
+        else if cmd == "remove" or cmd == "-r" then
+            if not opt then
+                print(g.error("Invalid number of arguments. (Usage: 'apt-get -r [ip address]')"))
+                return
+            else if not is_valid_ip(opt) then
+                print(g.error("Invalid parameter: " + opt))
+                return
+            else
+                result = remove(opt)
+
+                if result isa string and result.len > 0 then
+                    print(g.error(result))
+                else
+                    print(g.const.indent + g.g1("Successfully removed repository: " + opt))
+                end if
+                return
+            end if
+        else if cmd == "list" or cmd == "-l" then
+            packages = getPackageList
+
+            output = g.const.nl
+
+            indexes = packages.indexes
+
+            for index in indexes.sort
+                output = output + g.const.indent + g.g2(index + ": ") + g.l2(packages[index]) + g.const.nl + g.const.nl
+            end for
+
+            print output
+
+            return
+
+        else if cmd == "install" or cmd == "-i" then
+            if not opt then
+                print(g.error("Invalid number of arguments. (Usage: 'apt-get -i [library.so] {path}')"))
+                return
+            else
+                if args.len == 3 then
+                    path = args[2]
+                else
+                    path = current_path
+                end if
+
+                aptClient = g.func.getApt()
+                result = aptClient.install(opt, path)
+
+                if result isa string and result.len > 0 then
+                    print(g.error(result))
+                else
+                    print(g.const.indent + g.g1("Successfully installed: " + opt))
+                end if
+                return
+            end if
+        end if
+    end if
+    print "Not Implemented"
+end function
+
+g.util["apt-get"] = {
+    "name": "apt-get",
+    "text": g.s2("apt-get"),
+    "sortOrder": 500,
+    "exec": @apt,
+    "help": @aptHelp,
+    "data": {}
+}

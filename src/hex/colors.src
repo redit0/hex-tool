@@ -38,5 +38,5 @@ for idx in g.colors.indexes
 end for
 
 g.error = function(str)
-    return g.r1("[Error] " + str)
+    return g.r1(g.const.indent + "[Error] " + str)
 end function

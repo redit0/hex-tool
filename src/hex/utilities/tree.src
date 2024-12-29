@@ -6,11 +6,70 @@ treeHelp = function(self)
     print(text)
 end function
 
+string.formatPermissions = function
+    if not self isa string then
+        print(g.error("Invalid type: " + typeof(self)))
+        return null
+    end if
+
+    if self == "d---------" or self == "----------" then
+        return g.d1("[" + self + "]")
+    else
+        return g.o1("[" + self + "]")
+    end if
+end function
+
+map.sortKey = function(self)
+    if typeof(self) == "file" then
+        return self.path.replace("[^a-zA-Z0-9]","")
+    end if
+
+    return ""
+end function
+
+map.getFileColor = function
+    if typeof(self) != "file" then
+        print(g.error("Invalid type: " + typeof(self)))
+        return null
+    end if
+
+    names = ["Mail.txt","Bank.txt","Map.conf","sources.txt"]
+
+    file = self
+
+    if file.is_folder then return g.s2(file.name)
+
+    if file.is_binary and not file.is_folder then
+        if file.name == "passwd" and file.path != "/bin/passwd" then
+            if file.has_permission("r") then return g.g1(file.name) else return g.o1(file.name)
+        else if file.is_symlink then
+            return g.l2(file.name)
+        else if file.name[-3:] == ".so" then
+            return g.l3(file.name)
+        else
+            return g.d1(file.name)
+        end if
+    end if
+
+    if not file.is_binary then
+        if names.indexOf(file.name) != null then
+            if file.has_permission("r") then
+                return g.g1(file.name)
+            else
+                return g.o1(file.name)
+            end if
+        else
+            return g.b1(file.name)
+        end if
+
+    end if
+end function
+
 getTree = function(path)
     files = path.get_folders + path.get_files
 
     for file in files
-        g.tools.tree.data.files.push(file)
+        g.util.tree.data.files.push(file)
 
         if file.is_folder then getTree(file)
     end for
@@ -29,7 +88,7 @@ tree = function(args = null)
             path = g.stack[idx].path
         else
             if not g.stack[idx].file then
-                print g.const.indent + g.error("Current context does not have a file object available")
+                print g.error("Current context does not have a file object available")
                 return
             end if
             tempFile = g.stack[idx].file.getFolder(args[0])
@@ -37,7 +96,7 @@ tree = function(args = null)
             if typeof(tempFile) == "file" then
                 path = tempFile.path
             else
-                print(g.const.indent + g.error("Could not find folder at path: " + args[0] + g.const.ni + g.r1("Setting path to ""/"".")))
+                print(g.error("Could not find folder at path: " + args[0] + g.const.ni + g.r1("Setting path to ""/"".")))
             end if
         end if
     end if
@@ -92,7 +151,7 @@ end function
 // You can leave it as src code (name it with a .src file extension), otherwise hex will attempt to load it as a binary file that has been built with the
 // 'allow import' flag set.
 
-g.tools.tree = {
+g.util.tree = {
     "name": "tree",         // Unformatted tool name text
     "text": g.s2("tree"),    // Tool name text with any formatting you want to use when its name is displayed
     "sortOrder": 500,       // This number will be used to sort this tool in the menu.  Quit is the last built-in item, with sort order 999.

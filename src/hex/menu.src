@@ -1,8 +1,9 @@
 g.func.getMenu = function()
-	g.func.heading("Menu")
+	print g.func.heading("Menu")
 
 	items = []
 
+	// Add tools to the menu items
 	for index in g.tools.indexes
 		items.push({"name": g.tools[index].name, "sort": g.tools[index].sortOrder, "text": g.tools[index].text})
 	end for
@@ -12,6 +13,35 @@ g.func.getMenu = function()
 	count = 1
 
 	menu = ""
+
+	pos = 40
+
+	for item in items
+		menu = menu + "<pos=" + pos + ">" + item.text
+
+		pos = pos + 105
+
+		if count % 8 == 0 and count != items.len then // If it's the last item in this row and there are more rows to come
+			menu = menu + g.const.nl + g.const.nl
+			pos = 40
+		end if
+
+		count = count + 1
+	end for
+
+	// Add a separator between tools and utilities
+	menu = menu + g.const.nl + g.const.nl + g.func.heading("Utilities") + g.const.nl
+
+	items = []
+
+	// Add utilities to the menu items
+	for index in g.util.indexes
+		items.push({"name": g.util[index].name, "sort": g.util[index].sortOrder, "text": g.util[index].text})
+	end for
+
+	items.sort("sort")
+
+	count = 1
 
 	pos = 40
 
