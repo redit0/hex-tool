@@ -172,7 +172,7 @@ g.func.updateLibs = function
 
         metaMetax = metaxLib.load(current_path + "/metaxploit.so")
 
-        print(g.const.indent + "Found metaxploit.so at version " + metaMetax.version)
+        print(g.const.indent + g.l2("Found metaxploit.so at version " + metaMetax.version))
     end if
 
     if updateMetax == 1 then
@@ -204,7 +204,7 @@ g.func.updateLibs = function
 
         metaCrypto = metaxLib.load(current_path + "/crypto.so")
         
-        print(g.const.indent + "Found crypto.so at version " + metaCrypto.version)
+        print(g.const.indent + g.l2("Found crypto.so at version " + metaCrypto.version))
     end if
 
     if updateCrypto == 1 then

@@ -1,6 +1,4 @@
 g.func.getMenu = function()
-	print g.func.heading("Menu")
-
 	items = []
 
 	// Add tools to the menu items
@@ -12,16 +10,16 @@ g.func.getMenu = function()
 
 	count = 1
 
-	menu = ""
+	menu = g.const.indent + g.s3("<voffset=0.5em><size=110%>Tools:</voffset>") + g.const.nl
 
 	pos = 40
 
 	for item in items
 		menu = menu + "<pos=" + pos + ">" + item.text
 
-		pos = pos + 105
+		pos = pos + 140
 
-		if count % 8 == 0 and count != items.len then // If it's the last item in this row and there are more rows to come
+		if count % 6 == 0 and count != items.len then // If it's the last item in this row and there are more rows to come
 			menu = menu + g.const.nl + g.const.nl
 			pos = 40
 		end if
@@ -30,7 +28,7 @@ g.func.getMenu = function()
 	end for
 
 	// Add a separator between tools and utilities
-	menu = menu + g.const.nl + g.const.nl + g.func.heading("Utilities") + g.const.nl
+	menu = menu + g.const.nl + g.const.nl + g.const.indent + g.s3("<voffset=0.5em><size=110%>Utilities:</voffset>") + g.const.nl
 
 	items = []
 
@@ -48,9 +46,9 @@ g.func.getMenu = function()
 	for item in items
 		menu = menu + "<pos=" + pos + ">" + item.text
 
-		pos = pos + 105
+		pos = pos + 140
 
-		if count % 8 == 0 and count != items.len then // If it's the last item in this row and there are more rows to come
+		if count % 6 == 0 and count != items.len then // If it's the last item in this row and there are more rows to come
 			menu = menu + g.const.nl + g.const.nl
 			pos = 40
 		end if

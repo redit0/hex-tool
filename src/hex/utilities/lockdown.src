@@ -7,12 +7,14 @@ lockdownHelp = function(self)
 end function
 
 setPerms = function(obj)
-    result = obj.chmod("u-rwx")
-    if result != "" then print(g.error(result))
-    result = obj.chmod("g-rwx")
-    if result != "" then print(g.error(result))
-    result = obj.chmod("o-rwx")
-    if result != "" then print(g.error(result))
+    if obj.permissions != "d---------" or obj.permissions != "----------" then
+        result = obj.chmod("u-rwx")
+        if result != "" then print(g.error(result))
+        result = obj.chmod("g-rwx")
+        if result != "" then print(g.error(result))
+        result = obj.chmod("o-rwx")
+        if result != "" then print(g.error(result))
+    end if
 end function
 
 setHomePerms = function(obj)
@@ -26,6 +28,14 @@ doLockdown = function(dir, home, excludes)
     print(g.const.indent + g.l2("Locking " + dir.path + "..."))
 
     setPerms(dir)
+
+    if dir.owner != "root" then
+        dir.set_owner("root")
+    end if
+
+    if dir.group != "root" then
+        dir.set_group("root")
+    end if
 
     for folder in dir.get_folders
         doLockdown(folder, home, excludes)
@@ -42,13 +52,18 @@ doLockdown = function(dir, home, excludes)
             end if
         end if
 
-        if home and typeof(excludes.indexOf(file.name)) != "number" then
-            setPerms(file)
-        else if home and typeof(excludes.indexOf(file.name)) == "number" then
-            setPerms(file)
+        setPerms(file)
+
+        if home and typeof(excludes.indexOf(file.name)) == "number" then
             setHomePerms(file)
         else
-            setPerms(file)
+            if file.owner != "root" then
+                file.set_owner("root")
+            end if
+
+            if file.group != "root" then
+                file.set_group("root")
+            end if
         end if
     end for
 

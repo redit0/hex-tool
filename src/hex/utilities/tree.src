@@ -111,7 +111,9 @@ tree = function(args = null)
 
     if path != "/" then startingLevel = startingLevel + 1
 
-    output = "<space=2.1em><size=120%>" + start.permissions.formatPermissions + "<space=1.7em>.<space=2.2em>" + g.s2(start.path) + g.const.nl
+    output = "<space=2.1em><size=120%>" + start.permissions.formatPermissions
+    //output = output + g.d1(" [" + start.owner + "]<pos=400>[" + start.group + "]")
+    output = output + "<space=1.7em>.<space=2.2em>" + g.s2(start.path) + g.const.nl
 
     files = {}
 
@@ -126,7 +128,9 @@ tree = function(args = null)
     for index in indices
         file = files[index]
 
-        line = "<space=2.1em><size=120%>" + file.permissions.formatPermissions + "<space=2em>"
+        line = "<space=2.1em><size=120%>" + file.permissions.formatPermissions
+        //line = line + g.d1(" [" + file.owner + "]<pos=400>[" + file.group + "]")
+        line = line + "<space=2em>"
 
         // Calculate the number of levels down we are from the starting path and add the indents
         levels = file.path.matches("/").indexes.len - startingLevel

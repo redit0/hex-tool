@@ -52,6 +52,7 @@ doScan = function(args)
                 end for
             end for
         end for
+        clear_screen
         print output
         return
     end function
