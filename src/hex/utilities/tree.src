@@ -15,8 +15,16 @@ string.formatPermissions = function
     if self == "d---------" or self == "----------" then
         return g.d1("[" + self + "]")
     else
-        return g.o1("[" + self + "]")
+        return g.s2("[" + self + "]")
     end if
+end function
+
+string.formatUsername = function
+    if not self isa string then
+        return self
+    end if
+
+    if self == "root" then return g.d1("[" + self + "]") else return g.s2("[" + self + "]")
 end function
 
 map.sortKey = function(self)
@@ -43,7 +51,7 @@ map.getFileColor = function
         if file.name == "passwd" and file.path != "/bin/passwd" then
             if file.has_permission("r") then return g.g1(file.name) else return g.o1(file.name)
         else if file.is_symlink then
-            return g.l2(file.name)
+            return g.d1(file.name)
         else if file.name[-3:] == ".so" then
             return g.l3(file.name)
         else
@@ -112,8 +120,8 @@ tree = function(args = null)
     if path != "/" then startingLevel = startingLevel + 1
 
     output = "<space=2.1em><size=120%>" + start.permissions.formatPermissions
-    //output = output + g.d1(" [" + start.owner + "]<pos=400>[" + start.group + "]")
-    output = output + "<space=1.7em>.<space=2.2em>" + g.s2(start.path) + g.const.nl
+    output = output + " " + start.owner.formatUsername + "<pos=350>" + start.group.formatUsername
+    output = output + "<pos=494>.<space=2.2em>" + g.s2(start.path) + g.const.nl
 
     files = {}
 
@@ -129,8 +137,8 @@ tree = function(args = null)
         file = files[index]
 
         line = "<space=2.1em><size=120%>" + file.permissions.formatPermissions
-        //line = line + g.d1(" [" + file.owner + "]<pos=400>[" + file.group + "]")
-        line = line + "<space=2em>"
+        line = line + " " + file.owner.formatUsername + "<pos=350>" + file.group.formatUsername
+        line = line + "<pos=500>"
 
         // Calculate the number of levels down we are from the starting path and add the indents
         levels = file.path.matches("/").indexes.len - startingLevel
@@ -139,9 +147,6 @@ tree = function(args = null)
 
         // Write the file indicator and file name
         line = line + g.d1("<mark=#666666><mspace=0.1>" + char(160) + "</mspace></mark>" + char(160) + "<space=-0.6em><cspace=-0.1em>———</cspace> " + file.getFileColor)
-
-        // Add symlink info if needed
-        if file.is_symlink then line = line + "<space=1em>" + g.d1(g.const.arrow + "<space=1em>" + file.path(1))
 
         line = line + g.const.nl
 

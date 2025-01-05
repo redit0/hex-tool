@@ -1,4 +1,4 @@
-getPrompt = function()
+g.func.getPrompt = function()
 	idx = g.context.index
 	
 	t = g.s3("[") + g.stack[idx].getType(1) + g.s3("]")

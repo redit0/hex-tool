@@ -130,7 +130,7 @@ g.func.getApt = function()
     if aptClient.classID == "aptclientLib" then
         return aptClient
     else
-        print(g.error("Invalid library file.  The file loaded is not an aptclient library. (" + aptClient.classID + ")"))
+        print(g.const.indent + g.error("Invalid library file.  The file loaded is not an aptclient library. (" + aptClient.classID + ")"))
         return null
     end if
 end function
@@ -140,21 +140,51 @@ end function
 g.func.updateApt = function
     aptClient = g.func.getApt()
 
-    aptClient.update
+    while true
+        response = aptClient.update
+
+        if response == "" then
+            break
+        else
+            repos = g.func.getRepos
+
+            for repo in repos
+                aptClient.del_repo(repo)
+            end for
+
+            ip = g.func.getHackshop
+            
+            aptClient.add_repo(ip)
+        end if
+    end while
 end function
 
 // Updates the metaxploit and crypto libraries. Also adds a hackshop repository if none are found.
 // @return {none}
 g.func.updateLibs = function
-    updateMetax = 0
+    installLib = function(libName, isUpgrade = 0)
+        aptClient = outer.aptClient
+        aptClient.install(libName, current_path)
+        metax = include_lib(current_path + "/metaxploit.so")
+        lib = metax.load(current_path + "/" + libName)
+
+        if isUpgrade then
+            outer.output = outer.output + g.const.indent + g.g1("Updated " + libName + " to version " + lib.version) + g.const.nl
+        else
+            outer.output = outer.output + g.const.indent + g.g1("Installed " + libName + " at version " + lib.version) + g.const.nl
+        end if
+    end function
+
     aptClient = g.func.getApt()
 
     repos = g.func.getRepos
 
+    output = ""
+
     if repos.len == 0 then
         ip = g.func.getHackshop
 
-        print g.const.indent + "No repositories found. Adding " + ip + "..."
+        output = output + g.const.indent + g.y1("No repositories found. Adding " + ip + "...") + g.const.nl
 
         aptClient.add_repo(ip)
         aptClient.update
@@ -163,66 +193,44 @@ g.func.updateLibs = function
     metax = get_shell.host_computer.File(current_path + "/metaxploit.so")
 
     if not metax then
-        updateMetax = 1
-    else        
+        output = output + g.const.indent + g.l2("Installing metaxploit.so...") + g.const.nl
+        installLib("metaxploit.so")
+    else
+        metaxploit = include_lib(current_path + "/metaxploit.so")
+        lib = metaxploit.load(current_path + "/metaxploit.so")
+
+        output = output + g.const.indent + g.l2("Found metaxploit.so at version " + lib.version) + g.const.nl
+
         updateMetax = aptClient.check_upgrade(metax.path)
-        if updateMetax isa string then print(g.error(updateMetax))
+        if updateMetax isa string then print(g.const.indent + g.error(updateMetax))
 
-        metaxLib = include_lib(current_path + "/metaxploit.so")
-
-        metaMetax = metaxLib.load(current_path + "/metaxploit.so")
-
-        print(g.const.indent + g.l2("Found metaxploit.so at version " + metaMetax.version))
-    end if
-
-    if updateMetax == 1 then
-        result = aptClient.install("metaxploit.so", current_path)
-        if result isa string then
-            print(g.error(result))
-        else if result == 1 then
-            metaxLib = include_lib(current_path + "/metaxploit.so")
-
-            metaMetax = metaxLib.load(current_path + "/metaxploit.so")
-
-            print(g.const.indent + g.g1("Installed metaxploit.so at version: " + metaMetax.version))
-        else
-            print(g.error("An unknown error occurred"))
+        if updateMetax == 1 then
+            output = output + g.const.indent + g.y1("Update available for metaxploit.so...") + g.const.nl
+            installLib("metaxploit.so", 1)
         end if
     end if
-
-    updateCrypto = 0
 
     crypto = get_shell.host_computer.File(current_path + "/crypto.so")
 
     if not crypto then
-        updateCrypto = 1
+        output = output + g.const.indent + g.l2("Installing crypto.so...") + g.const.nl
+        installLib("crypto.so")
     else
+        metaxploit = include_lib(current_path + "/metaxploit.so")
+        lib = metaxploit.load(current_path + "/crypto.so")
+
+        output = output + g.const.indent + g.l2("Found crypto.so at version " + lib.version) + g.const.nl
+
         updateCrypto = aptClient.check_upgrade(crypto.path)
-        if updateCrypto isa string then print(g.error(updateCrypto))
+        if updateCrypto isa string then print(g.const.indent + g.error(updateCrypto))
 
-        cryptoLib = include_lib(current_path + "/crypto.so")
-
-        metaCrypto = metaxLib.load(current_path + "/crypto.so")
-        
-        print(g.const.indent + g.l2("Found crypto.so at version " + metaCrypto.version))
-    end if
-
-    if updateCrypto == 1 then
-        result = aptClient.install("crypto.so", current_path)
-        if result isa string then
-            print(g.error(result))
-        else if result == 1 then
-            cryptoLib = include_lib(current_path + "/crypto.so")
-
-            metaCrypto = metaxLib.load(current_path + "/crypto.so")
-
-            print(g.const.indent + g.g1("Installed crypto.so at version: " + metaCrypto.version))
-        else
-            print(g.error("An unknown error occurred"))
+        if updateCrypto == 1 then
+            output = output + g.const.indent + g.y1("Update available for crypto.so...") + g.const.nl
+            installLib("crypto.so", 1)
         end if
     end if
 
-    print g.const.nl
+    return output
 end function
 
 // Checks random IP addresses for an open port 1542 and then returns that IP address as a string.
@@ -254,8 +262,6 @@ end function
 // Sets some initial values for **HEX**.
 // @return {none}
 g.func.init = function()
-    g.func.updateLibs
-
     g.metax = include_lib(current_path + "/metaxploit.so")
     g.crypto = include_lib(current_path + "/crypto.so")
 

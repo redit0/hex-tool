@@ -302,7 +302,24 @@ nmap = function(args)
 
             choice = doChoices(results)
 
-            print(choice)
+            if choice.indexOf("computer") != null then
+                input = user_input(g.const.indent + g.l2("Enter the LAN IP address of the target computer: "))
+
+                if not is_valid_ip(input) or not is_lan_ip(input) then
+                    print g.const.indent + g.error("Invalid IP address: " + input)
+                    return
+                end if
+                g.command = "hack " + args[0] + " " + input
+                return
+            else if choice.indexOf("Return") != null then
+                g.util.clear.exec
+                return
+            else
+                temp = choice.split(":")[1].split("<")[0]
+                
+                g.command = "hack " + args[0] + " " + temp
+                return
+            end if
         end if
     else
         self.help

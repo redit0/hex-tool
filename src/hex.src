@@ -2,6 +2,7 @@ g = get_custom_object
 g.colors = {}
 g.const = {}
 g.context = {}
+g.command = ""
 g.database = {}
 g.func = {}
 g.stack = []
@@ -39,20 +40,28 @@ if params.len > 1 then
 end if
 
 g.func.updateApt
+output = g.func.updateLibs
 clear_screen
-print g.func.getBanner
 g.func.init
+print g.func.getBanner
+print output
 print g.func.getMenu
 
 while true
-	input = user_input(getPrompt)
+	if g.command == "" then
+		input = user_input(g.func.getPrompt)
 
-	if input == "" then
-		continue
+		if input == "" then
+			continue
+		end if
+
+		key = input.split(" ")[0]
+		args = input.split(" ")[1:]
+	else
+		key = g.command.split(" ")[0]
+		args = g.command.split(" ")[1:]
+		g.command = ""
 	end if
-
-	key = input.split(" ")[0]
-	args = input.split(" ")[1:]
 
 	if g.tools.hasIndex(key) then
 		g.tools[key].exec(args)

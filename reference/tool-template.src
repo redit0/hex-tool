@@ -1,11 +1,19 @@
 toolNameHelp = function(self)
-    text = g.const.ni + "Usage:".yellow("u") + g.const.ni
-    text = text + self.name.green + " {Text explaining the usage of this tool}".lightgray + g.const.nl
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" {Text explaining the usage of this tool}") + g.const.nl
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
 end function
 
 toolName = function(args = null)
+    if args != null and args.len > 0 then
+        if args[0] == "help" or args[0] == "-h" then
+            self.help
+            return
+        end if
+    end if
+    
     // Put functionality here for what this tool does.
 end function
 
@@ -15,7 +23,7 @@ end function
 
 g.tools.toolName = {
     "name": "toolName",         // Unformatted tool name text
-    "text": "toolName".cyan,    // Tool name text with any formatting you want to use when its name is displayed
+    "text": g.s2("toolName"),    // Tool name text with any formatting you want to use when its name is displayed
     "sortOrder": 500,           // This number will be used to sort this tool in the menu.  Quit is the last built-in item, with sort order 999.
     "exec": @toolName,          // A function reference to the toolName function above.
     "help": @toolNameHelp,      // A function reference to the help function above.

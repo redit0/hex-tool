@@ -10,6 +10,7 @@ end function
 doScan = function(args)
     idx = g.context.index
     context = g.stack[idx]
+    if not g.tools.scan.data.hasIndex("silent") then g.tools.scan.data.silent = 0
 
     doOutput = function(metaLibs)
         results = {}
@@ -92,7 +93,11 @@ doScan = function(args)
 
         metaLibs = [metaLib]
         scanMetaLibs(metaLibs)
-        doOutput(metaLibs)
+        if not g.tools.scan.data.silent then
+            doOutput(metaLibs)
+        else
+            clear_screen
+        end if
     end function
 
     scanRemote = function(ip, port)
@@ -116,7 +121,11 @@ doScan = function(args)
         metaLibs = [metaLib]
 
         scanMetaLibs(metaLibs)
-        doOutput(metaLibs)
+        if not g.tools.scan.data.silent then
+            doOutput(metaLibs)
+        else
+            clear_screen
+        end if
     end function
 
     scanAllPorts = function(ip)
@@ -146,7 +155,11 @@ doScan = function(args)
         metaLibs.push(metaLib)
 
         scanMetaLibs(metaLibs)
-        doOutput(metaLibs)
+        if not g.tools.scan.data.silent then
+            doOutput(metaLibs)
+        else
+            clear_screen
+        end if
     end function
 
     if not args or args == [] then
@@ -158,26 +171,26 @@ doScan = function(args)
             self.help
         else if not is_valid_ip(arg) then
             if not arg.is_match(".+\.so") then
-                print(g.error("Invalid library name. (Usage: scan [library.so])"))
+                print(g.const.indent + g.error("Invalid library name. (Usage: scan [library.so])"))
                 return
             end if
             scanLocal("/lib/" + arg)
         else if is_valid_ip(arg) then
             scanAllPorts(arg)
         else
-            print(g.error("Invalid argument: " + arg))
+            print(g.const.indent + g.error("Invalid argument: " + arg))
         end if
     else if args.len == 2 then
         address = args[0]
         port = args[1]
 
         if not is_valid_ip(address) then
-            print(g.error("Invalid IP address: " + address))
+            print(g.const.indent + g.error("Invalid IP address: " + address))
             return
         end if
 
         if port.val == null or port.to_int < 0 or port.to_int > 65535 then
-            print(g.error("Invalid port number: " + port))
+            print(g.const.indent + g.error("Invalid port number: " + port))
             return
         end if
 
