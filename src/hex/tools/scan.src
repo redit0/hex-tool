@@ -141,6 +141,8 @@ doScan = function(args)
         metaLibs = []
 
         for port in ports
+            if port.is_closed then continue
+            
             netSession = context.metax.net_use(ip, port.port_number)
 
             metaLib = netSession.dump_lib

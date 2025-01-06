@@ -83,7 +83,7 @@ lockdown = function(args = null)
     excludes = ["sudo","Terminal","Terminal.exe","Mail","Mail.exe","Map","Map.exe","Chat","Chat.exe","Settings.exe","Manual","Manual.exe"]
 
     file = g.stack[idx].file
-    comp = g.stack[idx].comp
+    comp = g.stack[idx].computer
 
     guest = file.getGuestFolder
 

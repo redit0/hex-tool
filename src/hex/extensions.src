@@ -91,7 +91,11 @@ map.getHostname = function(color = 0)
     end if
 
     if self isa g.Target then
-        if color then return g.l1(self.comp.get_name) else return self.comp.get_name
+        if self.type == "shell" or self.type == "computer" then
+            if color then return g.l1(self.computer.get_name) else return self.computer.get_name
+        else
+            if color then return g.l2("unknown") else return "unknown"
+        end if
     end if
 
     if color then return g.l2("unknown") else return "unknown"
@@ -114,7 +118,7 @@ map.getLocal = function(color = 0)
     end if
 
     if self isa g.Target then
-        address = self.comp.local_ip
+        address = self.local
     end if
 
     if color then return g.b3(address) else return address
@@ -137,7 +141,7 @@ map.getPublic = function(color = 0)
     end if
 
     if self isa g.Target then
-        address = self.comp.public_ip
+        address = self.public
     end if
 
     if color then return g.b3(address) else return address
@@ -147,13 +151,20 @@ end function
 // @param {number} color - Whether to return the type in color (1) or not (0).
 // @return {string} - The type of the object.
 map.getType = function(color = 0)
-    type = typeof(self)
+    isTarget = 0
 
-    if type == "shell" or (self isa g.Target and self.shell != null) then
-        if type == "shell" then
+    if self isa g.Target then
+        type = self.type
+        isTarget = 1
+    else
+        type = typeof(self)
+    end if
+
+    if type == "shell" then
+        if not isTarget then
             procs = self.host_computer.show_procs.split(char(10))
         else
-            procs = self.comp.show_procs.split(char(10))
+            procs = self.computer.show_procs.split(char(10))
         end if
 
         for proc in procs
@@ -167,7 +178,7 @@ map.getType = function(color = 0)
         if color then return g.s3(type) else return type
     end if
 
-    if type == "computer" or (self isa g.Target and self.comp != null) then
+    if type == "computer" then
         if color then return g.b1("computer") else return "computer"
     end if
 
@@ -178,4 +189,22 @@ map.getType = function(color = 0)
     print(g.error("Invalid object type: " + type + g.const.ni))
 
     return g.r1("null")
+end function
+
+list.max = function
+    max = -2147483648
+
+    if not self isa list then
+        print(g.const.indent + g.error("Invalid object type: " + typeof(self)))
+        return max
+    end if
+
+    for item in self
+        type = typeof(item)
+
+        if type == "number" and item > max then max = item
+        if type == "string" and item.to_int isa number and item.to_int > max then max = item.to_int
+    end for
+
+    return max
 end function

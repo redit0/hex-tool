@@ -1,21 +1,24 @@
-map.createContext = function(self, currentPath = null)
-    if not currentPath then currentPath = "/"
-
+map.createContext = function
     item = new g.Target
+    item.path = "/"
+    item.type = typeof(self)
 
-    item.path = currentPath
-
-    if typeof(self) == "shell" then
+    if item.type == "shell" then
         item.shell = self
-        item.comp = self.host_computer
-        item.file = self.host_computer.File(currentPath)
-    else if typeof(self) == "computer" then
-        item.comp = self
-        item.file = self.File(currentPath)
-    else if typeof(self) == "file" then
+        item.computer = self.host_computer
+        item.file = self.host_computer.File(item.path)
+        item.public = self.host_computer.public_ip
+        item.local = self.host_computer.local_ip
+    else if item.type == "computer" then
+        item.computer = self
+        item.file = self.File(item.path)
+        item.public = self.public_ip
+        item.local = self.local_ip
+    else if item.type == "file" then
         item.file = self
     else
-        print(g.error("Invalid object type: " + typeof(self)))
+        print(g.error("Invalid object type: " + item.type))
+        print(self)
         return null
     end if
 

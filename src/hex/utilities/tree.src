@@ -48,9 +48,7 @@ map.getFileColor = function
     if file.is_folder then return g.s2(file.name)
 
     if file.is_binary and not file.is_folder then
-        if file.name == "passwd" and file.path != "/bin/passwd" then
-            if file.has_permission("r") then return g.g1(file.name) else return g.o1(file.name)
-        else if file.is_symlink then
+        if file.is_symlink then
             return g.d1(file.name)
         else if file.name[-3:] == ".so" then
             return g.l3(file.name)
@@ -60,7 +58,13 @@ map.getFileColor = function
     end if
 
     if not file.is_binary then
-        if names.indexOf(file.name) != null then
+        if file.name == "passwd" and file.path != "/bin/passwd" then
+            if file.has_permission("r") then
+                return g.g1(file.name)
+            else
+                return g.o1(file.name)
+            end if
+        else if names.indexOf(file.name) != null then
             if file.has_permission("r") then
                 return g.g1(file.name)
             else

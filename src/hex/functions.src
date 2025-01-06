@@ -265,12 +265,13 @@ g.func.init = function()
     g.metax = include_lib(current_path + "/metaxploit.so")
     g.crypto = include_lib(current_path + "/crypto.so")
 
-    g.context.index = 0
+    g.context.index = "0" // Must be a string
 
-    context = get_shell.createContext(current_path)
-
+    context = get_shell.createContext
+    
+    context.path = current_path
     context.metax = include_lib(current_path + "/metaxploit.so")
     context.crypto = include_lib(current_path + "/crypto.so")
 
-    g.stack.push(context)
+    g.stack[g.context.index] = context
 end function

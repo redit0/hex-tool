@@ -19,13 +19,16 @@ hack = function(args)
     idx = g.context.index
     context = g.stack[idx]
 
-    output = function(results)
+    // Outputs the results of the hack tool.
+    // @param {list} results - List of results to output.
+    // @return {string} - The formatted output string.
+    output = function(results, public)
         if results == null or results == [] then
             print g.const.indent + g.r1(g.const.indent + "No results found.")
             return
         end if
 
-        output = g.const.nl*2 + g.const.indent + g.s2("<size=115%><voffset=0.5em>Object <pos=350>Lan Address <pos=550>User</voffset></size>") + g.const.nl
+        output = g.const.nl + g.const.indent + g.s2("<size=115%><voffset=0.5em>Object <pos=350>Lan Address <pos=550>User</voffset></size>") + g.const.nl
 
         for result in results
             line = g.const.indent
@@ -51,7 +54,7 @@ hack = function(args)
     // Retrieves objects from memory addresses in the provided meta libraries.
     // @param {list} metalibs - List of meta libraries to scan.
     // @return {list} - List of results from the overflow.
-    getObjects = function(metalibs)
+    getObjects = function(metalibs, public)
         results = []
 
         for obj in metalibs
@@ -110,10 +113,18 @@ hack = function(args)
                         result.type = type
                         result.address = temp.getLocal
                         result.user = temp.getUser(1)
+
+                        item = temp.createContext
+                        g.stack.add(item)
                     else if type == "file" then
                         result.type = type
                         result.address = address
                         result.user = temp.getUser(1)
+
+                        item = temp.createContext
+                        item.local = address
+                        item.public = public
+                        g.stack.add(item)
                     end if
 
                     results.push(result)
@@ -210,11 +221,9 @@ hack = function(args)
         return result
     end function
 
-    /*
-       Retrieves a local library by name.
-       @param {string} libname - The name of the library to load.
-       @return {list} - List containing the loaded meta library or an empty list if not found.
-    */
+    // Retrieves a local library by name.
+    // @param {string} libname - The name of the library to load.
+    // @return {list} - List containing the loaded meta library or an empty list if not found.
     getLocalLib = function(libname)
         context = g.stack[g.context.index]
         metax = context.metax
@@ -251,6 +260,7 @@ hack = function(args)
     // Retrieves a remote library by IP address and port.
     // @param {string} ip - The IP address to connect to.
     // @param {number} port - The port number to connect to.
+    // @param {string} address - The address to use for the overflow.
     // @return {list} - List containing the dumped meta library or an empty list if not found.
     getRemoteLib = function(ip, port, address)
         metax = context.metax
@@ -328,7 +338,7 @@ hack = function(args)
 
                     metaLibs = getLocalLib(args[1])
 
-                    results = getObjects(metaLibs)
+                    results = getObjects(metaLibs, context.public)
 
                     output = output(results)
 
@@ -347,6 +357,9 @@ hack = function(args)
                         end for
 
                         result = getBounce(metaLibs, args[1])
+
+                        item = result.createContext
+                        g.stack.add(item)
 
                         if result then
                             g.util.clear.exec
@@ -379,7 +392,7 @@ hack = function(args)
 
                 print g.l3("<size=120%>The output will pause after a possible password reset.  Press enter to resume script execution.</size>")
 
-                results = getObjects(metaLibs)
+                results = getObjects(metaLibs, context.public)
 
                 output = output(results)
 
@@ -399,6 +412,9 @@ hack = function(args)
                         metaLibs = getAllRemoteLibs(args[0])
 
                         result = getBounce(metaLibs, args[1])
+
+                        item = result.createContext
+                        g.stack.add(item)
 
                         if result then
                             g.util.clear.exec
@@ -440,7 +456,7 @@ hack = function(args)
 
                     print g.l3("<size=120%>The output will pause after a possible password reset.  Press enter to resume script execution.</size>")
 
-                    results = getObjects(metaLibs)
+                    results = getObjects(metaLibs, router.public_ip)
 
                     output = output(results)
 
@@ -462,7 +478,9 @@ hack = function(args)
 
                 print g.l3("<size=120%>The output will pause after a possible password reset.  Press enter to resume script execution.</size>")
 
-                results = getObjects(metaLibs)
+                router = get_router(args[0])
+
+                results = getObjects(metaLibs, router.public_ip)
 
                 output = output(results)
 
