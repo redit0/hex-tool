@@ -1,4 +1,4 @@
-g.const.version = "0.0.0.118"
+g.const.version = "0.0.0.120"
 g.const.vhex = "v" + g.const.version
 g.const.indent = "    "
 g.const.nl = char(10)

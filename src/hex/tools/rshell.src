@@ -15,7 +15,11 @@ end function
 
 doRshell = function(args = null)
     if args == null or args == [] then
-        if g.func.get_rshells(g.context.index) then
+        if not g.hasIndex("rshell") or not g.rshell.hasIndex("key") then
+            print g.error("No rshell server configured. (Hint: Run rshell init)")
+            return 0
+        end if
+        if g.func.get_rshells(g.rshell.key) then
             g.util.stack.exec
         end if
     else if args[0] == "infect" then
