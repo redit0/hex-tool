@@ -1,0 +1,294 @@
+g.func.init_rshell = function(idx = null, port = 10000)
+    if idx == null then
+        temp = #envar rshell
+
+        if temp == null or temp == "" then
+            return 0
+        end if
+
+        rshell = g.func.deserialize(temp)
+
+        if g.hasIndex("proxy") then
+            context = g.stack[g.proxy]
+        else
+            context = g.stack["0"]
+        end if
+
+        if context.type != "shell" or not context.shell then
+            print g.error("Invalid context type: " + context.type)
+            return 0
+        end if
+
+        ip = rshell[0]
+        port = rshell[1]
+        user = rshell[2]
+        pass = rshell[3]
+
+        rshell = context.shell.connect_service(ip, 22, user, pass)
+
+        if typeof(rshell) == "string" then
+            print g.error(rshell)
+            return 0
+        end if
+
+        if not rshell then
+            print g.error("Failed to connect to rshell server at the following IP: " + ip)
+            return 0
+        end if
+
+        rshellContext = rshell.createContext("rs server")
+        rshellContext.path = "/root"
+
+        key = g.stack.add(rshellContext)
+    else
+        if typeof(@idx) != "string" or (@idx).to_int == null or not g.stack.hasIndex(@idx) then
+            print g.error("Invalid parameter: idx")
+            return 0
+        end if
+
+        key = idx
+        ip = g.stack[idx].public
+    end if
+
+    if typeof(@port) == "string" and typeof(@port.to_int) == "number" then
+        p = port.to_int
+    else if typeof(port) == "number" then
+        p = port
+    else
+        p = 1222
+    end if
+
+    g.rshell = { "key":key, "ip":ip, "port":p }
+    return 1
+end function
+
+g.func.install_rshell = function(idx)
+    if not g.func.checkShell(idx) then return 0
+
+    home = g.stack["0"]
+    context = g.stack[idx]
+
+    file = context.computer.File("/lib/librshell.so")
+
+    if not file then
+        print g.const.indent + g.s3("Copying librshell.so to context...")
+        g.func.putLib("/root/SecureLibs", "librshell.so")
+        file = context.computer.File("/lib/librshell.so")
+
+        if not file then
+            print g.error("Could not put librshell.so on server")
+            return 0
+        end if
+    end if
+
+    if g.func.attach_rshell(idx) then
+        print g.error("Could not attach rshell.")
+        return 0
+    end if
+
+    if not g.func.attach_metax(idx) then
+        print g.error("Could not attach metax.")
+        return 0
+    end if
+
+    print g.const.indent + g.s3("Installing librshell.so...")
+    result = g.stack[idx].rshell.install_service
+
+    if result == 1 then return 1
+
+    if typeof(result) == "string" then print g.error(result)
+
+    return 0
+end function
+
+g.func.attach_rshell = function(idx)
+    if not g.func.checkShell(idx) then return 0
+
+    print g.const.indent + g.s3("Attaching rshell lib to context...")
+    rshell = g.func.include_lib("/lib/librshell.so")
+
+    if not rshell then
+        print g.error("Could not retrieve library via include_lib")
+        return 0
+    end if
+
+    g.stack[idx].rshell = rshell
+
+    return 1
+end function
+
+g.func.start_rshell = function(idx)
+    if not g.func.checkShell(idx) then return 0
+
+    if not g.stack[idx].rshell then
+        file = g.stack[idx].computer.File("/lib/librshell.so")
+
+        if not file then
+            if not g.func.install_rshell(idx) then
+                print g.error("Could not install rshell library")
+                return 0
+            end if
+        else
+            if not g.func.attach_rshell(idx) then
+                print g.error("Could not attach rshell library")
+                return 0
+            end if
+        end if
+    end if
+
+    if not g.stack[idx].metax then
+        filePath = g.stack[idx].path + "/metaxploit.so"
+
+        if not g.func.attach_metax(idx) then
+            print g.error("Could not attach metaxploit library")
+            return 0
+        end if
+    end if
+
+    print g.const.indent + g.s3("Starting rshell service...")
+    result = g.stack[idx].rshell.start_service
+
+    if result == 1 or result == null then
+        return 1
+    else if typeof(result) == "string" then
+        print g.error(result)
+    else
+        print g.error("An unknown error occurred")
+    end if
+
+    return 0
+end function
+
+g.func.stop_rshell = function(idx)
+    if not g.func.checkShell(idx) then return 0
+
+    if not g.stack[idx].rshell then
+        print g.error("No attached rshell.")
+        return 0
+    end if
+
+    result = g.stack[idx].rshell.stop_service
+
+    if result == 1 then return 1
+
+    if result == 0 then
+        print g.error("Could not stop service")
+    else if typeof(result) == "string" then
+        print g.error(result)
+    else
+        print g.error("An unknown error occurred")
+    end if
+
+    return 0
+end function
+
+g.func.get_rshells = function(idx)
+    if not g.func.checkShell(idx) then return 0
+
+    if not g.stack[idx].metax then
+        print g.error("No metaxploit lib attached")
+        return 0
+    end if
+
+    shells = g.stack[idx].metax.rshell_server
+
+    if typeof(shells) == "string" then
+        print g.error(shells)
+        return 0
+    end if
+
+    for shell in shells
+        rs = shell.createContext("rshell")
+        g.stack.add(rs)
+    end for
+
+    print g.const.indent + g.s3("Added " + shells.len + " rshell(s) to the stack.")
+
+    return 1
+end function
+
+g.func.clear_rshells = function
+    for key in g.stack.indexes
+        if typeof(key.to_int) == "number" and g.stack[key].source == "rshell" and g.stack[key].type == "shell" then
+            g.func.remove_rshell(key)
+        end if
+    end for
+end function
+
+g.func.remove_rshell = function(idx)
+    if not g.func.checkShell(idx) then return 0
+
+    if g.stack[key].source != "rshell" then
+        print g.error("The specified context is not an rshell.")
+        return 0
+    end if
+
+    user = g.stack[key].user
+    procs = g.stack[key].computer.show_procs.split(char(10))[1:]
+
+    for proc in procs
+        usr = proc.split(" ")[0]
+        pid = proc.split(" ")[1].to_int
+        cmd = proc.split(" ")[4]
+
+        if (user == "root" or usr == user) and ["dsession", "kernel_task", "Xorg"].indexOf(cmd) == null then
+            result = g.stack[key].computer.close_program(pid)
+            if typeof(result) == "string" then print g.error(result)
+        end if
+    end for
+
+    return 1
+end function
+
+g.func.rshell_info = function
+    if not g.rshell or not g.rshell.ip or not g.rshell.port then
+        print g.const.indent + g.o1("Rshell server ip and/or port are not set.")
+        return 0
+    end if
+
+    print g.const.indent + g.o1("[rshell server info] IP: " + g.rshell.ip + " Port: " + g.rshell.port)
+
+    return 1
+end function
+
+g.func.deploy_rshell = function(idx, ip, port, process = "rshell_client")
+    if not g.func.checkShell(idx) then return 0
+
+    if not g.stack[idx].metax then
+        print g.error("No metaxploit library attached")
+        return 0
+    end if
+
+    if typeof(@process) != "string" then process = "rshell_client"
+
+    print g.const.indent + g.o1("[rshell client] IP: " + @ip + " Port: " + @port + " Process Name: " + process)
+    result = g.stack[idx].metax.rshell_client(@ip, @port, process)
+
+    if typeof(result) == "string" then
+        print g.error(result)
+        return 0
+    end if
+
+    return 1
+end function
+
+g.func.check_rshell = function
+    if not g.hasIndex("rshell") then
+        print g.error("rshell server not set")
+        return 0
+    end if
+    if not g.rshell.hasIndex("ip") or typeof(g.rshell.ip) != "string" or not is_valid_ip(g.rshell.ip) then
+        print g.error("Invalid rshell server ip")
+        return 0
+    end if
+    if not g.rshell.hasIndex("port") or typeof(g.rshell.port) != "number" or g.rshell.port < 1 or g.rshell.port > 65535 then
+        print g.error("Invalid rshell server port")
+        return 0
+    end if
+    if not g.rshell.hasIndex("key") or typeof(g.rshell.key) != "string" or typeof(g.rshell.key.to_int) != "number" then
+        print g.error("Invalid rshell server stack index")
+        return 0
+    end if
+
+    return 1
+end function

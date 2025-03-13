@@ -1,0 +1,65 @@
+counts = {"dirs": 0, "files": 0}
+
+line = "<size=120%><mark=#666666>" + char(160) + "</mark></size>"
+endLine = "<space=-0.1em><rotate=180>" + char(305) + "</rotate><space=0.2em>"
+fileLine = "<space=-0.82em><cspace=-1>——</cspace><space=0.4em>"
+
+walk = function(directory, prefix)
+    files = directory.get_folders + directory.get_files
+
+    if files == [] then return
+
+    temp = {}
+
+    for file in files
+        temp[file.name] = file
+    end for
+
+    indices = temp.indexes
+    indices.sort
+
+    files = []
+
+    for index in indices
+        files.push(temp[index])
+    end for
+
+    for index in range(0, files.len - 1)
+        file = files[index]
+
+        if index == files.len - 1 then
+            parts = [line + fileLine, "   "]
+        else
+            parts = [line + fileLine, line + "  "]
+        end if
+
+        print("<b>" + prefix + parts[0] + "" + file.name + "</b>")
+
+        if file.is_folder then
+            counts.dirs = counts.dirs + 1
+            walk(file, prefix + parts[1])
+        else
+            counts.files = counts.files + 1
+        end if
+    end for
+end function
+
+print(".", 1)
+
+root = get_shell.host_computer.File("/")
+
+walk(root, "")
+
+if counts.dirs == 1 then
+    totals = "1 directory, "
+else
+    totals = counts.dirs + " directories, "
+end if
+
+if counts.files == 1 then
+    totals = totals + "1 file"
+else
+    totals = totals + counts.files + " files"
+end if
+
+print "<b>" + totals + "</b>"

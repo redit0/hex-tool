@@ -1,0 +1,1 @@
+<(?!>)\/?([bisu]|\#.+?|br|.+case|smallcaps|noparse|nobr|page|su.?|((al(ign|pha))|color|.?space|font|indent|lin.+?|margin|mark|pos|size|sprite|style|voffset|width).*?)>

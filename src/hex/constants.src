@@ -1,4 +1,5 @@
-g.const.vhex = "v1.0.0"
+g.const.version = "0.0.0.118"
+g.const.vhex = "v" + g.const.version
 g.const.indent = "    "
 g.const.nl = char(10)
 g.const.tab = char(9)
@@ -15,13 +16,17 @@ g.const.ipPattern = "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"
 g.const.tt = g.d1("<mark=#666666><mspace=0.1>" + char(160) + "</mspace></mark>" + char(160) + "<space=2em>")
 g.Target = {
     "type": null,
+    "source": null,
     "shell": null,
     "computer": null,
     "file": null,
     "user": null,
     "path": "/",
+    "currentPath": "/",
     "metax": null,
     "crypto": null,
+    "apt": null,
+    "rshell": null,
     "public": null,
     "local": null
-    }
+}

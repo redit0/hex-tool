@@ -5,23 +5,29 @@ g.context = {}
 g.command = ""
 g.database = {}
 g.func = {}
+g.fs = {}
 g.stack = {}
 g.target = {}
 g.tools = {}
 g.util = {}
 
+import_code("hex/json.src")
 import_code("hex/colors.src")
 import_code("hex/constants.src")
-import_code("hex/context.src")
 import_code("hex/functions.src")
 import_code("hex/extensions.src")
+g.registerExtensions
+
 import_code("hex/banner.src")
 import_code("hex/prompt.src")
 
 #include "hex/tools.src"
-#include "hex/utilities.src"
 
-import_code("hex/menu.src")
+import_code("hex/proxies.src")
+g.func.initProxies
+
+import_code("hex/rshell.src")
+import_code("hex/mail.src")
 
 if params.len > 0 then
 	if is_valid_ip(params[0]) then
@@ -39,13 +45,16 @@ if params.len > 1 then
 	end if
 end if
 
+g.func.init
 g.func.updateApt
 output = g.func.updateLibs
-clear_screen
-g.func.init
-print g.func.getBanner
-print output
-print g.func.getMenu
+g.func.loadLibs
+
+print(g.func.getBanner, 1)
+print(output)
+
+g.func.init_rshell
+g.func.initMail
 
 while true
 	if g.command == "" then
@@ -67,6 +76,8 @@ while true
 		g.tools[key].exec(args)
 	else if g.util.hasIndex(key) then
 		g.util[key].exec(args)
+	else if g.fs.hasIndex(key) then
+		g.fs[key].exec(args)
 	else
 		print(g.error("Invalid argument: " + key))
 	end if

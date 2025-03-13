@@ -19,8 +19,7 @@ end function
 
 g.util.quit = {
     "name": "quit",
-    "text": g.r1("quit"),
-    "sortOrder": 999,
+    "shortDescription": "Clears the screen and exits the program.",
     "exec": @quit,
     "help": @quitHelp,
     "data": {}

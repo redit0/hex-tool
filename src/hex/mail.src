@@ -1,0 +1,19 @@
+g.func.initMail = function
+    emailAddress = #envar emailAddress
+    emailPassword = #envar emailPassword
+
+    if emailAddress and emailPassword then
+        mail = mail_login(emailAddress, emailPassword)
+
+        if not mail then
+            print g.error("Could not connect to mail.")
+        else if typeof(mail) == "string" then
+            print g.error(mail)
+        else
+            g.mail = mail
+            print g.const.indent + g.g1("Mail connection established.")
+        end if
+    end if
+
+    g.func.remove("initMail")
+end function

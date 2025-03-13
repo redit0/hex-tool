@@ -1,0 +1,58 @@
+g.func.initProxies = function
+    temp = #envar proxies
+
+    if temp == null or temp == "" then
+        return
+    end if
+
+    // g.proxies = [["ip address",22,"username","password"],["ip address",22,"username","password"]]
+    g.proxies = []
+
+    items = g.func.deserialize(temp)
+
+    for item in items
+        ip = item[0]
+
+        if item[1] isa number then
+            port = item[1]
+        else if typeof(item[1]) == "string" and item[1].to_int isa number then
+            port = item[1].to_int
+        else
+            port = 22
+        end if
+
+        user = item[2]
+        pass = item[3]
+
+        g.proxies.push([ip,port,user,pass])
+    end for
+end function
+
+g.func.getMap = function
+    context = g.stack[g.context.index]
+
+    mapFiles = g.func.findFiles(context.file.getRootFolder, "Map.conf")
+
+    for mapFile in mapFiles
+        content = mapFile.get_content
+
+        if content == null or content == "" then continue
+
+        obj = g.func.deserialize(content)
+
+        for account in obj.accounts
+            prox = [account.ip, 22, account.user, account.password]
+
+            alreadyAdded = 0
+
+            for proxy in g.proxies
+                if proxy[0] == prox[0] and proxy[1] == prox[1] and proxy[2] == prox[2] then
+                    alreadyAdded = 1
+                    break
+                end if
+            end for
+
+            if not alreadyAdded then g.proxies.push(prox)
+        end for
+    end for
+end function

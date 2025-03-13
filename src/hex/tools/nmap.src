@@ -1,72 +1,17 @@
 nmapHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [ip]") + g.l2(" Displays port and whois information for the specified ip address") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" {-s/show}") + g.l2(" Displays previously scanned port and whois information") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" {ip}") + g.l2(" Displays port, whois, and firewall (if available) information for the specified ip address.  If no IP address is specified, will show saved info from the last nmap, if available.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
-end function
-
-/////////////////////////////////////////////////////////////////
-//     Mark and print the choices for the menu at the end.     //
-/////////////////////////////////////////////////////////////////
-printChoices = function(index, choices)
-    maxLength = 0
-
-    choices.sort
-
-    for choice in choices
-        if choice.len > maxLength then maxLength = choice.len
-    end for
-
-    pos = ((maxLength + 1)*11)+5
-
-    for x in range(0,choices.len-1)
-        if x == index then
-            print(g.const.indent + g.l1("<mark=" + g.colors.y1 + "77>  " + choices[x] + "<pos=" + pos + "><color=" + g.colors.y1 + "00>-</color></mark>"))
-        else
-            print(g.const.indent + g.s3("  " + choices[x] + "<pos=" + pos + "><color=#00000000>-</color>"))
-        end if
-    end for
-end function
-
-
-/////////////////////////////////////////////////////////////////
-//             Get choices for the menu at the end             //
-/////////////////////////////////////////////////////////////////
-getChoices = function(data)
-    results = data
-    router = results.info.router
-
-    ports = router.used_ports
-
-    choices = []
-
-    choices.push("1." + g.const.tab + "Try for a computer<pos=380>(bounce)")
-    choices.push("2." + g.const.tab + router.local_ip + "<pos=280>:0<pos=380>(kernel " + router.kernel_version + ")")
-
-    ports = ports.sort("get_lan_ip")
-
-    count = 2
-
-    for port in ports
-        if not port.is_closed then
-            count = count + 1
-
-            choices.push(count + "." + g.const.tab + port.get_lan_ip + "<pos=280>:" + port.port_number + "<pos=380>(" + router.port_info(port) + ")")
-        end if
-    end for
-
-    choices.push((count + 1) + "." + g.const.tab + "Return to main menu")
-
-    return choices
 end function
 
 
 /////////////////////////////////////////////////////////////////
 //                 Format and print the output.                //
 /////////////////////////////////////////////////////////////////
-getOutput = function(data, index)
+
+getOutput = function(data)
     retVal = ""
 
     // Network Info
@@ -77,27 +22,26 @@ getOutput = function(data, index)
     output = g.const.indent + g.s4("[" + g.b3("public ip: " + data.info.public) + "]<pos=500>[" + g.b3("kernel: " + data.info.kernel) + "]") + g.const.ni
     output = output + g.s4("[" + g.b3("domain: " + data.info.domain) + "]<pos=500>[" + g.b3("admin: " + data.info.admin) + "]") + g.const.ni
     output = output + g.s4("[" + g.b3("email: " + data.info.email) + "]<pos=500>[" + g.b3("phone: " + data.info.phone) + "]") + g.const.ni
+    output = output + g.s4("[" + g.b3("essid: " + data.info.essid) + "]<pos=500>[" + g.b3("bssid: " + data.info.bssid) + "]") + g.const.ni
     output = output + g.const.nl
 
     retVal = retVal + output
 
     // Firewall Info
 
-    output = ""
-
-    retVal = retVal + g.const.nl + g.func.heading("Firewall Rules") + g.const.nl
-
     if data.firewall then
+        output = ""
+
+        retVal = retVal + g.const.nl + g.func.heading("Firewall Rules") + g.const.nl
+
         for rule in data.firewall
             output = output + g.const.indent + rule + g.const.nl
         end for
-    else
-        output = output + g.const.indent + g.const.tab + g.d1("<size=18>(No firewall rules)</size>")
+
+        output = output + g.const.nl*2
+
+        retVal = retVal + output
     end if
-
-    output = output + g.const.nl*2
-
-    retVal = retVal + output
 
     // Devices/Ports Info
 
@@ -107,20 +51,19 @@ getOutput = function(data, index)
 
     indices = data.devices.indexes
 
-    for idx in indices.sort
-        device = data.devices[idx]
+    deviceList = []
+
+    for item in data.devices
+        deviceList.push(item.value)
+    end for
+
+    deviceList.sort("sortKey").reverse
+
+    for device in deviceList
 
         output = output + g.const.indent
         
-        header = "<size=18>" + device.address
-        
-        if device.address == data.info.router.local_ip then
-            header = header + " (edge router)"
-        else if device.isRouter then
-            header = header + " (router)"
-        end if
-
-        header = header + "</size>"
+        header = "<size=16>" + device.address + "<pos=200>/</size>"
         
         if device.address == data.info.router.local_ip then
             output = output + g.o1(header) + g.const.nl
@@ -131,7 +74,7 @@ getOutput = function(data, index)
         if device.ports.len > 0 then
             for port in device.ports
                 if port.address == device.address then
-                    line = g.const.indent + " - " + port.number + "<pos=270>" + "[" + port.status + "]" + "<pos=500>" + port.service + g.const.nl
+                    line = g.const.indent + "<pos=200>| " + port.number + "<pos=350>" + "[" + port.status + "]" + "<pos=550>" + port.service + g.const.nl
 
                     if port.status == "open" then
                         output = output + g.g2(line)
@@ -143,30 +86,74 @@ getOutput = function(data, index)
                 end if
             end for
         else
-            output = output + g.const.indent + g.d1("  <size=18>(No ports found)</size>") + g.const.nl
+            output = output + g.const.indent + g.d1("<pos=200><size=14>(none)</size>") + g.const.nl
         end if
     end for
 
     retVal = retVal + output
 
-    return retVal + g.const.nl
+    return retVal
 end function
 
 
 /////////////////////////////////////////////////////////////////
 //                        Do the scan.                         //
 /////////////////////////////////////////////////////////////////
-doNmap = function(address)
+
+doNmap = function(ip)
+    deviceList = []
+
+    getDevices = function(router)
+        if router == null then return
+
+        ip = router.local_ip
+
+        if deviceList.indexOf(ip) == null then deviceList.push(ip)
+
+        devices = router.devices_lan_ip
+
+        for device in devices
+            if device != ip then
+                type = getType(device)
+
+                if type == "router" and deviceList.indexOf(device) == null then
+                    deviceList.push(device)
+                    getDevices(get_router(device))
+                else if type == "switch" and deviceList.indexOf(device) == null then
+                    deviceList.push(device)
+                    getDevices(get_switch(device))
+                else if type == "device" and deviceList.indexOf(device) == null then
+                    deviceList.push(device)
+                end if
+            end if
+        end for
+    end function
+
+    getType = function(ip)
+        if get_switch(ip) then return "switch"
+        if get_router(ip) then return "router"
+        return "device"
+    end function
+
+    router = get_router(ip)
+
+    if not router then
+        if is_lan_ip(ip) then
+            router = get_router
+        else
+            print g.error("Could not reach: " + ip)
+            return
+        end if
+    end if
+
+    getDevices(router)
+
     results = {}
-
-    router = null
-
-    if get_router(address) then router = get_router(address) else router = get_router
 
     // Whois Info
     results.info = {}
 
-    lines = whois(address).split(char(10))
+    lines = whois(router.public_ip).split(char(10))
 
     results.info.domain = lines[0].split(":")[1].trim
     results.info.admin = lines[1].split(":")[1].trim
@@ -174,6 +161,8 @@ doNmap = function(address)
     results.info.phone = lines[3].split(":")[1].trim
     results.info.public = router.public_ip
     results.info.kernel = router.kernel_version
+    results.info.bssid = router.bssid_name
+    results.info.essid = router.essid_name
     results.info.router = router
 
     // Firewall Info
@@ -184,64 +173,78 @@ doNmap = function(address)
 
     usedPorts = router.used_ports
 
-    tempDevices = router.devices_lan_ip
-
+    // There might be ports in used_ports that are forwarded to devices we haven't found yet
     for port in usedPorts
-        if not tempDevices.indexOf(port.get_lan_ip) isa number then
-            tempDevices.push(port.get_lan_ip)
-        end if
+        if deviceList.indexOf(port.get_lan_ip) == null then deviceList.push(port.get_lan_ip)
     end for
 
-    for device in tempDevices
-        info = {}
+    for device in deviceList
+        if devices.hasIndex(device) then continue
 
-        info.address = device
-        info.ports = []
-        info.isRouter = 0
+        deviceInfo = {
+            "address": device,
+            "ports": [],
+            "isRouter": 0,
+            "sortKey": 0
+        }
 
         devicePorts = router.device_ports(device)
 
-        if devicePorts == null then devicePorts = []
-
-        for usedPort in usedPorts
-            if usedPort.get_lan_ip == device and devicePorts.indexOf(usedPort) == null then
-                devicePorts.push(usedPort)
-            end if
-        end for
-
-        for port in devicePorts
-            portInfo = {}
-            portInfo.number = port.port_number
-
-            used = 0
-
-            for p in router.used_ports
-                if p.port_number == port.port_number then used = 1
-            end for
-
-            if port.is_closed then
-                portInfo.status = "closed"
-            else
-                if used then portInfo.status = "open" else portInfo.status = "internal"
-            end if
-
-            portInfo.service = router.port_info(port)
-            portInfo.address = port.get_lan_ip
-
-            if port.port_number == 8080 then info.isRouter = 1
-
-            info.ports.push(portInfo)
-        end for
-
-        if info.isRouter then
-            if device == router.local_ip then
-                info.ports.push({"number":0,"status":"open","service":"kernel " + router.kernel_version,"address":device})
-            end if
+        if typeof(devicePorts) == "string" or devicePorts == null then
+            print g.error(devicePorts)
+            devicePorts = []
         end if
 
-        info.ports.sort("number")
+        // There might be ports in used_ports that are forwarded to this device that aren't included in device_ports
+        for port in usedPorts
+            if port.get_lan_ip == device then
+                addPort = 1
+                for devicePort in devicePorts
+                    if devicePort.get_lan_ip == device and devicePort.port_number == port.port_number then addPort = 0
+                end for
+                if addPort then
+                    devicePorts.push(port)
+                end if
+            end if
+        end for
 
-        devices[device] = info
+        if typeof(devicePorts) == "list" then
+            for port in devicePorts
+                portInfo = {
+                    "number": port.port_number,
+                    "address": port.get_lan_ip,
+                    "service": router.port_info(port)
+                }
+
+                if port.is_closed then
+                    portInfo.status = "closed"
+                    deviceInfo.sortKey = deviceInfo.sortKey + 1
+                else
+                    portInfo.status = "internal"
+                    deviceInfo.sortKey = deviceInfo.sortKey + 10
+                end if
+                
+                for p in usedPorts
+                    if p.port_number == port.port_number and p.get_lan_ip == device and not p.is_closed then
+                        portInfo.status = "open"
+                        deviceInfo.sortKey = deviceInfo.sortKey + 100
+                    end if
+                end for
+
+                if port.port_number == 8080 then deviceInfo.isRouter = 1
+
+                deviceInfo.ports.push(portInfo)
+            end for
+        end if
+
+        if device == router.local_ip then
+            deviceInfo.ports.push({"number":0,"status":"open","service":"kernel " + router.kernel_version,"address":device})
+            deviceInfo.sortKey = deviceInfo.sortKey + 1000
+        end if
+
+        deviceInfo.ports.sort("number")
+
+        devices[device] = deviceInfo
     end for
 
     results.devices = devices
@@ -249,76 +252,32 @@ doNmap = function(address)
     return results
 end function
 
-doChoices = function(data)
-    index = 0
-
-    choices = getChoices(data)
-
-    while true
-        clear_screen
-
-        output = getOutput(data)
-
-        output = output + g.const.nl + g.func.heading("Choose how to proceed:")
-
-        print(output)
-
-        printChoices(index, choices)
-
-        input = user_input(char(0),0,1)
-
-        if input == "DownArrow" or input == "2" or input == "s" then
-            if index < choices.len-1 then index = index + 1
-        else if input == "UpArrow" or input == "8" or input == "w" then
-            if index > 0 then index = index - 1
-        else if input == "Escape" then
-            return
-        else if input == " " or input.len == 0 then
-            break
-        end if
-    end while
-
-    return choices[index]
-end function
-
 
 ///////////////////////////////////////////////////////////////////////////
 //    Main entry point. Handle arguments, call out to other functions    //
 ///////////////////////////////////////////////////////////////////////////
-nmap = function(args)
-    if not args or (args.len == 0 or (args.len == 1 and (args[0] == "-s" or args[0] == "show"))) then
+
+nmap = function(args = null)
+    if not args or args == [] then
         if not self.data.hasIndex("saved") then
             print(g.error("No saved data to display."))
         else
-            doChoices
+            print getOutput(self.data.saved)
         end if
     else if args.len > 1 or args[0] == "-h" or args[0] == "help" then
         self.help
     else if args.len == 1 and is_valid_ip(args[0]) then
-        results = doNmap(args[0])
+        if get_shell.host_computer.public_ip != g.stack[g.context.index].public then
+            src = "g = get_custom_object" + char(10) + "g.tools.nmap.exec([""" + args[0] + """])"
+    
+            g.func.run(src)
+        else
+            results = doNmap(args[0])
 
-        if results != null then
-            self.data.saved = results
-
-            choice = doChoices(results)
-
-            if choice.indexOf("computer") != null then
-                input = user_input(g.const.indent + g.l2("Enter the LAN IP address of the target computer: "))
-
-                if not is_valid_ip(input) or not is_lan_ip(input) then
-                    print g.const.indent + g.error("Invalid IP address: " + input)
-                    return
-                end if
-                g.command = "hack " + args[0] + " " + input
-                return
-            else if choice.indexOf("Return") != null then
-                g.util.clear.exec
-                return
-            else
-                temp = choice.split(":")[1].split("<")[0]
-                
-                g.command = "hack " + args[0] + " " + temp
-                return
+            if results != null then
+                g.tools.nmap.data.saved = results
+    
+                print getOutput(results)
             end if
         end if
     else
@@ -328,15 +287,10 @@ nmap = function(args)
     return
 end function
 
-// Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.
-// You can leave it as src code (name it with a .src file extension), otherwise hex will attempt to load it as a binary file that has been built with the
-// 'allow import' flag set.
-
 g.tools.nmap = {
-    "name": "nmap",         // Unformatted tool name text
-    "text": g.s2("nmap"),   // Tool name text with any formatting you want to use when its name is displayed
-    "sortOrder": 0,       // This number will be used to sort this tool in the menu.  Quit is the last built-in item, with sort order 999.
-    "exec": @nmap,          // A function reference to the toolName function above.
-    "help": @nmapHelp,      // A function reference to the help function above.
-    "data": {}              // This map can be used to store any data or additional functions used by the tool that might need to be accessed outside of the tool itself.
+    "name": "nmap",
+    "shortDescription": "Displays port and whois information.",
+    "exec": @nmap,
+    "help": @nmapHelp,
+    "data": {}
 }

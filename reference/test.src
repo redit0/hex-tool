@@ -1,0 +1,40 @@
+if params.len != 4 or params[0] == "-h" or params[0] == "--help" then 
+    exit("<b>Usage: " + program_path.split("/")[-1] + " [memory] [vulnerability] [ip_address] [lib]</b>")
+end if
+ 
+metaxploit = include_lib("/lib/metaxploit.so")
+if not metaxploit then
+    metaxploit = include_lib(current_path + "/metaxploit.so")
+end if
+if not metaxploit then exit("Error: Can't find metaxploit library in the /lib path or the current folder")
+ 
+memory = params[0]
+vulnerability = params[1]
+ip_address = params[2]
+lib = params[3]
+ 
+metaLib = metaxploit.load("/lib/"+lib)
+ 
+result = metaLib.overflow(memory, vulnerability, ip_address)
+if not result then exit("Program ended unexpectedly")
+ 
+if typeof(result) == "computer" then
+    print("Successfully obtained computer object for target at " + ip_address)
+	homeDir = result.File("/home")
+    if homeDir and homeDir.get_folders then
+        userFolders = homeDir.get_folders()
+        for userFolder in userFolders
+            mailFilePath = userFolder.path + "/Config/Mail.txt"
+            mailFile = result.File(mailFilePath)
+            if mailFile != null and mailFile.has_permission("r") then
+                print("Mail.txt content for user " + userFolder.name + ":\n" + mailFile.get_content())
+            else
+                print("Mail.txt not found or inaccessible for user: " + userFolder.name)
+            end if
+        end for
+    else
+        print("Unable to access /home directory or list user folders.")
+    end if
+else
+    exit("Error: expected computer object, obtained: " + typeof(result))
+end if

@@ -24,14 +24,14 @@ hack = function(args)
     // @return {string} - The formatted output string.
     output = function(results, public)
         if results == null or results == [] then
-            print g.const.indent + g.r1(g.const.indent + "No results found.")
-            return
+            return g.const.indent + g.r1(g.const.indent + "No results found.")
         end if
 
-        output = g.const.nl + g.const.indent + g.s2("<size=115%><voffset=0.5em>Object <pos=350>Lan Address <pos=550>User</voffset></size>") + g.const.nl
+        output = g.const.nl + g.const.indent + g.s2("<size=105%><voffset=0.5em>Memory<pos=175>Value<pos=570>Result<pos=770>User</voffset></size>") + g.const.nl
 
         for result in results
-            line = g.const.indent
+            line = g.const.indent + "<size=80%>"
+            line = line + g.l1(result.memory) + "<pos=175>" + g.l1(result.value) + "<pos=570>"
             
             if result.type == "shell" then
                 line = line + g.g1(result.type) + " "
@@ -43,7 +43,7 @@ hack = function(args)
                 line = line + g.l2(result.type) + " "
             end if
 
-            line = line + "<pos=350>" + g.l2(result.address) + " <pos=550>" + result.user + g.const.nl
+            line = line + "<pos=770>" + result.user + "</size>" + g.const.nl
 
             output = output + line
         end for
@@ -54,7 +54,8 @@ hack = function(args)
     // Retrieves objects from memory addresses in the provided meta libraries.
     // @param {list} metalibs - List of meta libraries to scan.
     // @return {list} - List of results from the overflow.
-    getObjects = function(metalibs, public)
+    getObjects = function(metalibs, public, extra = "")
+        if typeof(@extra) != "string" then extra = ""
         results = []
 
         for obj in metalibs
@@ -78,65 +79,94 @@ hack = function(args)
                 for value in values
                     savedResult = g.database[metalib.lib_name][metalib.version][mem][value]
 
-                    temp = metalib.overflow(mem, value, "hex")
-
-                    if not temp then continue
+                    print
+                    temp = metalib.overflow(mem, value, extra)
 
                     result = {}
                     result.obj = temp
+                    result.memory = mem
+                    result.value = value
 
-                    type = typeof(temp)
-                    
+                    if temp == null then
+                        type = "null"
+                    else
+                        type = typeof(temp)
+                    end if
+
+                    // error: can't change password for user Livesli. Passwords must be alphanumeric.
+                    pattern = "user ([a-zA-Z0-9]+)"
+
                     if type == "number" then
-                        input = user_input("")
-                        pattern = "user ([a-zA-Z0-9]+) modified"
-                        if input.is_match(pattern) then
-                            result.type = "password reset to 'hex'"
-                            result.address = address
-
-                            match = input.matches(pattern)
-                            user = match[match.indexes[0]].replace("user ", "").replace(" modified", "")
-
-                            if user == "root" then
-                                result.user = g.g1(user)
-                            else if user == "guest" then
-                                result.user = g.l3(user)
-                            else
-                                result.user = g.b2(user)
-                            end if
-                        else
-                            result.type = "firewall rules disabled"
-                            result.address = address
+                        if extra == "" and result.obj == 1 then
+                            result.type = "disabled firewall"
                             result.user = g.d1("N/A")
+                        else if extra == "" and result.obj == 0 then
+                            result.type = "password reset"
+
+                            input = user_input("")
+                            if input.is_match(pattern) then
+                                m = input.matches(pattern)
+                                user = m[m.indexes[0]].split(" ")[1]
+                                result.user = user.getUser
+                            end if
+                        else if extra != "" then
+                            result.type = "password or firewall"
+
+                            input = user_input("")
+                            if input.is_match(pattern) then
+                                m = input.matches(pattern)
+                                user = m[m.indexes[0]].split(" ")[1]
+                                result.user = user.getUser
+                            end if
                         end if
+                        result.address = address
                     else if type == "shell" or type == "computer" then
                         result.type = type
                         result.address = temp.getLocal
                         result.user = temp.getUser(1)
 
-                        item = temp.createContext
+                        item = temp.createContext("overflow")
                         g.stack.add(item)
                     else if type == "file" then
                         result.type = type
                         result.address = address
                         result.user = temp.getUser(1)
 
-                        item = temp.createContext
+                        item = temp.createContext("overflow")
                         item.local = address
                         item.public = public
                         g.stack.add(item)
+                    else if type == "null" then
+                        result.type = "null"
+                        result.user = g.d1("N/A")
+                        result.address = ""
                     end if
+
+                    if type != "null" then
+                        print
+                        cont = g.const.indent + "<size=110%><voffset=0.5em>" + result.type
+
+                        if result.user != g.d1("N/A") then
+                            cont = cont + " (User: " + result.user + ")"
+                        end if
+                        
+                        cont = cont + "</voffset></size>"
+
+                        print g.s3(cont)
+                    end if
+
+                    print g.const.indent + g.const.lb
 
                     results.push(result)
 
                     if savedResult == "" then
-                        if type == "shell" or type == "computer" or type == "file" then
-                            user = temp.getUser(0)
+                        if type == "shell" or type == "computer" or type == "file" or result.type == "password reset" then
+                            user = result.user
 
                             if user == "root" or user == "guest" then
                                 g.database[metalib.lib_name][metalib.version][mem][value] = type + " " + user
                             else if user != null then
-                                g.database[metalib.lib_name][metalib.version][mem][value] = type + " user"
+                                g.database[metalib.lib_name][metalib.version][mem][value] = type + " user (" + user + ")"
                             end if
                         else
                             g.database[metalib.lib_name][metalib.version][mem][value] = type
@@ -178,27 +208,26 @@ hack = function(args)
 
                     if savedResult == "" or typeof(savedResult.indexOf("computer")) == "number" then    
                         temp = metalib.overflow(mem, value, address)
-                        
                         if not temp then continue
 
-                        if typeof(temp) == "computer" then
+                        type = typeof(temp)
+
+                        if type == "computer" then
                             user = temp.getUser(0)
 
                             if user == "root" then
                                 g.database[metalib.lib_name][metalib.version][mem][value] = "computer root"
-                                return temp
+                                if temp.local_ip == address then return temp
                             else if user == "guest" then
                                 g.database[metalib.lib_name][metalib.version][mem][value] = "computer guest"
-                                if temp == null then result = temp
+                                if result == null and temp.local_ip == address then result = temp
                             else if user != null then
                                 g.database[metalib.lib_name][metalib.version][mem][value] = "computer user"
-                                result = temp
+                                if temp.local_ip == address then result = temp
                             else
                                 print g.const.indent + g.error("Could not determine user for object: " + typeof(temp))
                             end if
-                        else
-                            type = typeof(temp)
-                            
+                        else                            
                             if type == "shell" or type == "file" then
                                 user = temp.getUser(0)
 
@@ -226,15 +255,24 @@ hack = function(args)
     // @return {list} - List containing the loaded meta library or an empty list if not found.
     getLocalLib = function(libname)
         context = g.stack[g.context.index]
+
+        if context.type != "shell" then
+            print(g.const.indent + g.y1("Context must be a shell to use this tool on a remote target's local libraries."))
+        end if
+
+        if not context.metax then
+            print(g.error("Context does not contain a metax library (Hint: Use 'jump')."))
+            return []
+        end if
         metax = context.metax
         metaLib = metax.load("/lib/" + libname)
         if metaLib then
             result = {}
             result.metalib = metaLib
-            result.address = context.comp.getLocal
+            result.address = context.computer.getLocal
             return [result]
         else
-            print(g.const.indent + g.error("Could not find library: " + libname))
+            print(g.error("Could not find library: " + libname))
             return []
         end if
     end function
@@ -244,7 +282,7 @@ hack = function(args)
     getAllLocalLibs = function()
         context = g.stack[g.context.index]
         metaLibs = []
-        libsDir = context.comp.File("/lib")
+        libsDir = context.file.getFolder("/lib")
         libs = libsDir.get_files
         for file in libs
             if file.name[-3:] == ".so" then
@@ -263,8 +301,29 @@ hack = function(args)
     // @param {string} address - The address to use for the overflow.
     // @return {list} - List containing the dumped meta library or an empty list if not found.
     getRemoteLib = function(ip, port, address)
+        if g.hasIndex("proxy") then
+            context = g.stack[g.proxy]
+        else
+            context = g.stack[g.context.index]
+        end if
+
+        if context.type != "shell" then
+            print(g.const.indent + g.y1("Context must be a shell to use this tool on a remote target's libraries."))
+        end if
+
+        if not context.metax then
+            print(g.error("Context does not contain a metax library (Hint: Use 'jump')."))
+            return []
+        end if
+
         metax = context.metax
         session = metax.net_use(ip, port)
+
+        if not session then
+            print(g.error("Could not connect to " + ip + ":" + port))
+            return []
+        end if
+
         metaLib = session.dump_lib
         if metaLib then
             result = {}
@@ -272,7 +331,7 @@ hack = function(args)
             result.address = address
             return [result]
         else
-            print(g.const.indent + g.error("Could not find service at " + ip + ":" + port))
+            print(g.error("Could not find service at " + ip + ":" + port))
             return []
         end if
     end function
@@ -281,7 +340,7 @@ hack = function(args)
     // @param {string} ip - The IP address to scan.
     // @return {list} - List of all remote meta libraries.
     getAllRemoteLibs = function(ip)
-        router = get_router(ip)
+        router = g.func.getRouter(ip)
         ports = []
         if is_lan_ip(ip) then
             for port in router.device_ports(ip)
@@ -328,17 +387,19 @@ hack = function(args)
             self.help
             return
         else if args[0] == "-l" or args[0] == "local" then
-            if args.len == 2 then
+            if args.len > 1 then
+                extra = ""
+                if args.len > 2 then
+                    extra = args[2]
+                end if
                 if args[1][-3:] == ".so" then
                     g.tools.scan.data.silent = 1
                     g.tools.scan.exec([args[1]])
                     g.tools.scan.data.silent = 0
 
-                    print g.l3("<size=120%>The output will pause after a possible password reset.  Press enter to resume script execution.</size>")
-
                     metaLibs = getLocalLib(args[1])
 
-                    results = getObjects(metaLibs, context.public)
+                    results = getObjects(metaLibs, context.public, extra)
 
                     output = output(results)
 
@@ -358,13 +419,12 @@ hack = function(args)
 
                         result = getBounce(metaLibs, args[1])
 
-                        item = result.createContext
-                        g.stack.add(item)
-
                         if result then
-                            g.util.clear.exec
+                            item = result.createContext("bounce")
+                            g.stack.add(item)
+
+                            //g.util.clear.exec
                             print g.const.nl + g.const.indent + g.g1("Found computer object for " + args[1] + " with access level " + result.getUser(0))
-                            g.stack.push(result)
                             return
                         else
                             g.util.clear.exec
@@ -390,40 +450,42 @@ hack = function(args)
                     g.tools.scan.data.silent = 0
                 end for
 
-                print g.l3("<size=120%>The output will pause after a possible password reset.  Press enter to resume script execution.</size>")
+                extra = ""
+                if args.len > 2 then
+                    extra = args[2]
+                end if
 
-                results = getObjects(metaLibs, context.public)
+                results = getObjects(metaLibs, context.public, extra)
 
                 output = output(results)
 
-                g.util.clear.exec
+                //g.util.clear.exec
                 print g.func.getPrompt
                 print(output)
                 return
             end if
         else if is_valid_ip(args[0]) then
-            if args.len == 2 then
+            if args.len > 1 then
                 if is_valid_ip(args[1]) then
                     if is_lan_ip(args[1]) then
                         g.tools.scan.data.silent = 1
                         g.tools.scan.exec([args[0]])
                         g.tools.scan.data.silent = 0
 
-                        metaLibs = getAllRemoteLibs(args[0])
+                        metaLibs = getRemoteLib(args[0], 0, args[1])
 
                         result = getBounce(metaLibs, args[1])
 
-                        item = result.createContext
-                        g.stack.add(item)
-
                         if result then
+                            item = result.createContext("bounce")
+                            g.stack.add(item)
+
                             g.util.clear.exec
                             print g.const.nl + g.const.indent + g.g1("Found computer object for " + args[1] + " with access level " + result.getUser(0))
-                            g.stack.push(result)
                             return
                         else
-                            g.util.clear.exec
-                            print g.const.nl + g.const.indent + g.r1(g.const.indent + "No computer object found for " + args[1])
+                            //g.util.clear.exec
+                            print g.const.nl + g.error("No computer object found for " + args[1])
                             return
                         end if
                     else
@@ -436,7 +498,7 @@ hack = function(args)
                     g.tools.scan.exec([args[0], args[1]])
                     g.tools.scan.data.silent = 0
 
-                    router = get_router(args[0])
+                    router = g.func.getRouter(args[0])
 
                     if is_lan_ip(args[0]) then
                         ports = router.device_ports(args[0])
@@ -454,9 +516,12 @@ hack = function(args)
 
                     metaLibs = getRemoteLib(args[0], args[1].to_int, address)
 
-                    print g.l3("<size=120%>The output will pause after a possible password reset.  Press enter to resume script execution.</size>")
+                    extra = ""
+                    if args.len > 2 then
+                        extra = args[2]
+                    end if
 
-                    results = getObjects(metaLibs, router.public_ip)
+                    results = getObjects(metaLibs, router.public_ip, extra)
 
                     output = output(results)
 
@@ -476,19 +541,27 @@ hack = function(args)
 
                 metaLibs = getAllRemoteLibs(args[0])
 
-                print g.l3("<size=120%>The output will pause after a possible password reset.  Press enter to resume script execution.</size>")
+                router = g.func.getRouter(args[0])
 
-                router = get_router(args[0])
+                extra = ""
+                if args.len > 2 then
+                    extra = args[2]
+                end if
 
-                results = getObjects(metaLibs, router.public_ip)
+                results = getObjects(metaLibs, router.public_ip, extra)
 
                 output = output(results)
 
-                g.util.clear.exec
+                //g.util.clear.exec
                 print g.func.getPrompt
                 print(output)
                 return
             end if
+        else if args[0] == "random" then
+            ran = g.func.getRandomIp
+
+            g.command = "hack " + ran
+            return
         else
             self.help
             return
@@ -502,8 +575,7 @@ end function
 // Define the hack tool with its properties and functions.
 g.tools.hack = {
     "name": "hack",
-    "text": g.s2("hack"),
-    "sortOrder": 500,
+    "shortDescription": "Exploits vulnerabilities in libraries.",
     "exec": @hack,
     "help": @hackHelp,
     "data": {}

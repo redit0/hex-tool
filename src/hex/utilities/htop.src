@@ -1,0 +1,136 @@
+htopHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Runs an htop process which turns HEX into a process and resource utilization monitor.  Exit with ctrl-c.") + g.const.nl
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+htop = function(args = null)
+    if args != null and args.len > 0 then
+        self.help
+        return
+    end if
+
+    context = g.stack[g.context.index]
+
+    if ["computer", "shell"].indexOf(context.type) == null then
+        print g.error("Incorrect context type (Requires computer or shell): " + context.type)
+        return
+    end if
+
+    while true
+        hostname = context.computer.get_name
+        lines = context.computer.show_procs.split("\n")[1:]
+        procs = []
+        users = []
+        memory = 0
+        cpu = 0
+        admin = 0
+
+        for line in lines
+            parts = line.split(" ")
+            process = {"user":parts[0], "pid":parts[1], "cpu":parts[2][:-1].val, "memory":parts[3][:-1].val, "command":parts[4]}
+            procs.push(process)
+        end for
+
+        for proc in procs
+            if proc.user == "root" and proc.command == "dsession" then admin = 1
+
+            if (proc.command == "dsession" or proc.command == "Xorg") and users.indexOf(proc.user) == null then
+                users.push(proc.user)
+            end if
+
+            memory = memory + proc.memory
+            cpu = cpu + proc.cpu
+        end for
+
+        if cpu > 95 then
+            cpu_color = g.colors.r1
+        else if cpu > 90 then
+            cpu_color = g.colors.o1
+        else if cpu > 80 then
+            cpu_color = g.colors.y1
+        else
+            cpu_color = g.colors.s3
+        end if
+        cpu_squares = ceil(20*(cpu/100))
+        cpu_blanks = 20-cpu_squares
+        cpu_bar = "<color=" + cpu_color + ">" + "#"*cpu_squares + "</color><color=#ffffff00>" + "#"*cpu_blanks + "</color>"
+
+        if memory > 94 then
+            memory_color = g.colors.r1
+        else if memory > 89 then
+            memory_color = g.colors.o1
+        else if memory > 79 then
+            memory_color = g.colors.y1
+        else
+            memory_color = g.colors.s3
+        end if
+
+        memory_squares = ceil(20*(memory/100))
+        memory_blanks = 20-memory_squares
+        memory_bar = "<color=" + memory_color + ">" + "#"*memory_squares + "</color><color=#ffffff00>" + "#"*memory_blanks + "</color>"
+
+        output = g.g2("<size=120%>Monitoring: " + context.computer.get_name + " [" + context.public + "] [" + context.local + "]</size>") + g.const.nl*2
+        output = output + "Running Processes: " + procs.len + g.const.nl
+        output = output + "Users Online: " + users.len + g.const.nl
+        output = output + "CPU Utilization: [" + cpu_bar + "]==[ <color=" + cpu_color + ">" + cpu + "%</color> ]" + g.const.nl
+        output = output + "RAM Utilization: [" + memory_bar + "]==[ <color=" + memory_color + ">" + memory + "%</color> ]" + g.const.nl*2
+
+        if admin then
+            output = output + "<size=140%><mark=" + g.colors.r1 + "99>" + " "*12 + "<b>ADMIN ONLINE</b>" + " "*12 + "</mark></size><color=#ffffff00>|</color>" + g.const.nl*2
+        end if
+
+        procList = "<voffset=0.5em>" + g.d1("USER") + "<pos=130>" + g.d1("PID") + "<pos=210>" + g.d1("CPU") + "<pos=290>" + g.d1("RAM") + "<pos=370>" + g.d1("COMMAND") + "</voffset>" + g.const.nl
+        
+        for proc in procs
+            if proc.user == "root" then
+                procList = procList + g.r1("root")
+            else if proc.user == "guest" then
+                procList = procList + g.d1("guest")
+            else
+                procList = procList + g.s3(proc.user)
+            end if
+
+            procList = procList + "<pos=130>" + g.g2(proc.pid) + "<pos=210>"
+
+            if proc.cpu > 95 then
+                procList = procList + g.r1(proc.cpu + "%")
+            else if proc.cpu > 90 then
+                procList = procList + g.o1(proc.cpu + "%")
+            else if proc.cpu > 80 then
+                procList = procList + g.y1(proc.cpu + "%")
+            else
+                procList = procList + g.s3(proc.cpu + "%")
+            end if
+
+            procList = procList + "<pos=290>"
+
+            if proc.memory > 94 then
+                procList = procList + g.r1(proc.memory + "%")
+            else if proc.memory > 89 then
+                procList = procList + g.o1(proc.memory + "%")
+            else if proc.memory > 79 then
+                procList = procList + g.y1(proc.memory + "%")
+            else
+                procList = procList + g.s3(proc.memory + "%")
+            end if
+
+            procList = procList + "<pos=370>" + g.b1(proc.command) + g.const.nl
+        end for
+
+        output = output + procList
+
+        print(output, 1)
+        wait 0.5
+    end while
+end function
+
+g.util.htop = {
+    "name": "htop",
+    "shortDescription": "Turns HEX into an HTOP daemon",
+    "exec": @htop,
+    "help": @htopHelp,
+    "data": {}
+}

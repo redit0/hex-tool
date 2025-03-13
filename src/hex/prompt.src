@@ -7,7 +7,7 @@ g.func.getPrompt = function()
 
 	nonPrinting = 398
 
-	prompt = "<pos=40>————————" + u + "——————" + ips + "——————" + t
+	prompt = "<pos=40>——" + u + "———" + ips + "———" + t
 
 	promptLength = prompt.len - nonPrinting
 
@@ -16,7 +16,7 @@ g.func.getPrompt = function()
 	prompt = prompt + "—"*extraChars
 	
 	prompt = prompt + "<voffset=-0.5em><pos=35>|<voffset=-1.5em><space=-0.5em><pos=35>|<voffset=-2em><pos=40>——"
-	prompt = prompt + "[" + g.l1(g.stack[idx].path) + "]—</b><voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
+	prompt = prompt + g.s3("[") + g.l1(g.stack[idx].currentPath) + g.s3("]") + "—<voffset=-2.15em><size=175%>" + char(187) + "<size=100%><voffset=-2em> "
 
 	prompt = g.const.nl + g.s2(prompt)
 

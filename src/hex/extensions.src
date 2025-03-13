@@ -1,210 +1,268 @@
-// Retrieves the user based on file permissions for different object types.
-// @param {number} color - Whether to return the username in color (1) or not (0).
-// @return {string} - The username.
-map.getUser = function(color = 0)
-    type = typeof(self)
+g.registerExtensions = function
+    // Retrieves the user based on file permissions for different object types.
+    // @param {number} color - Whether to return the username in color (1) or not (0).
+    // @return {string} - The username.
+    map.getUser = function(color = 0)
+        type = typeof(self)
 
-    if type == "shell" then
-        return g.func.getUser(self.host_computer.File("/"), color)
-    end if
+        if type == "shell" then
+            return g.func.getUser(self.host_computer.File("/"), color)
+        end if
 
-    if type == "computer" then
-        return g.func.getUser(self.File("/"), color)
-    end if
+        if type == "computer" then
+            return g.func.getUser(self.File("/"), color)
+        end if
 
-    if type == "file" then
-        return g.func.getUser(self, color)
-    end if
+        if type == "file" then
+            return g.func.getUser(self, color)
+        end if
 
-    if self isa g.Target then
-        return g.func.getUser(self.file, color)
-    end if
+        if self isa g.Target then
+            return g.func.getUser(self.file, color)
+        end if
 
-    print(g.error("Invalid object type: " + type + g.const.ni))
+        print(g.error("Invalid object type: " + type + g.const.ni))
 
-    return g.r1("null")
-end function
+        return g.r1("null")
+    end function
 
-// Retrieves the guest folder in a system from a file object.
-// @return {folder|null} - The guest folder or null if not found.
-map.getGuestFolder = function
-    if typeof(self) != "file" then
-        print(g.error("Invalid type: " + typeof(self)))
-        return null
-    end if
+    string.getUser = function
+        if self == "root" then return g.r1(self)
+        if self == "guest" then return g.l3(self)
+        return g.b2(self)
+    end function
 
-    file = self.getRootFolder
-
-    for folder in file.get_folders
-        if folder.name == "home" then
-            for userFolder in folder.get_folders
-                if userFolder.name == "guest" then return userFolder
-            end for
+    // Retrieves the guest folder in a system from a file object.
+    // @return {folder|null} - The guest folder or null if not found.
+    map.getGuestFolder = function
+        if typeof(self) != "file" then
+            print(g.error("Invalid type: " + typeof(self)))
             return null
         end if
-    end for
-end function
 
-// Retrieves the root folder for a file object.
-// @return {folder} - The root folder.
-map.getRootFolder = function
-    if typeof(self) != "file" then
-        print(g.error("Invalid type: " + typeof(self)))
-        return null
-    end if
+        file = self.getRootFolder
 
-    file = self
-
-    while file.path != "/"
-        file = file.parent
-    end while
-    
-    return file
-end function
-
-// Retrieves a folder by path for a file object.
-// @param {string} path - The path to search for.
-// @return {folder|null} - The found folder or null if not found.
-map.getFolder = function(path)
-    if typeof(self) != "file" then
-        print(g.error("Invalid type: " + typeof(self)))
-        return null
-    end if
-
-    file = self.getRootFolder
-
-    return g.func.findFolder(file, path)
-end function
-
-// Retrieves the hostname for different object types.
-// @param {number} color - Whether to return the hostname in color (1) or not (0).
-// @return {string} - The hostname.
-map.getHostname = function(color = 0)
-    type = typeof(self)
-
-    if type == "shell" then
-        if color then return g.l1(self.host_computer.get_name) else return self.host_computer.get_name
-    end if
-
-    if type == "computer" then
-        if color then return g.l1(self.get_name) else return self.get_name
-    end if
-
-    if self isa g.Target then
-        if self.type == "shell" or self.type == "computer" then
-            if color then return g.l1(self.computer.get_name) else return self.computer.get_name
-        else
-            if color then return g.l2("unknown") else return "unknown"
-        end if
-    end if
-
-    if color then return g.l2("unknown") else return "unknown"
-end function
-
-// Retrieves the local IP address for different object types.
-// @param {number} color - Whether to return the IP address in color (1) or not (0).
-// @return {string} - The local IP address.
-map.getLocal = function(color = 0)
-    type = typeof(self)
-
-    address = "unknown"
-
-    if type == "shell" then
-        address = self.host_computer.local_ip
-    end if
-
-    if type == "computer" then
-        address = self.local_ip
-    end if
-
-    if self isa g.Target then
-        address = self.local
-    end if
-
-    if color then return g.b3(address) else return address
-end function
-
-// Retrieves the public IP address for different object types.
-// @param {number} color - Whether to return the IP address in color (1) or not (0).
-// @return {string} - The public IP address.
-map.getPublic = function(color = 0)
-    type = typeof(self)
-
-    address = "unknown"
-
-    if type == "shell" then
-        address = self.host_computer.public_ip
-    end if
-
-    if type == "computer" then
-        address = self.public_ip
-    end if
-
-    if self isa g.Target then
-        address = self.public
-    end if
-
-    if color then return g.b3(address) else return address
-end function
-
-// Retrieves the type of the object (shell, computer, file).
-// @param {number} color - Whether to return the type in color (1) or not (0).
-// @return {string} - The type of the object.
-map.getType = function(color = 0)
-    isTarget = 0
-
-    if self isa g.Target then
-        type = self.type
-        isTarget = 1
-    else
-        type = typeof(self)
-    end if
-
-    if type == "shell" then
-        if not isTarget then
-            procs = self.host_computer.show_procs.split(char(10))
-        else
-            procs = self.computer.show_procs.split(char(10))
-        end if
-
-        for proc in procs
-            name = proc.split(" ")[4]
-
-            if name == "Xorg" then
-                if color then return g.g2("home") else return "home"
+        for folder in file.get_folders
+            if folder.name == "home" then
+                for userFolder in folder.get_folders
+                    if userFolder.name == "guest" then return userFolder
+                end for
+                return null
             end if
         end for
+    end function
 
-        if color then return g.s3(type) else return type
-    end if
+    // Retrieves the root folder for a file object.
+    // @return {folder} - The root folder.
+    map.getRootFolder = function
+        if typeof(self) != "file" then
+            print(g.error("Invalid type: " + typeof(self)))
+            return null
+        end if
 
-    if type == "computer" then
-        if color then return g.b1("computer") else return "computer"
-    end if
+        file = self
 
-    if type == "file" or (self isa g.Target and self.file != null) then
-        if color then return g.l1("file") else return "file"
-    end if
+        while file.path != "/"
+            file = file.parent
+        end while
+        
+        return file
+    end function
 
-    print(g.error("Invalid object type: " + type + g.const.ni))
+    // Retrieves a folder by path for a file object.
+    // @param {string} path - The path to search for.
+    // @return {folder|null} - The found folder or null if not found.
+    map.getFolder = function(path)
+        if typeof(self) != "file" then
+            print(g.error("Invalid type: " + typeof(self)))
+            return null
+        end if
 
-    return g.r1("null")
-end function
+        file = self.getRootFolder
 
-list.max = function
-    max = -2147483648
+        return g.func.findFolder(file, path)
+    end function
 
-    if not self isa list then
-        print(g.const.indent + g.error("Invalid object type: " + typeof(self)))
+    // Retrieves the hostname for different object types.
+    // @param {number} color - Whether to return the hostname in color (1) or not (0).
+    // @return {string} - The hostname.
+    map.getHostname = function(color = 0)
+        type = typeof(self)
+
+        if type == "shell" then
+            if color then return g.l1(self.host_computer.get_name) else return self.host_computer.get_name
+        end if
+
+        if type == "computer" then
+            if color then return g.l1(self.get_name) else return self.get_name
+        end if
+
+        if self isa g.Target then
+            if self.type == "shell" or self.type == "computer" then
+                if color then return g.l1(self.computer.get_name) else return self.computer.get_name
+            else
+                if color then return g.l2("unknown") else return "unknown"
+            end if
+        end if
+
+        if color then return g.l2("unknown") else return "unknown"
+    end function
+
+    // Retrieves the local IP address for different object types.
+    // @param {number} color - Whether to return the IP address in color (1) or not (0).
+    // @return {string} - The local IP address.
+    map.getLocal = function(color = 0)
+        type = typeof(self)
+
+        address = "unknown"
+
+        if type == "shell" then
+            address = self.host_computer.local_ip
+        end if
+
+        if type == "computer" then
+            address = self.local_ip
+        end if
+
+        if self isa g.Target then
+            address = self.local
+        end if
+
+        if color then return g.b3(address) else return address
+    end function
+
+    // Retrieves the public IP address for different object types.
+    // @param {number} color - Whether to return the IP address in color (1) or not (0).
+    // @return {string} - The public IP address.
+    map.getPublic = function(color = 0)
+        type = typeof(self)
+
+        address = "unknown"
+
+        if type == "shell" then
+            address = self.host_computer.public_ip
+        end if
+
+        if type == "computer" then
+            address = self.public_ip
+        end if
+
+        if self isa g.Target then
+            address = self.public
+        end if
+
+        if color then return g.b3(address) else return address
+    end function
+
+    // Retrieves the type of the object (shell, computer, file).
+    // @param {number} color - Whether to return the type in color (1) or not (0).
+    // @return {string} - The type of the object.
+    map.getType = function(color = 0)
+        isTarget = 0
+
+        if self isa g.Target then
+            type = self.type
+            isTarget = 1
+        else
+            type = typeof(self)
+        end if
+
+        if type == "shell" then
+            if not isTarget then
+                procs = self.host_computer.show_procs.split(char(10))
+            else
+                procs = self.computer.show_procs.split(char(10))
+            end if
+
+            for proc in procs
+                name = proc.split(" ")[4]
+
+                if name == "Xorg" then
+                    if color then return g.g2("home") else return "home"
+                end if
+            end for
+
+            if color then return g.s3(type) else return type
+        end if
+
+        if type == "computer" then
+            if color then return g.b1("computer") else return "computer"
+        end if
+
+        if type == "file" or (self isa g.Target and self.file != null) then
+            if color then return g.l1("file") else return "file"
+        end if
+
+        print(g.error("Invalid object type: " + type + g.const.ni))
+
+        return g.r1("null")
+    end function
+
+    list.max = function
+        max = -2147483648
+
+        if not self isa list then
+            print(g.const.indent + g.error("Invalid object type: " + typeof(self)))
+            return max
+        end if
+
+        for item in self
+            type = typeof(item)
+
+            if type == "number" and item > max then max = item
+            if type == "string" and item.to_int isa number and item.to_int > max then max = item.to_int
+        end for
+
         return max
-    end if
+    end function
 
-    for item in self
-        type = typeof(item)
+    map.createContext = function(source)
+        item = new g.Target
+        item.source = source
+        item.type = typeof(self)
 
-        if type == "number" and item > max then max = item
-        if type == "string" and item.to_int isa number and item.to_int > max then max = item.to_int
-    end for
+        if item.type == "shell" then
+            item.shell = self
+            item.computer = self.host_computer
+            item.file = self.host_computer.File("/")
+            item.public = self.host_computer.public_ip
+            item.local = self.host_computer.local_ip
+        else if item.type == "computer" then
+            item.computer = self
+            item.file = self.File("/")
+            item.public = self.public_ip
+            item.local = self.local_ip
+        else if item.type == "file" then
+            item.file = self
+        else
+            print(g.error("Invalid object type: " + item.type))
+            print(self)
+            return null
+        end if
 
-    return max
+        if source == "home" then
+            item.path = "/root"
+            temp = item.computer.File(item.path)
+
+            if not temp then
+                temp = item.computer.File(current_path)
+                item.path = current_path
+            end if
+
+            item.file = temp
+        else
+            folder = g.func.findWritableFolder(item.file)
+            if folder then
+                item.path = folder.path
+                item.file = folder
+            else
+                item.path = item.file.path
+            end if
+        end if
+
+        item.user = g.func.getUser(item.file)
+
+        item.currentPath = item.path
+        return item
+    end function
 end function

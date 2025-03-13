@@ -1,0 +1,242 @@
+decHelp = function(self)
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" {credentials or password}") + g.l2(" Searches file system for all passwd files.  Optionally add 'bank' or 'mail' as an argument to decipher those files instead, or 'all' to decipher all files.  Deciphers and lists any credentials it finds in them.  If an encrypted password (or a set of credentials in the format username:encrypted_passsword) is passed in, it deciphers that instead.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doDec = function(args = null)
+    context = g.stack[g.context.index]
+
+    decipherLine = function(line)
+        username = ""
+        if line.indexOf(":") != null then
+            username = line.split(":")[0]
+            encPass = line.split(":")[1]
+        else
+            encPass = line
+        end if
+
+        password = g.stack["0"].crypto.decipher(encPass)
+
+        return [username, password]
+    end function
+
+    findFiles = function(which)
+        if which == "all" then
+            fileNames = ["passwd","Mail.txt","Bank.txt"]
+        else if which == "mail" then
+            fileNames = ["Mail.txt"]
+        else if which == "bank" then
+            fileNames = ["Bank.txt"]
+        else
+            fileNames = ["passwd"]
+        end if
+
+        root = context.file.getRootFolder
+
+        files = []
+
+        for name in fileNames
+            tempFiles = g.func.findFiles(root, name)
+
+            for temp in tempFiles
+                if not temp.is_binary and temp.has_permission("r") then files.push(temp)
+            end for
+        end for
+
+        return files
+    end function
+
+    decipherFiles = function(files)
+        results = {}
+        homePattern = "home\/[a-zA-Z0-9]+\/"
+        rootPattern = "root\/Config\/"
+
+        for file in files
+            print g.const.indent + "Found: " + file.path
+            if file.path == "/etc/passwd" then
+                lines  = file.get_content.split(char(10))
+
+                for line in lines
+                    if line.len > 0 then
+                        creds = decipherLine(line)
+
+                        if creds[0] == "" then continue
+
+                        if not results.hasIndex(creds[0]) then
+                            results[creds[0]] = {"password":creds[1]}
+                        else
+                            results[creds[0]]["password"] = creds[1]
+                        end if
+                    end if
+                end for
+            else if file.name == "Mail.txt" or file.name == "Bank.txt" then
+                if not file.path.is_match(homePattern) and not file.path.is_match(rootPattern) then continue
+
+                if file.path.is_match(homePattern) then
+                    matches = file.path.matches(homePattern)
+
+                    user = matches[matches.indexes[0]].split("/")[1]
+                else if file.path.is_match(rootPattern) then
+                    user = "root"
+                end if
+
+                line = file.get_content.split(char(10))[0]
+
+                mail = decipherLine(line)
+
+                name = file.name.split("\.")[0].lower
+
+                if not results.hasIndex(user) then
+                    results[user] = {name:mail}
+                else
+                    results[user][name] = mail
+                end if
+            end if
+        end for
+
+        return results
+    end function
+
+    doOutput = function(results)
+        if results == null or not results.indexes or results.indexes.len == 0 then
+            print g.const.nl + g.const.indent + g.s3("<size=120%>No credentials found.</size>") + g.const.nl
+            return
+        end if
+
+        output = g.const.nl + g.func.heading("Found Credentials") + g.const.nl
+
+        if results.hasIndex("root") and results["root"].hasIndex("password") then
+            header = "root: " + g.g2(results["root"]["password"])
+            output = output + g.const.indent + "<size=115%><voffset=0.5em>" + g.s2(header) + "</voffset></size>" + g.const.nl
+        end if
+
+        for user in results.indexes.sort
+            if user == "root" then continue
+            header = user
+
+            if results[user].hasIndex("password") then
+                header = header + ": " + g.g2(results[user]["password"])
+            end if
+
+            output = output + g.const.indent + "<size=115%><voffset=0.5em>" + g.s2(header) + "</voffset></size>" + g.const.nl
+
+            if results[user].hasIndex("mail") then
+                output = output + g.const.indent*2 + g.s3("Mail:") + g.const.nl
+                output = output + g.const.indent*3 + g.s4("Username: ") + g.l3(results[user]["mail"][0]) + g.const.nl
+                output = output + g.const.indent*3 + g.s4("Password: ") + g.l3(results[user]["mail"][1]) + g.const.nl
+            end if
+
+            if results[user].hasIndex("bank") then
+                output = output + g.const.indent*2 + g.s3("Bank:") + g.const.nl
+                output = output + g.const.indent*3 + g.s4("Username: ") + g.l3(results[user]["bank"][0]) + g.const.nl
+                output = output + g.const.indent*3 + g.s4("Password: ") + g.l3(results[user]["bank"][1]) + g.const.nl
+            end if
+        end for
+
+        print(output, 1)
+    end function
+
+    save = function(results)
+        if results == null or not results.indexes then return
+
+        if results.indexes.len > 0 then
+            output = ""
+            for user in results.indexes
+                header = user
+
+                if results[user].hasIndex("password") then
+                    header = header + ": " + results[user]["password"]
+                end if
+
+                output = output + header + g.const.nl
+
+                if results[user].hasIndex("mail") then
+                    output = output + g.const.indent + "Mail:" + g.const.nl
+                    output = output + g.const.indent*2 + "Username: " + results[user]["mail"][0] + g.const.nl
+                    output = output + g.const.indent*2 + "Password: " + results[user]["mail"][1] + g.const.nl
+                end if
+
+                if results[user].hasIndex("bank") then
+                    output = output + g.const.indent + "Bank:" + g.const.nl
+                    output = output + g.const.indent*2 + "Username: " + results[user]["bank"][0] + g.const.nl
+                    output = output + g.const.indent*2 + "Password: " + results[user]["bank"][1] + g.const.nl
+                end if
+            end for
+
+            home = g.stack["0"]
+            folder = g.func.createFolders
+
+            file = home.computer.File(folder.path + "/credentials.txt")
+
+            if not file then
+                result = home.computer.touch(folder.path, "credentials.txt")
+                if typeof(result) == "string" then
+                    print g.error(result)
+                    return
+                else if result == 1 then
+                    file = home.computer.File(folder.path + "/credentials.txt")
+                else
+                    print g.error("Failed to create credentials.txt")
+                    return
+                end if
+            end if
+
+            result = file.set_content(output)
+
+            if typeof(result) == "string" then
+                print g.error(result)
+            end if
+        end if
+
+    end function
+
+    if args == null or args == [] then
+        files = findFiles
+        results = decipherFiles(files)
+        save(results)
+        doOutput(results)
+
+        return results
+    else if args.len == 1 then
+        if args[0] == "-h" or args[0] == "help" then
+            self.help
+            return
+        else if args[0] == "all" or args[0] == "mail" or args[0] == "bank" then
+            files = findFiles(args[0])
+            results = decipherFiles(files)
+            save(results)
+            doOutput(results)
+
+            return results
+        else
+            credentials = decipherLine(args[0])
+
+            if credentials[0] == "" then
+                print(g.const.indent + g.l3(credentials[1]))
+            else
+                print(g.const.indent + g.s3("Username: ") + g.l3(credentials[0]))
+                print(g.const.indent + g.s3("Password: ") + g.l3(credentials[1]))
+            end if
+
+            return credentials
+        end if
+    else
+        self.help
+        return
+    end if
+end function
+
+// Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.
+// You can leave it as src code (name it with a .src file extension), otherwise hex will attempt to load it as a binary file that has been built with the
+// 'allow import' flag set.
+
+g.tools.decipher = {
+    "name": "decipher",
+    "shortDescription": "Searches for and deciphers readable credentials.",
+    "exec": @doDec,
+    "help": @decHelp,
+    "data": {}
+}

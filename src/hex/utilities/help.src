@@ -1,0 +1,64 @@
+helpHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Displays a list of commands and a brief description of what each does.") + g.const.nl
+    text = text + g.g2(self.name) + g.b3(" [command_name]") + g.l2(" Print the help text for the specified command.") + g.const.nl
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doHelp = function(args = null)
+    if args == null or args == [] then
+        output = g.func.heading("Commands") + g.const.nl
+        output = output + g.const.indent + g.s3("<voffset=0.5em><size=115%>Tools:</size></voffset>") + g.const.nl
+
+        indexes = g.tools.indexes
+        indexes.sort
+
+        for tool in indexes
+            output = output + g.const.indent + "  " + g.s4(tool) + "<pos=200>" + g.l2(g.tools[tool].shortDescription) + g.const.nl
+        end for
+
+        output = output + g.const.ni + g.s3("<voffset=0.5em><size=115%>Utilities:</size></voffset>") + g.const.nl
+
+        indexes = g.util.indexes
+        indexes.sort
+
+        for util in indexes
+            output = output + g.const.indent + "  " + g.s4(util) + "<pos=200>" + g.l2(g.util[util].shortDescription) + g.const.nl
+        end for
+
+        output = output + g.const.ni + g.s3("<voffset=0.5em><size=115%>Command Line:</size></voffset>") + g.const.nl
+
+        indexes = g.fs.indexes
+        indexes.sort
+
+        for fs in indexes
+            output = output + g.const.indent + "  " + g.s4(fs) + "<pos=200>" + g.l2(g.fs[fs].shortDescription) + g.const.nl
+        end for
+
+        print output
+    else if args.len == 1 then
+        if g.tools.hasIndex(args[0]) then
+            g.tools[args[0]].help
+        else if g.util.hasIndex(args[0]) then
+            g.util[args[0]].help
+        else if g.fs.hasIndex(args[0]) then
+            g.fs[args[0]].help
+        else
+            print g.error("Command not found: " + args[0])
+            return
+        end if
+    else
+        self.help
+        return
+    end if
+end function
+
+g.util.help = {
+    "name": "help",
+    "shortDescription": "Displays a list of commands.",
+    "exec": @doHelp,
+    "help": @helpHelp,
+    "data": {}
+}

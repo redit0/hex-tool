@@ -1,0 +1,117 @@
+logHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Corrupts the log file on the current context machine.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-a/all]") + g.l2(" Corrupts the log file on every context in the stack.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-d/download]") + g.l2(" Downloads the log file from the current context to the home computer.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doLog = function(args)
+    context = g.stack[g.context.index]
+
+    findReadable = function(file)
+        for f in file.get_files
+            if not f.is_binary and f.has_permission("r") then return f
+        end for
+
+        for f in file.get_folders
+            result = findReadable(f)
+
+            if result != null then return result
+        end for
+
+        return null
+    end function
+
+    getVar = function(file)
+        for f in file.get_folders
+            if f.path == "/var" then return f
+        end for
+    end function
+
+    getLog = function(file)
+        for f in file.get_files
+            if f.path == "/var/system.log" then return f
+        end for
+
+        for f in file.get_folders
+            result = getLog(f)
+
+            if result != null then return result
+        end for
+
+        return null
+    end function
+
+    corrupt = function(context)
+        print g.const.indent + g.s2("Corrupting log file on " + context.public + "/" + context.local + "...")
+        root = context.file.getRootFolder
+
+        readable = findReadable(root)
+
+        if not readable then
+            print g.error("No readable files found.")
+            return
+        end if
+
+        var = getVar(root)
+
+        if not var.has_permission("w") then
+            print g.error("Can't write to /var")
+            return
+        end if
+
+        result = readable.copy("/var/", "system.log")
+
+        if typeof(result) == "string" then print g.error(result)
+    end function
+
+    download = function(context)
+        if not context.hasIndex("shell") or context.shell == null then
+            print g.error("The current context is not a shell.")
+            return
+        end if
+        home = g.stack["0"]
+
+        folder = g.func.createFolders
+        root = context.file.getRootFolder
+
+        logFile = getLog(root)
+
+        if logFile == null then
+            print g.error("Log file not found.")
+            return
+        else if not logFile.has_permission("r") then
+            print g.error("Could not read log file.")
+            return
+        end if
+
+        result = context.shell.scp("/var/system.log", folder.path, home.shell)
+
+        if typeof(result) == "string" then print g.error(result)
+    end function
+
+    if args == null or args == [] then
+        corrupt(context)
+    else if args[0] == "-h" or args[0] == "help" then
+        self.help
+    else if args[0] == "-a" or args[0] == "all" then
+        for c in g.stack.indexes
+            if c != "0" and typeof(c.to_int) == "number" then corrupt(g.stack[c])
+        end for
+    else if args[0] == "-d" or args[0] == "download" then
+        download(context)
+    else
+        print(g.error("Invalid argument: " + args[0] + g.const.ni))
+    end if
+end function
+
+g.util.log = {
+    "name": "log",
+    "shortDescription": "Corrupts or downloads log files.",
+    "exec": @doLog,
+    "help": @logHelp,
+    "data": {}
+}

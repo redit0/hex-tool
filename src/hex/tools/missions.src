@@ -1,0 +1,33 @@
+missionsHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Automates corrupt data missions where possible.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doMissions = function(args = null)
+    if args != null and args != [] then
+        self.help
+        return
+    end if
+
+    getMessages = function
+        messages = mail.fetch
+
+        for message in messages
+            print message
+        end for
+
+    end function
+
+    getMessages
+end function
+
+g.tools.missions = {
+    "name": "missions",
+    "shortDescription": "Automates corrupt data missions where possible.",
+    "exec": @doMissions,
+    "help": @missionsHelp,
+    "data": {}
+}

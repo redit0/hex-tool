@@ -1,0 +1,43 @@
+devList = []
+getDevicesOf = function(router)
+devip = router.local_ip
+if devList.indexOf(devip) == null then devList.push(devip)
+devs = router.devices_lan_ip
+for dev in devs
+    if dev != devip then
+        if is_valid_ip(dev) then
+            devtype = getTypeOf(dev)
+            if devtype == "router" and devList.indexOf(dev) == null then
+                devList.push(dev)
+                getDevicesOf(get_router(dev))
+            else if devtype == "switch" and devList.indexOf(dev) == null then
+                devList.push(dev)
+                getDevicesOf(get_switch(dev))
+            else if devtype == "device" and devList.indexOf(dev) == null then
+                devList.push(dev)
+            end if
+        end if
+    end if
+end for
+spl = devip.split("\.")
+// If the IP does not end in a one, and the there is no device in the list with the same first three octets that DOES end in a one, then:
+if spl[-1] != "1" and devs.indexOf(spl[0:2].join("\.") + "1") == null then
+	// for every number from one to the current device's last octet - 1
+    for i in range(1, spl[-1].to_int - 1)
+		// if the list of devices does not contain an address with the same first three octets, plus whichever number we're on in the range, add it to the list.
+		// i.e., if we have a device with the address 10.0.0.10, this code adds 10.0.0.1, 10.0.0.2, 10.0.0.3...10.0.0.9 to the list (if they are not already present).
+        if devList.indexOf(spl[0:2].join("\.") + i) == null then devList.push(spl[0:2].join("\.") + i)
+    end for
+end if
+end function
+getTypeOf = function(dev)
+    r=get_router(dev)
+    s=get_switch(dev)
+    if r and not s then return "router"
+    if r and s then return "switch"
+    return "device"
+end function
+getDevicesOf(get_router(get_shell.host_computer.public_ip))
+for dev in devList
+	print dev
+end for

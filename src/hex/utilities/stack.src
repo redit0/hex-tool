@@ -44,7 +44,11 @@ doStack = function(args = null)
         items[i].sort("local")
     end for
 
-    output = g.const.nl + g.const.indent + g.s3("<size=115%><voffset=0.5em>Index<pos=150>Public IP<pos=350>Local IP<pos=550>Type<pos=700>User</voffset></size>") + g.const.nl
+    output = g.const.nl + g.const.indent + "Legend:" + g.const.tab*2 + g.b4("Current Context") + g.const.tab*2 + g.g2("Selected Proxy") + g.const.nl
+
+    output = output + g.const.nl + g.const.indent
+    
+    output = output + g.s3("<size=115%><voffset=0.5em>Index<pos=120>Public IP<pos=320>Local IP<pos=500>Type<pos=610>Source<pos=730>User</voffset></size>") + g.const.nl
 
     context = g.stack[g.context.index]
 
@@ -52,18 +56,12 @@ doStack = function(args = null)
         for item in items[i]
             line = g.const.indent
 
-            if item.public == context.public and item.local == context.local and item.type == context.type then
-                line = line + "<i>"
-            end if
-
-            line = line + item.key + "<pos=150>" + item.public + "<pos=350>" + item.local + "<pos=550>" + item.type + "<pos=700>" + item.user
-
-            if item.public == context.public and item.local == context.local and item.type == context.type then
-                line = line + "</i>"
-            end if
+            line = line + item.key + "<pos=120>" + item.public + "<pos=320>" + item.local + "<pos=500>" + item.type + "<pos=610>" + item.source + "<pos=730>" + item.user
 
             if item.public == context.public and item.local == context.local and item.type == context.type then
                 output = output + g.b4(line) + g.const.nl
+            else if g.hasIndex("proxy") and g.proxy == item.key then
+                output = output + g.g2(line) + g.const.nl
             else
                 output = output + g.l1(line) + g.const.nl
             end if
@@ -76,14 +74,56 @@ end function
 
 g.stack.add = function(item)
     updateItem = function(i, item)
-        g.stack[i][item.type] = item
+        g.stack[i][item.type] = item[item.type]
         g.stack[i].user = item.getUser
+        g.stack[i].source = item.source
 
         if item.type == "shell" then
             g.stack[i].computer = item.computer
             g.stack[i].file = item.file
         else if item.type == "computer" then
             g.stack[i].file = item.file
+        end if
+    end function
+
+    // Only add the lower-tier items if we already have one, and if it is of a lower access level than this new one would give us.
+    updateExtras = function
+        if item.source.indexOf("proxy") == null and item.source != "rs server" then
+            if item.type == "shell" then
+                add = 0
+
+                for i in g.stack.indexes
+                    if typeof(i.to_int) != "number" then continue
+
+                    if g.stack[i].public == item.public and g.stack[i].local == item.local and g.stack[i].type == "computer" then
+                        if g.stack[i].user == "guest" or item.user == "root" then
+                            add = 1
+                        end if
+                    end if
+                end for
+
+                if add then g.stack.add(item.computer.createContext(item.source))
+            else if item.type == "computer" then
+                add = 0
+
+                for i in g.stack.indexes
+                    if typeof(i.to_int) != "number" then continue
+
+                    if g.stack[i].public == item.public and g.stack[i].local == item.local and g.stack[i].type == "file" then
+                        if g.stack[i].user == "guest" or item.user == "root" then
+                            add = 1
+                        end if
+                    end if
+                end for
+
+                if add then
+                    temp = item.file.createContext(item.source)
+                    temp.local = item.local
+                    temp.public = item.public
+
+                    g.stack.add(temp)
+                end if
+            end if
         end if
     end function
 
@@ -98,18 +138,24 @@ g.stack.add = function(item)
     end if
 
     for i in keys
-        if not i.to_int isa number then continue
+        if not typeof(i.to_int) == "number" then continue
 
         if g.stack[i].public == item.public and g.stack[i].local == item.local and g.stack[i].type == item.type then
             if g.stack[i].user == "guest" or item.getUser == "root" then
-                updateItem(i, item)
+                if g.stack[i].user != "root" then
+                    updateItem(i, item)
+                end if
             end if
+
+            updateExtras
 
             return i
         end if
     end for
 
     g.stack[key] = item
+
+    updateExtras
 
     return key
 end function
@@ -119,7 +165,10 @@ g.stack.clear = function
 
     for i in keys
         if i.to_int isa number and i.to_int > 0 then
-            g.stack.remove(i)
+            if not g.stack[i].source.is_match("proxy") and g.stack[i].source != "rs server" then
+                if g.context.index == i then g.context.index = "0"
+                g.stack.remove(i)
+            end if
         end if
     end for
 end function
@@ -129,10 +178,9 @@ end function
 // 'allow import' flag set.
 
 g.util.stack = {
-    "name": "stack",         // Unformatted tool name text
-    "text": g.s2("stack"),   // Tool name text with any formatting you want to use when its name is displayed
-    "sortOrder": 500,           // This number will be used to sort this tool in the menu.  Quit is the last built-in item, with sort order 999.
-    "exec": @doStack,          // A function reference to the toolName function above.
-    "help": @stackHelp,      // A function reference to the help function above.
-    "data": {}                  // This map can be used to store any data or additional functions used by the tool that might need to be accessed outside of the tool itself.
+    "name": "stack",
+    "shortDescription": "Prints a list of all contexts currently in the stack.",
+    "exec": @doStack,
+    "help": @stackHelp,
+    "data": {}
 }

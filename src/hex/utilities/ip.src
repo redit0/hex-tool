@@ -1,0 +1,25 @@
+ipHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Generates a random IP address.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doIp = function(args = null)
+    if not args or args == [] then
+        print g.const.indent + g.o1(g.func.getRandomIp)
+    else
+        if args[0] == "-h" or args[0] == "help" then
+            self.help
+        end if
+    end if
+end function
+
+g.util.ip = {
+    "name": "ip",
+    "shortDescription": "Generates a random IP address.",
+    "exec": @doIp,
+    "help": @ipHelp,
+    "data": {}
+}

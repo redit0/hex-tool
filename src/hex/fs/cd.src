@@ -1,0 +1,70 @@
+changeDirHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [folder name or path]") + g.l2(" Switch to the specified directory.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+changeDir = function(args = null)
+    checkFile = function(file)
+        files = file.get_folders
+
+        for f in files
+            if f.name == args[0] or f.path == args[0] then return f
+
+            retVal = checkFile(f)
+
+            if retVal then return retVal
+        end for
+
+        return null
+    end function
+
+    if args == null or args == [] or args.len > 1 then
+        changeDirHelp
+        return
+    end if
+
+    if typeof(args[0] == "string") then
+        context = g.stack[g.context.index]
+        root = context.file.getRootFolder
+
+        if args[0] == "/" then
+            context.currentPath = "/"
+            return
+        else if args[0] == ".." then
+            if context.currentPath == "/" then return
+
+            path = context.currentPath.split("/")
+            path.pop
+
+            context.currentPath = path.join("/")
+            return
+        else if args[0] == "." then
+            return
+        else
+            file = checkFile(root)
+
+            if file then
+                context.currentPath = file.path
+                return
+            end if
+        end if
+
+        print(g.error("No such directory."))
+        return
+    else
+        print(g.error("Invalid argument type."))
+        return
+    end if
+end function
+
+g.fs.cd = {
+    "name": "cd",
+    "shortDescription": "Switch to the specified directory.",
+    "exec": @changeDir,
+    "help": @changeDirHelp,
+}

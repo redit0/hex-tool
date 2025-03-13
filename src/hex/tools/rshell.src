@@ -1,0 +1,143 @@
+rshellHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Adds new rshells to the stack.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [infect] {ip} {port} {process_name}") + g.l2(" Installs an rshell client on the current context using the provided IP, port, and process name.  If any parameter is omitted, the default is used instead (configured with rshell init).") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [init] {port}") + g.l2(" Sets the default rshell server to the current context, and the default rshell port to the specified port if provided (or 10000 if it is not.)") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [info]") + g.l2(" Displays the default rshell server IP address and port.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-r/remove] [#]") + g.l2(" Kills processes on the provided rshell context (specify which rshell by using the stack index number).  Does not remove it from the stack.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-c/clear]") + g.l2(" Kills processes on all rshell clients.  Does not remove them from the stack.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [start]") + g.l2(" Starts the rshell server on the current context, installing it first if necessary.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [stop]") + g.l2(" Stops the rshell server on the current context.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text.") + g.const.nl
+
+    print text
+end function
+
+doRshell = function(args = null)
+    if args == null or args == [] then
+        if g.func.get_rshells(g.context.index) then
+            g.util.stack.exec
+        end if
+    else if args[0] == "infect" then
+
+        // rshell infect {ip} {port} {process_name}
+        if args.len == 4 then
+            if typeof(args[2].to_int) != "number" then
+                print g.error("Invalid port: " + @args[2])
+                return 0
+            end if
+            ip = args[1]
+            port = args[2].to_int
+            process = args[3]
+
+
+        // rshell infect {ip} {port|process_name}
+        else if args.len == 3 then
+            ip = args[1]
+
+            // rshell infect {ip} {port}
+            if typeof(args[2].to_int) == "number" then
+                port = args[2].to_int
+                process = "rshell_client"
+
+            // rshell infect {ip} {process_name}
+            else
+                if not g.rshell or not g.rshell.port then
+                    print g.error("Default rshell port not set.")
+                    return 0
+                end if
+                port = g.rshell.port
+                process = args[2]
+            end if
+
+
+        // rshell infect {ip}
+        else if args.len == 2 then
+            if not g.rshell or not g.rshell.port then
+                print g.error("Default rshell port not set.")
+                return 0
+            end if
+            ip = args[1]
+            port = g.rshell.port
+            process = "rshell_client"
+
+
+        // rshell infect
+        else if args.len == 1 then
+            if not g.func.check_rshell then return 0
+            ip = g.rshell.ip
+            port = g.rshell.port
+            process = "rshell_client"
+
+
+        // invalid number of arguments
+        else
+            self.help
+            return 0
+        end if
+
+        if not is_valid_ip(@ip) then
+            print g.error("Invalid IP: " + @ip)
+            return 0
+        else if port < 0 or port > 65535 then
+            print g.error("Invalid port: " + port)
+            return 0
+        end if
+
+        return g.func.deploy_rshell(g.context.index, ip, port, process)
+    else if args[0] == "init" then
+        if args.len  > 1 and typeof(args[1].to_int) == "number" and args[1].to_int > -1 and args[1].to_int < 65536 then
+            idx = g.context.index
+            port = args[1].to_int
+        else
+            idx = g.context.index
+            port = 10000
+        end if
+        if g.func.init_rshell(idx, port) then
+            print g.const.indent + g.s3("Set rshell defaults with port " + port)
+            return 1
+        end if
+        return 0
+    else if args[0] == "info" then
+        return g.func.rshell_info
+    else if args[0] == "-r" or args[0] == "remove" then
+        if args.len == 2 then
+            if g.func.remove_rshell(args[1]) then
+                g.util.stack.exec
+                return 1
+            end if
+        else
+            self.help
+        end if
+        return 0
+    else if args[0] == "-c" or args[0] == "clear" then
+        if g.func.clear_rshells then
+            g.util.stack.exec
+            return 1
+        end if
+        return 0
+    else if args[0] == "start" then
+        if g.func.start_rshell(g.context.index) then
+            print g.const.indent + g.s3("Service started.")
+            return 1
+        end if
+        return 0
+    else if args[0] == "stop" then
+        if g.func.stop_rshell(g.context.index) then
+            print g.const.indent + g.s3("Service stopped.")
+            return 1
+        end if
+        return 0
+    else
+        self.help
+        return 0
+    end if
+end function
+
+g.tools.rshell = {
+    "name": "rshell",
+    "shortDescription": "Manages rshells.",
+    "exec": @doRshell,
+    "help": @rshellHelp,
+    "data": {}
+}

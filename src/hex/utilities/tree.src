@@ -6,88 +6,129 @@ treeHelp = function(self)
     print(text)
 end function
 
-string.formatPermissions = function
-    if not self isa string then
-        print(g.error("Invalid type: " + typeof(self)))
-        return null
-    end if
-
-    if self == "d---------" or self == "----------" then
-        return g.d1("[" + self + "]")
-    else
-        return g.s2("[" + self + "]")
-    end if
-end function
-
-string.formatUsername = function
-    if not self isa string then
-        return self
-    end if
-
-    if self == "root" then return g.d1("[" + self + "]") else return g.s2("[" + self + "]")
-end function
-
-map.sortKey = function(self)
-    if typeof(self) == "file" then
-        return self.path.replace("[^a-zA-Z0-9]","")
-    end if
-
-    return ""
-end function
-
-map.getFileColor = function
-    if typeof(self) != "file" then
-        print(g.error("Invalid type: " + typeof(self)))
-        return null
-    end if
-
-    names = ["Mail.txt","Bank.txt","Map.conf","sources.txt"]
-
-    file = self
-
-    if file.is_folder then return g.s2(file.name)
-
-    if file.is_binary and not file.is_folder then
-        if file.is_symlink then
-            return g.d1(file.name)
-        else if file.name[-3:] == ".so" then
-            return g.l3(file.name)
-        else
-            return g.d1(file.name)
-        end if
-    end if
-
-    if not file.is_binary then
-        if file.name == "passwd" and file.path != "/bin/passwd" then
-            if file.has_permission("r") then
-                return g.g1(file.name)
-            else
-                return g.o1(file.name)
-            end if
-        else if names.indexOf(file.name) != null then
-            if file.has_permission("r") then
-                return g.g1(file.name)
-            else
-                return g.o1(file.name)
-            end if
-        else
-            return g.b1(file.name)
-        end if
-
-    end if
-end function
-
-getTree = function(path)
-    files = path.get_folders + path.get_files
-
-    for file in files
-        g.util.tree.data.files.push(file)
-
-        if file.is_folder then getTree(file)
-    end for
-end function
-
 tree = function(args = null)
+    string.formatPermissions = function
+        if not self isa string then
+            print(g.error("Invalid type: " + typeof(self)))
+            return null
+        end if
+
+        if self == "d---------" or self == "----------" then
+            return g.l2("[" + self + "]")
+        else
+            return g.s2("[" + self + "]")
+        end if
+    end function
+
+    string.formatUsername = function
+        if not self isa string then
+            return self
+        end if
+
+        if self == "root" then return g.l2("[" + self + "]") else return g.s2("[" + self + "]")
+    end function
+
+    map.sortKey = function(self)
+        if typeof(self) == "file" then
+            return self.path.replace("[^a-zA-Z0-9]","")
+        end if
+
+        return ""
+    end function
+
+    map.getFileColor = function
+        if typeof(self) != "file" then
+            print(g.error("Invalid type: " + typeof(self)))
+            return null
+        end if
+
+        names = ["Mail.txt","Bank.txt","Map.conf","sources.txt"]
+
+        file = self
+
+        if file.is_folder then return g.s2(file.name)
+
+        if file.is_binary and not file.is_folder then
+            if file.name[-3:] == ".so" then
+                return g.l3(file.name)
+            else
+                return g.l2(file.name)
+            end if
+        end if
+
+        if not file.is_binary then
+            if file.name == "passwd" and file.path != "/bin/passwd" then
+                if file.has_permission("r") then
+                    return g.g1(file.name)
+                else
+                    return g.o1(file.name)
+                end if
+            else if names.indexOf(file.name) != null then
+                if file.has_permission("r") then
+                    return g.g1(file.name)
+                else
+                    return g.o1(file.name)
+                end if
+            else
+                return g.b1(file.name)
+            end if
+
+        end if
+    end function
+
+    count = {"dirs": 0,"files": 0}
+
+    // Credit for the pipe and line endings in the following three lines goes to Macha and Virus
+    // I borrowed this from the Unity source code available here: https://github.com/MachaCeleste/CelestialCorp-Unity/
+    continuedLine = "<size=120%><mspace=0.1> <mark=#ffffff>"+char(1564)+"</mark></size><mspace=-0.1>"+char(1564)+"</mspace></mspace> "
+    line = "<size=120%><mspace=0.1> <mark=#ffffff>"+char(1564)+"</mark></size><#fff><s></mspace>  </s></color><space=0.3em><size=100%>"
+    endLine = "<size=70%><mspace=0.1> <voffset=8><mark=#ffffff>"+char(1564)*2+"</mark></size><voffset=0><#fff><s></mspace>  </s></color><space=0.3em><size=100%>"
+
+    walk = function(directory, prefix)
+        files = directory.get_folders + directory.get_files
+
+        if files == [] then return
+
+        temp = {}
+
+        for file in files
+            temp[file.name] = file
+        end for
+
+        indices = temp.indexes
+        indices.sort
+
+        files = []
+
+        for index in indices
+            files.push(temp[index])
+        end for
+
+        for index in range(0, files.len - 1)
+            file = files[index]
+
+            if index == files.len - 1 then
+                parts = [endLine, "   "]
+            else
+                parts = [line, continuedLine + "  "]
+            end if
+
+            output = g.const.indent + "<size=120%>"
+            output = output + file.permissions.formatPermissions + " "
+            output = output + file.owner.formatUsername + "<pos=350>" + file.group.formatUsername + "<pos=500>"
+            output = output + prefix + parts[0] + file.getFileColor
+
+            print(output)
+
+            if file.is_folder then
+                count.dirs = count.dirs + 1
+                walk(file, prefix + parts[1])
+            else
+                count.files = count.files + 1
+            end if
+        end for
+    end function
+
     idx = g.context.index
 
     path = "/"
@@ -97,7 +138,7 @@ tree = function(args = null)
             self.help
             return
         else if args[0] == "." then
-            path = g.stack[idx].path
+            path = g.stack[idx].currentPath
         else
             if not g.stack[idx].file then
                 print g.error("Current context does not have a file object available")
@@ -115,49 +156,28 @@ tree = function(args = null)
 
     start = g.stack[idx].file.getFolder(path)
 
-    self.data.files = []
+    output = g.const.indent + "<size=120%>"
+    output = output + start.permissions.formatPermissions + " "
+    output = output + start.owner.formatUsername + "<pos=350>" + start.group.formatUsername + "<pos=495>"
+    output = output + ".  " + start.getFileColor
 
-    getTree(start)
+    print(output)    
 
-    startingLevel = path.matches("/").indexes.len
+    walk(start, "")
 
-    if path != "/" then startingLevel = startingLevel + 1
-
-    output = "<space=2.1em><size=120%>" + start.permissions.formatPermissions
-    output = output + " " + start.owner.formatUsername + "<pos=350>" + start.group.formatUsername
-    output = output + "<pos=494>.<space=2.2em>" + g.s2(start.path) + g.const.nl
-
-    files = {}
-
-    for temp in self.data.files
-        files[temp.sortKey] = temp
-    end for
+    if count.dirs == 1 then
+        totals = "1 directory, "
+    else
+        totals = count.dirs + " directories, "
+    end if
     
-    indices = files.indexes
-
-    indices.sort
-
-    for index in indices
-        file = files[index]
-
-        line = "<space=2.1em><size=120%>" + file.permissions.formatPermissions
-        line = line + " " + file.owner.formatUsername + "<pos=350>" + file.group.formatUsername
-        line = line + "<pos=500>"
-
-        // Calculate the number of levels down we are from the starting path and add the indents
-        levels = file.path.matches("/").indexes.len - startingLevel
-
-        line = line + g.const.tt*levels
-
-        // Write the file indicator and file name
-        line = line + g.d1("<mark=#666666><mspace=0.1>" + char(160) + "</mspace></mark>" + char(160) + "<space=-0.6em><cspace=-0.1em>———</cspace> " + file.getFileColor)
-
-        line = line + g.const.nl
-
-        output = output + line
-    end for
-
-    print(output)
+    if count.files == 1 then
+        totals = totals + "1 file"
+    else
+        totals = totals + count.files + " files"
+    end if
+    
+    print g.const.ni + "<size=120%>" + g.l2(totals)
 end function
 
 // Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.
@@ -165,10 +185,9 @@ end function
 // 'allow import' flag set.
 
 g.util.tree = {
-    "name": "tree",         // Unformatted tool name text
-    "text": g.s2("tree"),    // Tool name text with any formatting you want to use when its name is displayed
-    "sortOrder": 500,       // This number will be used to sort this tool in the menu.  Quit is the last built-in item, with sort order 999.
-    "exec": @tree,          // A function reference to the toolName function above.
-    "help": @treeHelp,      // A function reference to the help function above.
-    "data": {}              // This map can be used to store any data or additional functions used by the tool that might need to be accessed outside of the tool itself.
+    "name": "tree",
+    "shortDescription": "Displays the file system contents in a tree view.",
+    "exec": @tree,
+    "help": @treeHelp,
+    "data": {}
 }

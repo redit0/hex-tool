@@ -66,13 +66,37 @@ doScan = function(args)
 
             if not g.database[metaLib.lib_name].hasIndex(metaLib.version) then
                 g.database[metaLib.lib_name][metaLib.version] = {}
+            end if
 
-                mems = g.metax.scan(metaLib)
+            rescan = 0
+
+            // Check to see if we need to rescan this lib/version.
+            mems = g.database[metaLib.lib_name][metaLib.version].indexes
+
+            if not mems or mems.len == 0 then rescan = 1
+
+            for mem in mems
+                if rescan == 1 then break
+                values = g.database[metaLib.lib_name][metaLib.version][mem].indexes
+
+                if not values or values.len == 0 then rescan = 1
+
+                for value in values
+                    if rescan == 1 then break
+                    if g.database[metaLib.lib_name][metaLib.version][mem][value] == "" then
+                        rescan = 1
+                        break
+                    end if
+                end for
+            end for
+
+            if rescan then
+                mems = g.stack["0"].metax.scan(metaLib)
 
                 for mem in mems
                     g.database[metaLib.lib_name][metaLib.version][mem] = {}
 
-                    vulns = g.metax.scan_address(metaLib, mem).split("Unsafe check: ")[1:]
+                    vulns = g.stack["0"].metax.scan_address(metaLib, mem).split("Unsafe check: ")[1:]
                     for vuln in vulns
                         value = vuln[vuln.indexOf("<b>")+3:vuln.indexOf("</b>")]
 
@@ -89,14 +113,22 @@ doScan = function(args)
             return
         end if
 
+        if not context.metax then
+            print(g.error("No metaxploit library available"))
+            return
+        end if
+
         metaLib = context.metax.load(libName)
+
+        if not metaLib then
+            print(g.error("Could not load library: " + libName))
+            return
+        end if
 
         metaLibs = [metaLib]
         scanMetaLibs(metaLibs)
         if not g.tools.scan.data.silent then
             doOutput(metaLibs)
-        else
-            clear_screen
         end if
     end function
 
@@ -106,9 +138,14 @@ doScan = function(args)
             return
         end if
 
-        netSession = context.metax.net_use(ip, port)
+        if g.hasIndex("proxy") and g["proxy"] != "" and typeof(g["proxy"].to_int) == "number" then
+            proxy = g.stack[g.proxy]
+            netSession = proxy.metax.net_use(ip, port)
+        else
+            netSession = context.metax.net_use(ip, port)
+        end if
 
-        if netSession isa string then
+        if typeof(netSession) == "string" then
             print g.error(netSession)
             return
         else if netSession == null then
@@ -123,18 +160,25 @@ doScan = function(args)
         scanMetaLibs(metaLibs)
         if not g.tools.scan.data.silent then
             doOutput(metaLibs)
-        else
-            clear_screen
         end if
     end function
 
     scanAllPorts = function(ip)
+        if g.hasIndex("proxy") and g["proxy"] != "" and typeof(g["proxy"].to_int) == "number" then
+            context = g.stack[g.proxy]
+        end if
+
         if not context.shell then
             print(g.error("No shell available"))
             return
         end if
 
-        router = get_router(ip)
+        router = g.func.getRouter(ip)
+
+        if not router then
+            print(g.error("Could not find router at " + ip))
+            return
+        end if
 
         ports = router.used_ports
 
@@ -142,12 +186,18 @@ doScan = function(args)
 
         for port in ports
             if port.is_closed then continue
-            
+
             netSession = context.metax.net_use(ip, port.port_number)
 
-            metaLib = netSession.dump_lib
+            if not netSession then
+                print(g.error("Could not connect to " + ip + ":" + port.port_number))
+            else if typeof(netSession) == "string" then
+                print(g.error(netSession))
+            else
+                metaLib = netSession.dump_lib
 
-            metaLibs.push(metaLib)
+                metaLibs.push(metaLib)
+            end if
         end for
 
         netSession = context.metax.net_use(ip, 0)
@@ -157,10 +207,9 @@ doScan = function(args)
         metaLibs.push(metaLib)
 
         scanMetaLibs(metaLibs)
+        
         if not g.tools.scan.data.silent then
             doOutput(metaLibs)
-        else
-            clear_screen
         end if
     end function
 
@@ -202,8 +251,7 @@ end function
 
 g.tools.scan = {
     "name": "scan",
-    "text": g.s2("scan"),
-    "sortOrder": 1,
+    "shortDescription": "Scans for vulnerabilities.",
     "exec": @doScan,
     "help": @scanHelp,
     "data": {}

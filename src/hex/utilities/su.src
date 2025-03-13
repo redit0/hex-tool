@@ -1,12 +1,13 @@
-clearHelp = function()
+sudoHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
-    text = text + g.g2(self.name) + g.l2(" Clears the screen and prints the banner") + g.const.nl
+    text = text + g.g2(self.name) + g.l2(" (Not Implimented) Attempts to get a root shell using brute force attack against root credentials.") + g.const.nl
+    text = text + g.g2(self.name) + g.b3(" [username] [password]") + g.l2(" Attempts to get a shell using the provided credentials.") + g.const.nl
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
 end function
 
-clear = function(args = null)
+doSudo = function(args = null)
     if args != null and args.len > 0 then
         if args[0] == "help" or args[0] == "-h" then
             self.help
@@ -18,9 +19,9 @@ clear = function(args = null)
     print(g.func.getBanner)
 end function
 
-g.util.clear = {
-    "name": "clear",
-    "shortDescription": "Clears the screen and prints the banner.",
+g.util.sudo = {
+    "name": "sudo",
+    "shortDescription": "Privilege Escalation to a specified user, or root.",
     "exec": @clear,
     "help": @clearHelp,
     "data": {}

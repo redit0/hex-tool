@@ -14,8 +14,7 @@ g.func.getBanner = function()
     banner = banner + g.s2("    \__/  \  " + g.r1("        \/\\\     \/\\\   \/\\\\\\\\\   /\\\/   \///\\\   ") + "  /  \__/") + g.const.nl
     banner = banner + g.s2("    /  \__/  " + g.r1("         \///      \///    \/////////   \///       \///   ") + "  \__/  \") + g.const.nl
     banner = banner + g.s2("    \__/  \                                                              /  \__/") + g.const.nl
-    banner = banner + g.s2("    /  \__/     " + g.l2(g.const.vhex) + "                                     ")
-    banner = banner + g.s2(g.l2("by") + " " + g.b4("redit0") + "     \__/  \") + g.const.nl
+    banner = banner + g.s2("    /  \__/     " + g.l2(g.const.vhex) + "<pos=652>" + g.l2("by") + " " + g.b4("redit0") + "     \__/  \") + g.const.nl
     banner = banner + g.s2("    \__/  \__    __    __    __    __    __    __    __    __    __    __/  \__/") + g.const.nl
     banner = banner + g.s2("    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \") + g.const.nl
     banner = banner + g.s2("    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/") + g.const.nl
