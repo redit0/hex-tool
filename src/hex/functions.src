@@ -469,11 +469,9 @@ g.func.rshellLib = function
     g.stack[g.context.index].rshell = lib
 end function
 
-// **include_lib:**
 // Loads the library at the specified path and returns it via get_custom_object
-// @param {string}
-// @return {library}
-// @example g.func.include_lib("/lib/librshell.so")
+// @param {string} path - The path to the library.
+// @return {library} - The loaded library.
 g.func.include_lib = function(path)
     src = "g = get_custom_object" + char(10) + "g.lib = include_lib(""" + @path + """)"
     g.func.run(src)
@@ -537,6 +535,9 @@ g.func.createFolders = function
     return file
 end function
 
+// Retrieves the router object for the given IP address.
+// @param {string|null} ip - The IP address to get the router for, or null to get the current router.
+// @return {router|null} - The router object or null if not found.
 g.func.getRouter = function(ip = null)
     context = g.stack[g.context.index]
 
@@ -566,6 +567,9 @@ g.func.getRouter = function(ip = null)
     end if
 end function
 
+// Retrieves the switch object for the given IP address.
+// @param {string} ip - The IP address to get the switch for.
+// @return {switch|null} - The switch object or null if not found.
 g.func.getSwitch = function(ip)
     context = g.stack[g.context.index]
 
@@ -593,6 +597,10 @@ g.func.getSwitch = function(ip)
     end if
 end function
 
+// Retrieves the shell object for the given user and password.
+// @param {string} user - The username.
+// @param {string} password - The password.
+// @return {shell|null} - The shell object or null if not found.
 g.func.getShell = function(user, password)
     context = g.stack[g.context.index]
 
@@ -628,6 +636,9 @@ g.func.getShell = function(user, password)
     end if
 end function
 
+// Runs the given source code in the current context.
+// @param {string} src - The source code to run.
+// @return {none}
 g.func.run = function(src)
     if not g.func.checkShell(g.context.index) then return
 
@@ -669,9 +680,17 @@ g.func.run = function(src)
     context.shell.launch(context.path + "/temp/hex")
 
     dir = context.computer.File(context.path + "/temp")
+    if not dir then
+        print g.error("Could not locate directory at: " + context.path + "/temp")
+        return
+    end if
     dir.move(context.path + "/temp/1", dir.name)
 end function
 
+// Transfers a file from the current context to the home context.
+// @param {string} srcPath - The source file path.
+// @param {string} destPath - The destination file path.
+// @return {none}
 g.func.get = function(srcPath, destPath)
     home = g.stack["0"]
     context = g.stack[g.context.index]
@@ -684,6 +703,10 @@ g.func.get = function(srcPath, destPath)
     g.func.transfer(context.shell, srcPath, home.shell, destPath)
 end function
 
+// Transfers a file from the home context to the current context.
+// @param {string} srcPath - The source file path.
+// @param {string} destPath - The destination file path.
+// @return {none}
 g.func.put = function(srcPath, destPath)
     home = g.stack["0"]
     context = g.stack[g.context.index]
@@ -696,6 +719,12 @@ g.func.put = function(srcPath, destPath)
     g.func.transfer(home.shell, srcPath, context.shell, destPath)
 end function
 
+// Transfers a file between two shells.
+// @param {shell} srcShell - The source shell.
+// @param {string} srcPath - The source file path.
+// @param {shell} destShell - The destination shell.
+// @param {string} destPath - The destination file path.
+// @return {none}
 g.func.transfer = function(srcShell, srcPath, destShell, destPath)
     if typeof(@srcShell) != "shell" or typeof(@srcPath) != "string" or typeof(@destShell) != "shell" or typeof(@destPath) != "string" then
         print g.error("Invalid parameter(s).")
@@ -735,6 +764,11 @@ g.func.transfer = function(srcShell, srcPath, destShell, destPath)
     end if
 end function
 
+// Uploads a library to the current context.
+// @param {string} dir - The directory containing the library.
+// @param {string} libName - The name of the library.
+// @param {string} dest - The destination path.
+// @return {number} - 1 if successful, 0 otherwise.
 g.func.putLib = function(dir, libName, dest = "/lib")
     home = g.stack["0"]
     context = g.stack[g.context.index]
@@ -786,6 +820,9 @@ g.func.putLib = function(dir, libName, dest = "/lib")
     return 0
 end function
 
+// Checks if the context at the given index is a shell.
+// @param {string} idx - The index to check.
+// @return {number} - 1 if the context is a shell, 0 otherwise.
 g.func.checkShell = function(idx)
     if not typeof(@idx) == "string" then
         print g.error("Invalid index type: " + typeof(@idx))
@@ -805,6 +842,9 @@ g.func.checkShell = function(idx)
     return 1
 end function
 
+// Checks if the context at the given index is a computer.
+// @param {string} idx - The index to check.
+// @return {number} - 1 if the context is a computer, 0 otherwise.
 g.func.checkComputer = function(idx)
     if not typeof(@idx) == "string" then
         print g.error("Invalid index type: " + typeof(@idx))
@@ -824,6 +864,9 @@ g.func.checkComputer = function(idx)
     return 1
 end function
 
+// Checks if the context at the given index is a file.
+// @param {string} idx - The index to check.
+// @return {number} - 1 if the context is a file, 0 otherwise.
 g.func.checkFile = function(idx)
     if not typeof(@idx) == "string" then
         print g.error("Invalid index type: " + typeof(@idx))
@@ -843,6 +886,9 @@ g.func.checkFile = function(idx)
     return 1
 end function
 
+// Attaches the metaxploit library to the context at the given index.
+// @param {string} idx - The index of the context.
+// @return {number} - 1 if successful, 0 otherwise.
 g.func.attach_metax = function(idx)
     if not g.func.checkShell(idx) then return 0
 

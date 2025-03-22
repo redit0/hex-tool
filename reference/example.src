@@ -3,9 +3,9 @@
 metax = include_lib("/path/to/metaxploit.so")
 
 ip = "ip.add.re.ss"
-port = "22" //-- This is a string, so we have to call to_int below (or val)
+port = "0" //-- This is a string, so we have to call to_int below (or val)
 
-netSession = metax.net_use(@ip, @port.to_int)
+netSession = metax.net_use(ip, port.to_int)
 
 if not netSession then exit("Something went wrong with the call to net_use.")
 
