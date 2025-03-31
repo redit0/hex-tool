@@ -1,0 +1,54 @@
+g.func.corrupt_log = function(idx)
+    context = g.stack[idx]
+    print g.const.indent + g.s2("Corrupting log file on " + context.public + "/" + context.local + "...")
+    root = context.file.getRootFolder
+
+    readable = g.func.find(root, "*", "rt")
+
+    if readable.len == 0 then
+        print g.error("No readable files found.")
+        return 0
+    end if
+
+    var = g.func.find(root, "/var", "f")
+
+    if var.len == 0 then
+        print g.error("No /var folder found.")
+        return 0
+    end if
+
+    if not var[0].has_permission("w") then
+        print g.error("Can't write to /var")
+        return 0
+    end if
+
+    result = readable[0].copy("/var/", "system.log")
+
+    if typeof(result) == "string" then print g.error(result)
+end function
+
+g.func.download_log = function(idx)
+    if not g.func.checkShell(idx) then return 0
+    context - g.stack[idx]
+
+    home = g.stack["0"]
+
+    folder = g.func.createFolders
+    root = context.file.getRootFolder
+
+    logFile = g.func.find(root, "/var/system.log")
+
+    if logFile.len == 0 then
+        print g.error("Log file not found.")
+        return 0
+    end if
+
+    if not logFile[0].has_permission("r") then
+        print g.error("Could not read log file.")
+        return 0
+    end if
+
+    result = context.shell.scp("/var/system.log", folder.path, home.shell)
+
+    if typeof(result) == "string" then print g.error(result)
+end function

@@ -210,6 +210,7 @@ end function
 g.func.clear_rshells = function
     for key in g.stack.indexes
         if typeof(key.to_int) == "number" and g.stack[key].source == "rshell" and g.stack[key].type == "shell" then
+            print "Removing: " + key
             g.func.remove_rshell(key)
         end if
     end for
@@ -218,13 +219,13 @@ end function
 g.func.remove_rshell = function(idx)
     if not g.func.checkShell(idx) then return 0
 
-    if g.stack[key].source != "rshell" then
+    if g.stack[idx].source != "rshell" then
         print g.error("The specified context is not an rshell.")
         return 0
     end if
 
-    user = g.stack[key].user
-    procs = g.stack[key].computer.show_procs.split(char(10))[1:]
+    user = g.stack[idx].user
+    procs = g.stack[idx].computer.show_procs.split(char(10))[1:]
 
     for proc in procs
         usr = proc.split(" ")[0]
@@ -232,7 +233,7 @@ g.func.remove_rshell = function(idx)
         cmd = proc.split(" ")[4]
 
         if (user == "root" or usr == user) and ["dsession", "kernel_task", "Xorg"].indexOf(cmd) == null then
-            result = g.stack[key].computer.close_program(pid)
+            result = g.stack[idx].computer.close_program(pid)
             if typeof(result) == "string" then print g.error(result)
         end if
     end for

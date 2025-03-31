@@ -14,6 +14,7 @@ quit = function(args)
         end if
     end if
     clear_screen
+    g.command = "exit"
     exit(g.const.nl*2 + g.s2("[HEX] Goodbye!!") + g.const.nl)
 end function
 

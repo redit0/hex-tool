@@ -649,24 +649,31 @@ g.func.run = function(src)
         return
     end if
 
-    file = context.computer.File(context.path + "/temp")
+    prefix = context.path
+
+    if prefix == "/" then prefix = ""
+
+    file = context.computer.File(prefix + "/temp")
 
     if not file then
-        context.computer.create_folder(context.path, "temp")
+        result = context.computer.create_folder(context.path, "temp")
+        if typeof(result) == "string" then print "1: " + g.error(result)
     end if
     
-    file = context.computer.File(context.path + "/temp/1")
+    file = context.computer.File(prefix + "/temp/1")
 
     if not file then
-        context.computer.create_folder(context.path + "/temp", "1")
+        result = context.computer.create_folder(prefix + "/temp", "1")
+        if typeof(result) == "string" then print "2: " + g.error(result)
     end if
     
-    file = context.computer.File(context.path + "/temp/hex.src")
+    file = context.computer.File(prefix + "/temp/hex.src")
 
     if not file then
-        context.computer.touch(context.path + "/temp", "hex.src")
+        result = context.computer.touch(prefix + "/temp", "hex.src")
+        if typeof(result) == "string" then print "3: " + g.error(result)
 
-        file = context.computer.File(context.path + "/temp/hex.src")
+        file = context.computer.File(prefix + "/temp/hex.src")
     end if
 
     if not file then
@@ -674,17 +681,18 @@ g.func.run = function(src)
         return
     end if
 
-    file.set_content(src)
+    result = file.set_content(src)
+    if typeof(result) == "string" then print "4: " + g.error(result)
 
-    context.shell.build(file.path, context.path + "/temp")
-    context.shell.launch(context.path + "/temp/hex")
+    context.shell.build(file.path, prefix + "/temp")
+    context.shell.launch(prefix + "/temp/hex")
 
-    dir = context.computer.File(context.path + "/temp")
+    dir = context.computer.File(prefix + "/temp")
     if not dir then
-        print g.error("Could not locate directory at: " + context.path + "/temp")
+        print g.error("Could not locate directory at: " + prefix + "/temp")
         return
     end if
-    dir.move(context.path + "/temp/1", dir.name)
+    dir.move(prefix + "/temp/1", dir.name)
 end function
 
 // Transfers a file from the current context to the home context.
@@ -842,6 +850,45 @@ g.func.checkShell = function(idx)
     return 1
 end function
 
+g.func.checkProxy = function(silent = 0)
+    if not g.hasIndex("proxy") then
+        if not silent then print g.error("No proxy found.")
+        return 0
+    end if
+
+    if typeof(g.proxy) != "string" or typeof(g.proxy.to_int) != "number" or not g.stack.hasIndex(g.proxy) then
+        if not silent then print g.error("Invalid proxy: " + @g.proxy)
+        return 0
+    end if
+
+    if g.stack[g.proxy].type != "shell" then 
+        if not silent then print g.error("Proxy context is not a shell.")
+        return 0
+    end if
+
+    return 1
+end function
+
+g.func.checkPort = function(port)
+    port = @port
+
+    if typeof(port) == "string" then
+        if not typeof(port.to_int) == "number" then
+            print g.error("Invalid port: " + @port)
+            return 0
+        end if
+
+        port = port.to_int
+    end if
+
+    if typeof(port) != "number" or port < 0 or port > 65535 then
+        print g.error("Invalid port: " + @port)
+        return 0
+    end if
+
+    return 1
+end function
+
 // Checks if the context at the given index is a computer.
 // @param {string} idx - The index to check.
 // @return {number} - 1 if the context is a computer, 0 otherwise.
@@ -906,6 +953,54 @@ g.func.attach_metax = function(idx)
     end if
 
     g.stack[idx].metax = metax
+
+    return 1
+end function
+
+// Attaches the crypto library to the context at the given index.
+// @param {string} idx - The index of the context.
+// @return {number} - 1 if successful, 0 otherwise.
+g.func.attach_crypto = function(idx)
+    if not g.func.checkShell(idx) then return 0
+
+    if not g.func.putLib(g.stack["0"].path, "crypto.so", g.stack[idx].path) then
+        print g.error("Could not upload crypto.so.")
+    end if
+
+    print g.const.indent + g.s3("Attaching crypto lib to context...")
+    filePath = g.stack[idx].path + "/crypto.so"
+    crypto = g.func.include_lib(filePath.replace("//", "/"))
+
+    if not crypto then
+        print g.error("Could not retrieve library via include_lib")
+        return 0
+    end if
+
+    g.stack[idx].crypto = crypto
+
+    return 1
+end function
+
+// Attaches the aptclient library to the context at the given index.
+// @param {string} idx - The index of the context.
+// @return {number} - 1 if successful, 0 otherwise.
+g.func.attach_apt = function(idx)
+    if not g.func.checkShell(idx) then return 0
+
+    if not g.func.putLib(g.stack["0"].path, "aptclient.so", g.stack[idx].path) then
+        print g.error("Could not upload aptclient.so.")
+    end if
+
+    print g.const.indent + g.s3("Attaching aptclient lib to context...")
+    filePath = g.stack[idx].path + "/aptclient.so"
+    aptclient = g.func.include_lib(filePath.replace("//", "/"))
+
+    if not aptclient then
+        print g.error("Could not retrieve library via include_lib")
+        return 0
+    end if
+
+    g.stack[idx].apt = aptclient
 
     return 1
 end function

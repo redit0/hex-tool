@@ -23,3 +23,4 @@ import_code("utilities/rtgen.src")
 import_code("utilities/htop.src")
 
 import_code("fs/cd.src")
+import_code("fs/rm.src")

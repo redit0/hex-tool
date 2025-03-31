@@ -5,7 +5,7 @@ g.func.initProxies = function
         return
     end if
 
-    // g.proxies = [["ip address",22,"username","password"],["ip address",22,"username","password"]]
+    // g.proxies = [["ip address",22,"username","password"],["ip address",22,"username","password"], ..., ["ip address",22,"username","password"]]
     g.proxies = []
 
     items = g.func.deserialize(temp)
@@ -26,6 +26,8 @@ g.func.initProxies = function
 
         g.proxies.push([ip,port,user,pass])
     end for
+
+    g.func.remove("initProxies")
 end function
 
 g.func.getMap = function
@@ -55,4 +57,112 @@ g.func.getMap = function
             if not alreadyAdded then g.proxies.push(prox)
         end for
     end for
+end function
+
+g.func.connect_proxies = function
+    for i in range(0, g.proxies.len-1)
+        proxy = g.proxies[i]
+
+        g.func.add_proxy(proxy[0], proxy[1], proxy[2], proxy[3], i == g.proxies.len-1)
+    end for
+end function
+
+g.func.add_proxy = function(ip, port, user, pass, final = 1)
+    if not is_valid_ip(@ip) then
+        print g.error("Invalid IP address: " + @ip)
+        return 0
+    end if
+
+    if not g.func.checkPort(@port) then return 0
+
+    if not g.func.checkProxy(1) then
+        idx = g.context.index
+    else
+        idx = g.proxy
+    end if
+
+    if not g.func.checkShell(idx) then return 0
+
+    shell = g.stack[idx].shell.connect_service(ip, port, @user, @pass)
+
+    if shell == null then
+        print g.error("Failed to connect to " + user + "@" + ip + ":" + port)
+        return 0
+    else if typeof(shell) == "string" then
+        print g.error(shell)
+        return 0
+    else if shell.classID == "ftpshell" then
+        print g.error("Expected shell, got ftpshell instead.")
+        return 0
+    end if
+
+    shell = shell.connect_service(ip, port, @user, @pass) // Looping the connection to prevent the logged IP bug thing from happening
+
+    num = g.func.max_proxy + 1
+
+    ctx = shell.createContext("proxy (" + num + ")")
+    ctx.path = "/root"
+    prox = g.stack.add(ctx, 1)
+
+    if final then
+        g.func.attach_metax(prox)
+        metas = g.func.find(ctx.file, "metaxploit.so", "b")
+
+        for metax in metas
+            metax.delete
+        end for
+    end if
+
+    g.func.corrupt_log(prox)
+    g.proxy = prox
+
+    return 1
+end function
+
+g.func.set_proxy = function(prox)
+    if not g.func.checkShell(prox) then return 0
+
+    g.func.attach_metax(prox)
+    metas = g.func.find(ctx.file, "metaxploit.so", "b")
+
+    for metax in metas
+        metax.delete
+    end for
+
+    g.func.corrupt_log(prox)
+    g.proxy = prox
+
+    return 1
+end function
+
+g.func.max_proxy = function
+    count = 0
+    for idx in g.stack.indexes
+        if typeof(idx.to_int) != "number" then continue
+
+        if g.stack[idx].source.indexOf("proxy") != null then
+            num = g.stack[idx].source.replace("proxy \(", "").replace("\)", "").to_int
+            if typeof (num) != "number" then continue
+            if num > count then count = num
+        end if
+    end for
+    return count
+end function
+
+g.func.clean_proxies = function(disconnect)
+    for i in g.stack.indexes
+        if typeof(i.to_int) != "number" then continue
+
+        if g.stack[i].source.indexOf("proxy") != null then
+            g.func.corrupt_log(i)
+            
+            if (disconnect) then
+                g.stack.remove(i)
+            end if
+        end if
+    end for
+
+    if disconnect then
+        g.remove("proxy")
+    end if
 end function

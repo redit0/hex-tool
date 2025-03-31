@@ -10,6 +10,7 @@ doTerminal = function(args)
     context = g.stack[g.context.index]
     if not context.shell then print(g.error("Current context is not a shell."))
 
+    g.command = "exit"
     context.shell.start_terminal
 end function
 

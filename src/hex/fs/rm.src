@@ -1,0 +1,97 @@
+remHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [folder name or path]") + g.l2(" Delete the specified file.  Use '*' as a wildcard (unless using a file path instead of a file name).") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-r] [folder name or path]") + g.l2(" Use -r to delete a directory that is not empty.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+rem = function(args = null)
+    if args == null or args == [] or args.len > 2 then
+        self.help
+        return 0
+    end if
+
+    args[0] = @args[0]
+    if args.len == 2 then args[1] = @args[1]
+
+    recurse = 0
+
+    if args.len == 1 then
+        if args[0] == "-h" or args[0] == "help" then
+            self.help
+            return 0
+        end if
+
+        if args[0] == "-r" then
+            print g.error("No path specified.")
+            return 0
+        end if
+
+        fileName = args[0]
+    else if args.len == 2 then
+        if args[0] == "-r" then
+            recurse = 1
+            fileName = args[1]
+        else
+            print g.error("Invalid argument: " + args[0])
+            return 0
+        end if
+    end if
+
+    context = g.stack[g.context.index]
+
+    files = []
+
+    if fileName.indexOf("/") == null then
+        currentPath = context.computer.File(context.currentPath)
+
+        fileList = currentPath.get_files + currentPath.get_folders
+
+        pattern = fileName.replace("\.", "\.").replace("\*", ".*")
+
+        for f in fileList
+            if f.name.is_match(pattern) then files.push(f)
+        end for
+    else
+        if fileName[0] != "/" then
+            fileName = context.currentPath + "/" + fileName
+        end if
+        fileName = fileName.replace("//", "/")
+
+        file = context.computer.File(fileName)
+
+        if file then
+            files.push(file)
+        end if
+    end if
+
+    if files.len == 0 then
+        print g.error("No such file or directory.")
+        return 0
+    end if
+
+    for f in files
+        if f.is_folder and recurse == 0 and (f.get_files.len > 0 or f.get_folders.len > 0) then
+            print g.error("The directory " + f.name + " is not empty.  Use [rm -r " + args[0] + "] to delete it anyway.")
+        else
+            print g.const.indent + g.s3("Deleting " + f.path + "...")
+            result = f.delete
+            if typeof(result) == "string" and result.len > 0 then
+                print g.error(result)
+            end if
+        end if
+    end for
+
+    return 1
+end function
+
+g.fs.rm = {
+    "name": "rm",
+    "shortDescription": "Delete a file or directory",
+    "exec": @rem,
+    "help": @remHelp,
+}

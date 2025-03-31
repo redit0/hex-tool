@@ -1,84 +1,100 @@
 g = get_custom_object
-g.colors = {}
-g.const = {}
-g.context = {}
-g.command = ""
-g.database = {}
-g.func = {}
-g.fs = {}
-g.stack = {}
-g.target = {}
-g.tools = {}
-g.util = {}
 
-import_code("hex/json.src")
-import_code("hex/colors.src")
-import_code("hex/constants.src")
-import_code("hex/functions.src")
-import_code("hex/extensions.src")
-g.registerExtensions
+if not g.hasIndex("hexed") then
+	g.colors = {}
+	g.const = {}
+	g.context = {}
+	g.command = ""
+	g.database = {}
+	g.func = {}
+	g.fs = {}
+	g.stack = {}
+	g.target = {}
+	g.tools = {}
+	g.util = {}
 
-import_code("hex/banner.src")
-import_code("hex/prompt.src")
+	import_code("hex/json.src")
+	import_code("hex/colors.src")
+	import_code("hex/constants.src")
+	import_code("hex/functions.src")
+	import_code("hex/extensions.src")
+	g.registerExtensions
+	import_code("hex/banner.src")
+	import_code("hex/prompt.src")
 
-#include "hex/tools.src"
+	#include "hex/tools.src"
 
-import_code("hex/proxies.src")
-g.func.initProxies
+	import_code("hex/proxies.src")
+	g.func.initProxies
 
-import_code("hex/rshell.src")
-import_code("hex/mail.src")
+	import_code("hex/rshell.src")
+	import_code("hex/mail.src")
+	import_code("hex/logs.src")
 
-if params.len > 0 then
-	if is_valid_ip(params[0]) then
-		// Probably do something with this... maybe probe immediately or scan immediately, idk.
-	else
-		exit(g.l3("Usage: hex [IP Address] {Port}"))
+	if params.len > 0 then
+		if is_valid_ip(params[0]) then
+			// Probably do something with this... maybe probe immediately or scan immediately, idk.
+		else
+			exit(g.l3("Usage: hex [IP Address] {Port}"))
+		end if
 	end if
-end if
 
-if params.len > 1 then
-	if params[1] isa number and params[1].to_int >= 0 and params[1].to_int <= 65535 then
-		// Probably do something with this... maybe scan immediately or hack immediately, idk.
-	else
-		exit(g.l3("Usage: hex [IP Address] {Port}"))
+	if params.len > 1 then
+		if params[1] isa number and params[1].to_int >= 0 and params[1].to_int <= 65535 then
+			// Probably do something with this... maybe scan immediately or hack immediately, idk.
+		else
+			exit(g.l3("Usage: hex [IP Address] {Port}"))
+		end if
 	end if
-end if
 
-g.func.init
-g.func.updateApt
-output = g.func.updateLibs
-g.func.loadLibs
+	g.func.init
+	g.func.updateApt
+	output = g.func.updateLibs
+	g.func.loadLibs
 
-print(g.func.getBanner, 1)
-print(output)
+	print(g.func.getBanner, 1)
+	print(output)
 
-g.func.init_rshell
-g.func.initMail
+	g.func.init_rshell
+	g.func.initMail
 
-while true
-	if g.command == "" then
-		input = user_input(g.func.getPrompt)
+	g.hexed = 1
 
-		if input == "" then
-			continue
+	while g.command != "exit"
+		g.stack["0"].shell.launch(program_path)
+		if g.command != "exit" then
+			print
+			print g.error("Hex is attempting to recover from an unhandled exception.")
+			print g.error("Please report this to @redit0 via discord or in-game chat.")
+		end if
+	end while
+else
+	g.registerExtensions
+	
+	while true
+		if g.command == "" then
+			input = user_input(g.func.getPrompt)
+
+			if input == "" then
+				continue
+			end if
+
+			key = input.split(" ")[0]
+			args = input.split(" ")[1:]
+		else
+			key = g.command.split(" ")[0]
+			args = g.command.split(" ")[1:]
+			g.command = ""
 		end if
 
-		key = input.split(" ")[0]
-		args = input.split(" ")[1:]
-	else
-		key = g.command.split(" ")[0]
-		args = g.command.split(" ")[1:]
-		g.command = ""
-	end if
-
-	if g.tools.hasIndex(key) then
-		g.tools[key].exec(args)
-	else if g.util.hasIndex(key) then
-		g.util[key].exec(args)
-	else if g.fs.hasIndex(key) then
-		g.fs[key].exec(args)
-	else
-		print(g.error("Invalid argument: " + key))
-	end if
-end while
+		if g.tools.hasIndex(key) then
+			g.tools[key].exec(args)
+		else if g.util.hasIndex(key) then
+			g.util[key].exec(args)
+		else if g.fs.hasIndex(key) then
+			g.fs[key].exec(args)
+		else
+			print(g.error("Invalid argument: " + key))
+		end if
+	end while
+end if

@@ -58,7 +58,7 @@ doStack = function(args = null)
 
             line = line + item.key + "<pos=120>" + item.public + "<pos=320>" + item.local + "<pos=500>" + item.type + "<pos=610>" + item.source + "<pos=730>" + item.user
 
-            if item.public == context.public and item.local == context.local and item.type == context.type then
+            if item.key == g.context.index then
                 output = output + g.b4(line) + g.const.nl
             else if g.hasIndex("proxy") and g.proxy == item.key then
                 output = output + g.g2(line) + g.const.nl
@@ -72,7 +72,7 @@ doStack = function(args = null)
     return
 end function
 
-g.stack.add = function(item)
+g.stack.add = function(item, force = 0)
     updateItem = function(i, item)
         g.stack[i][item.type] = item[item.type]
         g.stack[i].user = item.getUser
@@ -86,7 +86,7 @@ g.stack.add = function(item)
         end if
     end function
 
-    // Only add the lower-tier items if we already have one, and if it is of a lower access level than this new one would give us.
+    // Only add the lower-tier items if we already have one, and if the one we already have is of a lower access level than this new one would give us.
     updateExtras = function
         if item.source.indexOf("proxy") == null and item.source != "rs server" then
             if item.type == "shell" then
@@ -137,21 +137,23 @@ g.stack.add = function(item)
         key = str(max + 1)
     end if
 
-    for i in keys
-        if not typeof(i.to_int) == "number" then continue
+    if not force then
+        for i in keys
+            if not typeof(i.to_int) == "number" then continue
 
-        if g.stack[i].public == item.public and g.stack[i].local == item.local and g.stack[i].type == item.type then
-            if g.stack[i].user == "guest" or item.getUser == "root" then
-                if g.stack[i].user != "root" then
-                    updateItem(i, item)
+            if g.stack[i].public == item.public and g.stack[i].local == item.local and g.stack[i].type == item.type then
+                if g.stack[i].user == "guest" or item.getUser == "root" then
+                    if g.stack[i].user != "root" then
+                        updateItem(i, item)
+                    end if
                 end if
+
+                updateExtras
+
+                return i
             end if
-
-            updateExtras
-
-            return i
-        end if
-    end for
+        end for
+    end if
 
     g.stack[key] = item
 
