@@ -1004,3 +1004,10 @@ g.func.attach_apt = function(idx)
 
     return 1
 end function
+
+g.func.clear_custom_object = function
+    for idx in get_custom_object.indexes
+        if idx == "__isa" or idx == "classID" then continue
+        get_custom_object.remove(idx)
+    end for
+end function

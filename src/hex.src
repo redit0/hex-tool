@@ -13,6 +13,14 @@ if not g.hasIndex("hexed") then
 	g.tools = {}
 	g.util = {}
 
+	strFunc = "" + @user_input
+
+	if strFunc.indexOf("addToHistory") == null then
+		g.experimental = 0
+	else
+		g.experimental = 1
+	end if
+
 	import_code("hex/json.src")
 	import_code("hex/colors.src")
 	import_code("hex/constants.src")
@@ -66,6 +74,9 @@ if not g.hasIndex("hexed") then
 			print
 			print g.error("Hex is attempting to recover from an unhandled exception.")
 			print g.error("Please report this to @redit0 via discord or in-game chat.")
+		else
+			g.func.clear_custom_object
+			exit
 		end if
 	end while
 else
@@ -73,7 +84,11 @@ else
 	
 	while true
 		if g.command == "" then
-			input = user_input(g.func.getPrompt)
+			if g.experimental then
+				input = user_input(g.func.getPrompt, 0, 0, 1)
+			else
+				input = user_input(g.func.getPrompt)
+			end if
 
 			if input == "" then
 				continue
