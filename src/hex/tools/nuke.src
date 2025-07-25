@@ -1,4 +1,4 @@
-nuleHelp = function()
+nukeHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Destroys the current context system.  If the optional parameter -h is supplied, does so irreversibly.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
@@ -14,6 +14,6 @@ g.tools.nuke = {
     "name": "nuke",
     "shortDescription": "Starts a terminal on the current context.",
     "exec": @doNuke,
-    "help": @nuleHelp,
+    "help": @nukeHelp,
     "data": {}
 }

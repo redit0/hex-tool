@@ -63,7 +63,7 @@ g.func.serialize = function(value, compact = 0, indent = 0)
     end function
 
     _eol = char(13)
-    _escapeFrom = ["\", """", char(8), char(9), char(10), char(12), char(13)]
+    _escapeFrom = ["\\", """", char(8), char(9), char(10), char(12), char(13)]
     _escapeTo = ["\\", "\""", "\b","\t","\n","\f","\r"]
     _escapeIndexes = _escapeFrom.indexes
 

@@ -640,13 +640,13 @@ end function
 // @param {string} src - The source code to run.
 // @return {none}
 g.func.run = function(src)
-    if not g.func.checkShell(g.context.index) then return
+    if not g.func.checkShell(g.context.index) then return 0
 
     context = g.stack[g.context.index]
 
     if typeof(@src) != "string" then
         print g.error("Invalid parameter: " + typeof(@src))
-        return
+        return 0
     end if
 
     prefix = context.path
@@ -678,7 +678,7 @@ g.func.run = function(src)
 
     if not file then
         print g.error("Failed to create hex.src")
-        return
+        return 0
     end if
 
     result = file.set_content(src)
@@ -688,11 +688,11 @@ g.func.run = function(src)
     context.shell.launch(prefix + "/temp/hex")
 
     dir = context.computer.File(prefix + "/temp")
-    if not dir then
-        print g.error("Could not locate directory at: " + prefix + "/temp")
-        return
+    if dir != null then
+        dir.move(prefix + "/temp/1", dir.name)
     end if
-    dir.move(prefix + "/temp/1", dir.name)
+
+    return 1
 end function
 
 // Transfers a file from the current context to the home context.
@@ -724,7 +724,16 @@ g.func.put = function(srcPath, destPath)
         return
     end if
 
+    f = home.computer.File(srcPath)
+    f.chmod("u+rwx")
+    f.chmod("g+rwx")
+    f.chmod("o+rwx")
+
     g.func.transfer(home.shell, srcPath, context.shell, destPath)
+
+    f.chmod("u-rwx")
+    f.chmod("g-rwx")
+    f.chmod("o-rwx")
 end function
 
 // Transfers a file between two shells.
@@ -844,6 +853,25 @@ g.func.checkShell = function(idx)
 
     if g.stack[idx].type != "shell" then
         print g.error("Context is not a shell.")
+        return 0
+    end if
+
+    return 1
+end function
+
+g.func.checkMetax = function(idx)
+    if not typeof(@idx) == "string" then
+        print g.error("Invalid index type: " + typeof(@idx))
+        return 0
+    end if
+
+    if not g.stack.hasIndex(idx) then
+        print g.error("Stack does not contain index: " + @idx)
+        return 0
+    end if
+
+    if g.stack[idx].metax == null then
+        print g.error("No metaxploit library found. (Hint: Use 'jump' and try again!)")
         return 0
     end if
 

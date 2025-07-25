@@ -30,6 +30,7 @@ hack = function(args)
         output = g.const.nl + g.const.indent + g.s2("<size=105%><voffset=0.5em>Memory<pos=175>Value<pos=570>Result<pos=770>User</voffset></size>") + g.const.nl
 
         for result in results
+            if result.type == "null" then continue
             line = g.const.indent + "<size=80%>"
             line = line + g.l1(result.memory) + "<pos=175>" + g.l1(result.value) + "<pos=570>"
             
@@ -465,56 +466,91 @@ hack = function(args)
                 return
             end if
         else if is_valid_ip(args[0]) then
-            if args.len > 1 then
-                if is_valid_ip(args[1]) then
-                    if is_lan_ip(args[1]) then
+            argsStr = g.func.serialize(args, 1).replace("char(10)", "").replace("char(13)", "").replace("\\n", "").replace("\n", "")
+
+            if g.context.index != "0" and not g.tools.hack.data.hasIndex("remoted") then
+                src = "g = get_custom_object" + char(10) + "g.registerExtensions" + char(10) + "g.tools.hack.data.remoted = 1" + char(10) + "g.tools.hack.exec(" + argsStr + ")"
+                
+                g.func.run(src)
+            else
+                if g.tools.hack.data.hasIndex("remoted") then g.tools.hack.data.remove("remoted")
+                if args.len > 1 then
+                    if is_valid_ip(args[1]) then
+                        if is_lan_ip(args[1]) then
+                            g.tools.scan.data.silent = 1
+                            if g.tools.scan.exec([args[0]]) == 0 then return 0
+                            g.tools.scan.data.silent = 0
+
+                            metaLibs = getRemoteLib(args[0], 0, args[1])
+
+                            result = getBounce(metaLibs, args[1])
+
+                            if result then
+                                item = result.createContext("bounce")
+                                g.stack.add(item)
+
+                                g.util.clear.exec
+                                print g.const.nl + g.const.indent + g.g1("Found computer object for " + args[1] + " with access level " + result.getUser(0))
+                                return
+                            else
+                                //g.util.clear.exec
+                                print g.const.nl + g.error("No computer object found for " + args[1])
+                                return
+                            end if
+                        else
+                            g.util.clear.exec
+                            print(g.const.nl + g.const.indent + g.error("Provided IP address must be a LAN address."))
+                            return
+                        end if
+                    else if typeof(args[1].to_int) == "number" and args[1].to_int >= 0 and args[1].to_int <= 65535 then
                         g.tools.scan.data.silent = 1
-                        g.tools.scan.exec([args[0]])
+                        if g.tools.scan.exec([args[0], args[1]]) == 0 then return 0
                         g.tools.scan.data.silent = 0
 
-                        metaLibs = getRemoteLib(args[0], 0, args[1])
+                        router = g.func.getRouter(args[0])
 
-                        result = getBounce(metaLibs, args[1])
-
-                        if result then
-                            item = result.createContext("bounce")
-                            g.stack.add(item)
-
-                            g.util.clear.exec
-                            print g.const.nl + g.const.indent + g.g1("Found computer object for " + args[1] + " with access level " + result.getUser(0))
-                            return
+                        if is_lan_ip(args[0]) then
+                            ports = router.device_ports(args[0])
                         else
-                            //g.util.clear.exec
-                            print g.const.nl + g.error("No computer object found for " + args[1])
-                            return
+                            ports = router.used_ports
                         end if
+
+                        address = router.local_ip
+
+                        for port in ports
+                            if port.port_number == args[1].to_int then
+                                address = port.get_lan_ip
+                            end if
+                        end for
+
+                        metaLibs = getRemoteLib(args[0], args[1].to_int, address)
+
+                        extra = ""
+                        if args.len > 2 then
+                            extra = args[2]
+                        end if
+
+                        results = getObjects(metaLibs, router.public_ip, extra)
+
+                        output = output(results)
+
+                        g.util.clear.exec
+                        print g.func.getPrompt
+                        print(output)
+                        return
                     else
                         g.util.clear.exec
-                        print(g.const.nl + g.const.indent + g.error("Provided IP address must be a LAN address."))
+                        print(g.const.nl + g.const.indent + g.error("Invalid argument: " + args[1]))
                         return
                     end if
-                else if typeof(args[1].to_int) == "number" and args[1].to_int >= 0 and args[1].to_int <= 65535 then
+                else
                     g.tools.scan.data.silent = 1
-                    g.tools.scan.exec([args[0], args[1]])
+                    if g.tools.scan.exec([args[0]]) == 0 then return 0
                     g.tools.scan.data.silent = 0
 
+                    metaLibs = getAllRemoteLibs(args[0])
+
                     router = g.func.getRouter(args[0])
-
-                    if is_lan_ip(args[0]) then
-                        ports = router.device_ports(args[0])
-                    else
-                        ports = router.used_ports
-                    end if
-
-                    address = router.local_ip
-
-                    for port in ports
-                        if port.port_number == args[1].to_int then
-                            address = port.get_lan_ip
-                        end if
-                    end for
-
-                    metaLibs = getRemoteLib(args[0], args[1].to_int, address)
 
                     extra = ""
                     if args.len > 2 then
@@ -525,37 +561,11 @@ hack = function(args)
 
                     output = output(results)
 
-                    g.util.clear.exec
+                    //g.util.clear.exec
                     print g.func.getPrompt
                     print(output)
                     return
-                else
-                    g.util.clear.exec
-                    print(g.const.nl + g.const.indent + g.error("Invalid argument: " + args[1]))
-                    return
                 end if
-            else
-                g.tools.scan.data.silent = 1
-                g.tools.scan.exec([args[0]])
-                g.tools.scan.data.silent = 0
-
-                metaLibs = getAllRemoteLibs(args[0])
-
-                router = g.func.getRouter(args[0])
-
-                extra = ""
-                if args.len > 2 then
-                    extra = args[2]
-                end if
-
-                results = getObjects(metaLibs, router.public_ip, extra)
-
-                output = output(results)
-
-                //g.util.clear.exec
-                print g.func.getPrompt
-                print(output)
-                return
             end if
         else if args[0] == "random" then
             ran = g.func.getRandomIp

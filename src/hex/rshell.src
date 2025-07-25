@@ -232,9 +232,8 @@ g.func.remove_rshell = function(idx)
         pid = proc.split(" ")[1].to_int
         cmd = proc.split(" ")[4]
 
-        if (user == "root" or usr == user) and ["dsession", "kernel_task", "Xorg"].indexOf(cmd) == null then
-            result = g.stack[idx].computer.close_program(pid)
-            if typeof(result) == "string" then print g.error(result)
+        if ["dsession", "kernel_task", "Xorg"].indexOf(cmd) == null then
+            g.stack[idx].computer.close_program(pid)
         end if
     end for
 
