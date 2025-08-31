@@ -1,6 +1,6 @@
 poisonHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
-    text = text + g.g2(self.name) + g.l2(" Uploads insecure libraries to the target computer in /lib.  Checks for a folder (anywhere) called InsecureLibs and uploads all libraries contained therein.  Libraries should contain the name, but do not need to be named exactly.  Example: libhttp105.so will be uploaded as libhttp.so.") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Uploads insecure libraries to the target computer in /lib.  Checks for a folder (anywhere) called InsecureLibs and uploads all libraries contained therein.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
@@ -11,10 +11,35 @@ doPoison = function(args)
         home = g.stack["0"]
         context = g.stack[g.context.index]
 
+        if not g.func.checkShell(g.context.index) then
+            print g.error("No shell available in current context.")
+            return 0
+        end if
+
+        dest = context.computer.File("/lib")
+
+        if not dest.has_permission("w") then
+            print g.error("No write permission in /lib on target computer.")
+            return 0
+        end if
+
         insecure = g.func.find(home.file.getRootFolder, "InsecureLibs", "fr")
 
-        
+        if insecure == [] then
+            print g.error("No insecure libraries found. (Hint: Create a folder called InsecureLibs in your home directory and place libraries there.)")
+            return 0
+        end if
 
+        libs = g.func.find(insecure[0], "*.so", "br")
+
+        if libs == [] then
+            print g.error("No libraries found in InsecureLibs folder.")
+            return 0
+        end if
+
+        for lib in libs
+            g.func.put(lib.path, "/lib")
+        end for
 
         return 1
     else if args[0] == "help" or args[0] == "-h" then
