@@ -102,13 +102,16 @@ hack = function(args)
                             result.type = "disabled firewall"
                             result.user = g.d1("N/A")
                         else if extra == "" and result.obj == 0 then
-                            result.type = "password reset"
-
                             input = user_input("")
                             if input.is_match(pattern) then
+                                result.type = "password reset"
                                 m = input.matches(pattern)
                                 user = m[m.indexes[0]].split(" ")[1]
                                 result.user = user.getUser
+                            else
+                                result.type = "null"
+                                result.user = g.d1("N/A")
+                                result.address = ""
                             end if
                         else if extra != "" then
                             result.type = "password or firewall"

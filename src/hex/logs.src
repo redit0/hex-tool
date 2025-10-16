@@ -29,7 +29,7 @@ end function
 
 g.func.download_log = function(idx)
     if not g.func.checkShell(idx) then return 0
-    context - g.stack[idx]
+    context = g.stack[idx]
 
     home = g.stack["0"]
 

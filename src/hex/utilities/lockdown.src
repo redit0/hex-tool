@@ -71,8 +71,6 @@ lockdown = function(args = null)
 
     del(g.func.find(root, ".Trash", "fw"))
 
-    del(g.func.find(root, "/lib/kernel_module.so", "bw"))
-
     root.chmod("u-rwx", 1)
     root.chmod("g-rwx", 1)
     root.chmod("o-rwx", 1)

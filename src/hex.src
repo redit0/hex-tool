@@ -70,10 +70,13 @@ if not g.hasIndex("hexed") then
 
 	while g.command != "exit"
 		g.stack["0"].shell.launch(program_path)
+		print "[" + g.command + "]"
 		if g.command != "exit" then
 			print
 			print g.error("Hex is attempting to recover from an unhandled exception.")
 			print g.error("Please report this to @redit0 via discord or in-game chat.")
+			input = user_input(g.const.indent + g.r1("Press enter to continue or type 'quit' to quit."))
+			if input == "quit" then exit
 		else
 			g.func.clear_custom_object
 			exit
