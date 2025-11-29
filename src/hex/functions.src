@@ -1039,3 +1039,54 @@ g.func.clear_custom_object = function
         get_custom_object.remove(idx)
     end for
 end function
+
+// **Run Binary:**
+// Searches for a binary file matching the given key and launches it with the provided arguments from the current shell context.
+// If multiple binaries are found, prompts the user to select one. Returns 1 on success, 0 on failure or invalid selection.
+// @param {string} key - The name or pattern of the binary to search for.
+// @param {list<string>} args - Arguments to pass to the binary.
+// @return {number} - 1 if the binary was launched successfully, 0 otherwise.
+// @example g.func.run_binary("ls", ["-l", "/home"]) // Runs the 'ls' binary with arguments
+//
+g.func.run_binary = function(key, args)
+    idx = g.context.index
+    if g.stack[idx].type == "shell" then
+        file = g.stack[idx].computer.File("/")
+
+        binaries = g.func.find(file, key, "b")
+        binary = null
+
+        if binaries.len == 0 then
+            return 0
+        else
+            if binaries.len > 1 then
+                num = 1
+                options = ""
+                for b in binaries
+                    options = options +  "[" + num + "]" + g.const.tab*2 + b.path + g.const.nl
+                    num = num + 1
+                end for
+
+                selection = user_input("Multiple binaries found:" + g.const.nl*2 + options + g.const.nl + "Select a binary to launch: ", 0, 0, 0)
+
+                if typeof(selection.to_int) == "number" and selection.to_int > 0 and selection.to_int < num then
+                    binary = binaries[selection.to_int - 1]
+                else
+                    print(g.error("Invalid selection."))
+
+                    return 0
+                end if
+            else if binaries.len == 1 then
+                    binary = binaries[0]
+            end if
+
+            if binary != null then
+                g.stack[idx].shell.launch(binary.path, args.join(" "))
+
+                return 1
+            end if
+
+            return 0
+        end if
+    end if
+end function

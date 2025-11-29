@@ -1,0 +1,47 @@
+downloadHelp = function(self)
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [path or filename]") + g.l2(" Downloads file at the specified path.  If a filename is provided instead, searches for and downloads all files matching the provided name (use * for wildcard). Files are saved in the targets folder.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doDownload = function(args = null)
+    if args != null and args.len ==1 and args[0] != "-h" and args[0] != "help" then
+        path = args[0]
+        context = g.stack[g.context.index]
+        root = context.File
+
+        while root.path != "/"
+            root = root.parent
+        end while
+
+        files = g.func.find(root, path, "r")
+
+        if files.len == 0 then
+            print g.error("Could not find any matching readable files")
+            return 0
+        end if
+
+        for file in files
+            g.func.transfer(context.shell, file.path, g.stack["0"].shell, g.func.createFolders.path)
+        end for
+
+        return 1
+    end if
+
+    self.help
+    return 0
+end function
+
+// Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.
+// You can leave it as src code (name it with a .src file extension), otherwise hex will attempt to load it as a binary file that has been built with the
+// 'allow import' flag set.
+
+g.util.download = {
+    "name": "download",
+    "shortDescription": "Downloads files from the target",
+    "exec": @doDownload,
+    "help": @downloadHelp,
+    "data": {}
+}

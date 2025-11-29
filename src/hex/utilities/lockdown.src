@@ -77,7 +77,7 @@ lockdown = function(args = null)
     root.set_owner("root", 1)
     root.set_group("root", 1)
 
-    walk(root)
+    if home then walk(root)
 
     print(g.const.ni + g.g2("System locked down."))
     return

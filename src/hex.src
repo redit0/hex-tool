@@ -112,7 +112,9 @@ else
 		else if g.fs.hasIndex(key) then
 			g.fs[key].exec(args)
 		else
-			print(g.error("Invalid argument: " + key))
+			if not g.func.run_binary(key, args) then
+				print(g.error("Command not recognized: [" + key + "]"))
+			end if
 		end if
 	end while
 end if

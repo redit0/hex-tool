@@ -1,0 +1,70 @@
+uploadHelp = function(self)
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [path or filename]") + g.l2(" Uploads file at the specified path.  If a filename is provided instead, searches for and uploads all files matching the provided name (use * for wildcard). Files are saved in the target's current working directory.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doUpload = function(args = null)
+    if args != null and args.len ==1 and args[0] != "-h" and args[0] != "help" then
+        excludes = ["sudo","Terminal","Terminal.exe"]
+        path = args[0]
+        context = g.stack[g.context.index]
+        root = g.stack["0"].file
+
+        procs = g.stack["0"].computer.show_procs.split(char(10))
+
+        home = 0
+
+        for proc in procs
+            name = proc.split(" ")[4]
+
+            if name == "Xorg" then home = 1
+            break
+        end for
+
+        while root.path != "/"
+            root = root.parent
+        end while
+
+        files = g.func.find(root, path, "r")
+
+        if files.len == 0 then
+            print g.error("Could not find any matching readable files")
+            return 0
+        end if
+
+        for file in files
+            file.chmod("o+rwx")
+            file.chmod("u+rwx")
+            file.chmod("g+rwx")
+            g.func.transfer(g.stack["0"].shell, file.path, context.shell, context.currentPath)
+            file.chmod("u-rwx")
+            file.chmod("g-rwx")
+            file.chmod("o-rwx")
+
+            // Prevents accidentally locking yourself out if you upload Terminal.exe or sudo for some reason
+            if home == 1 and excludes.indexOf(file.name) != null then
+                file.chmod("g+rx")
+            end if
+        end for
+
+        return 1
+    end if
+
+    self.help
+    return 0
+end function
+
+// Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.
+// You can leave it as src code (name it with a .src file extension), otherwise hex will attempt to load it as a binary file that has been built with the
+// 'allow import' flag set.
+
+g.util.upload = {
+    "name": "upload",
+    "shortDescription": "Uploads files from the target",
+    "exec": @doUpload,
+    "help": @uploadHelp,
+    "data": {}
+}
