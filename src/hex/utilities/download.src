@@ -10,7 +10,7 @@ doDownload = function(args = null)
     if args != null and args.len ==1 and args[0] != "-h" and args[0] != "help" then
         path = args[0]
         context = g.stack[g.context.index]
-        root = context.File
+        root = context.file
 
         while root.path != "/"
             root = root.parent
