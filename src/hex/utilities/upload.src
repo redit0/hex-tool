@@ -1,6 +1,6 @@
 uploadHelp = function(self)
-    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [path or filename]") + g.l2(" Uploads file at the specified path.  If a filename is provided instead, searches for and uploads all files matching the provided name (use * for wildcard). Files are saved in the target's current working directory.") + g.const.ni
+    text = g.const.ni + g.l3("Usage:","u") + g.const.nl
+    text = text + g.g2(self.name) + g.b3(" [path or filename]") + g.l2(" Uploads file at the specified path.  If a filename is provided instead, searches for and uploads all files matching the provided name (use * for wildcard). Files are saved in the target's current working directory.") + g.const.nl
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)

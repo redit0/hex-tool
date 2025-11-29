@@ -1,0 +1,33 @@
+sudoHelp = function(self)
+    text = g.const.ni + g.l3("Usage:","u") + g.const.nl
+    text = text + g.g2(self.name) + g.b3(" [username] [password]") + g.l2(" Gets a shell with the supplied user credentials, and adds it to the stack") + g.const.nl
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doSudo = function(args = null)
+    if args == null or args.len != 2 then
+        self.help
+        return 0
+    else
+        username = args[0]
+        password = args[1]
+
+        
+
+        return 1
+    end if
+end function
+
+// Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.
+// You can leave it as src code (name it with a .src file extension), otherwise hex will attempt to load it as a binary file that has been built with the
+// 'allow import' flag set.
+
+g.util.sudo = {
+    "name": "sudo",
+    "shortDescription": "Get shell with supplied credentials",
+    "exec": @doSudo,
+    "help": @sudoHelp,
+    "data": {}
+}
