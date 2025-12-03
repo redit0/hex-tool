@@ -47,13 +47,14 @@ lockdown = function(args = null)
     home = 0
 
     if comp != null then
-        procs = comp.show_procs.split(char(10))
+        procs = comp.show_procs.split(char(10))[1:]
 
         for proc in procs
             name = proc.split(" ")[4]
-
-            if name == "Xorg" then home = 1
-            break
+            if name == "Xorg" then
+                home = 1
+                break
+            end if
         end for
     end if
 

@@ -137,6 +137,7 @@ doScan = function(args)
 
         if g.hasIndex("proxy") and g.proxy != "" and typeof(g.proxy.to_int) == "number" then
             idx = g.proxy
+            print g.g1(g.const.indent + "Using proxy: " + g.stack[idx].public)
         end if
         
         if not g.func.checkShell(idx) then return 0
@@ -169,6 +170,7 @@ doScan = function(args)
 
         if g.hasIndex("proxy") and g.proxy != "" and typeof(g.proxy.to_int) == "number" then
             idx = g.proxy
+            print g.g1(g.const.indent + "Using proxy: " + g.stack[idx].public)
         end if
 
         if not g.func.checkShell(idx) then return 0

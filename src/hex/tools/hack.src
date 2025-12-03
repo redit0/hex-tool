@@ -307,6 +307,7 @@ hack = function(args)
     getRemoteLib = function(ip, port, address)
         if g.hasIndex("proxy") then
             context = g.stack[g.proxy]
+            print g.g1(g.const.indent + "Using proxy: " + context.public)
         else
             context = g.stack[g.context.index]
         end if

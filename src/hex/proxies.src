@@ -105,7 +105,10 @@ g.func.add_proxy = function(ip, port, user, pass, final = 1)
     prox = g.stack.add(ctx, 1)
 
     if final then
+        temp = g.context.index
+        g.context.index = prox
         g.func.attach_metax(prox)
+        g.context.index = temp
         metas = g.func.find(ctx.file, "metaxploit.so", "b")
 
         for metax in metas
@@ -122,8 +125,11 @@ end function
 g.func.set_proxy = function(prox)
     if not g.func.checkShell(prox) then return 0
 
+    temp = g.context.index
+    g.context.index = prox
     g.func.attach_metax(prox)
-    metas = g.func.find(ctx.file, "metaxploit.so", "b")
+    g.context.index = temp
+    metas = g.func.find(g.stack[prox].file, "metaxploit.so", "b")
 
     for metax in metas
         metax.delete
