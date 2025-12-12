@@ -13,14 +13,6 @@ if not g.hasIndex("hexed") then
 	g.tools = {}
 	g.util = {}
 
-	strFunc = "" + @user_input
-
-	if strFunc.indexOf("addToHistory") == null then
-		g.experimental = 0
-	else
-		g.experimental = 1
-	end if
-
 	import_code("hex/json.src")
 	import_code("hex/colors.src")
 	import_code("hex/constants.src")
@@ -87,11 +79,7 @@ else
 	
 	while true
 		if g.command == "" then
-			if g.experimental then
-				input = user_input(g.func.getPrompt, 0, 0, 1)
-			else
-				input = user_input(g.func.getPrompt)
-			end if
+			input = user_input(g.func.getPrompt, 0, 0, 1)
 
 			if input == "" then
 				continue
