@@ -305,7 +305,7 @@ hack = function(args)
     // @param {string} address - The address to use for the overflow.
     // @return {list} - List containing the dumped meta library or an empty list if not found.
     getRemoteLib = function(ip, port, address)
-        if g.hasIndex("proxy") then
+        if g.hasIndex("proxy") and not is_lan_ip(ip) then
             context = g.stack[g.proxy]
             print g.g1(g.const.indent + "Using proxy: " + context.public)
         else
@@ -348,6 +348,7 @@ hack = function(args)
         router = g.func.getRouter(ip)
         ports = []
         if is_lan_ip(ip) then
+            print "LAN IP"
             for port in router.device_ports(ip)
                 if port.port_number == 8080 then
                     item = {}
@@ -356,7 +357,7 @@ hack = function(args)
                     ports.push(item)
                 end if
 
-                if not port.is_closed and port.get_lan_ip then
+                if not port.is_closed and port.get_lan_ip == ip then
                     item = {}
                     item.port = port.port_number
                     item.address = port.get_lan_ip
@@ -381,6 +382,7 @@ hack = function(args)
         libs = []
 
         for item in ports
+            print "getRemoteLib(""" + ip + """," + item.port + ",""" + item.address + """)"
             libs = libs + getRemoteLib(ip, item.port, item.address)
         end for
 

@@ -135,7 +135,7 @@ doScan = function(args)
     scanRemote = function(ip, port)
         idx = g.context.index
 
-        if g.hasIndex("proxy") and g.proxy != "" and typeof(g.proxy.to_int) == "number" then
+        if g.hasIndex("proxy") and g.proxy != "" and typeof(g.proxy.to_int) == "number" and not is_lan_ip(ip) then
             idx = g.proxy
             print g.g1(g.const.indent + "Using proxy: " + g.stack[idx].public)
         end if
@@ -168,7 +168,7 @@ doScan = function(args)
     scanAllPorts = function(ip)
         idx = g.context.index
 
-        if g.hasIndex("proxy") and g.proxy != "" and typeof(g.proxy.to_int) == "number" then
+        if g.hasIndex("proxy") and g.proxy != "" and typeof(g.proxy.to_int) == "number" and not is_lan_ip(ip) then
             idx = g.proxy
             print g.g1(g.const.indent + "Using proxy: " + g.stack[idx].public)
         end if
@@ -176,17 +176,20 @@ doScan = function(args)
         if not g.func.checkShell(idx) then return 0
         if not g.func.checkMetax(idx) then return 0
 
-        router = get_router(ip)
+        router = g.func.getRouter(ip)
 
-        if not router then
-            router = get_router
+        if not is_lan_ip(ip) then
+            ports = router.used_ports
+            isRouter = 1
+        else
+            ports = router.device_ports(ip)
+            isRouter = 0
         end if
-
-        ports = router.used_ports
 
         metaLibs = []
 
         for port in ports
+            if port.port_number == 8080 then isRouter = 1
             if port.is_closed then continue
 
             netSession = g.stack[idx].metax.net_use(ip, port.port_number)
@@ -202,11 +205,13 @@ doScan = function(args)
             end if
         end for
 
-        netSession = g.stack[idx].metax.net_use(ip, 0)
+        if isRouter then
+            netSession = g.stack[idx].metax.net_use(ip, 0)
 
-        metaLib = netSession.dump_lib
+            metaLib = netSession.dump_lib
 
-        metaLibs.push(metaLib)
+            metaLibs.push(metaLib)
+        end if
 
         scanMetaLibs(metaLibs)
         

@@ -1,4 +1,4 @@
-g.const.version = "0.0.263"
+g.const.version = "0.0.277"
 g.const.vhex = "v" + g.const.version
 g.const.indent = "    "
 g.const.insecureComp = ["/root/InsecureLibs/net.so", "0x6E25996", "imagepatic_tr_scroller32"]

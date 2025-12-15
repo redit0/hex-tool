@@ -546,9 +546,9 @@ g.func.getRouter = function(ip = null)
         return
     end if
 
-    if typeof(@ip) == "string" and is_valid_ip(ip) then
+    if typeof(@ip) == "string" and is_valid_ip(ip) and not is_lan_ip(ip) then
         src = "g = get_custom_object" + char(10) + "g.temp = get_router(""" + ip + """)"
-    else if @ip == null then
+    else if @ip == null or is_lan_ip(ip) then
         src = "g = get_custom_object" + char(10) + "g.temp = get_router"
     else
         print g.error("Invalid parameter: " + typeof(ip) + ": " + ip)
