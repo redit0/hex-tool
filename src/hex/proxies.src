@@ -1,12 +1,12 @@
 g.func.initProxies = function
+    // g.proxies = [["ip address",22,"username","password"],["ip address",22,"username","password"], ..., ["ip address",22,"username","password"]]
+    g.proxies = []
+
     temp = #envar proxies
 
     if temp == null or temp == "" then
         return
     end if
-
-    // g.proxies = [["ip address",22,"username","password"],["ip address",22,"username","password"], ..., ["ip address",22,"username","password"]]
-    g.proxies = []
 
     items = g.func.deserialize(temp)
 
@@ -60,6 +60,10 @@ g.func.getMap = function
 end function
 
 g.func.connect_proxies = function
+    if g.proxies.len == 0 then
+        print g.error("No proxies found.  Add proxies using Map.exe.")
+        return
+    end if
     for i in range(0, g.proxies.len-1)
         proxy = g.proxies[i]
 
