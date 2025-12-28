@@ -86,6 +86,7 @@ end function
 // @description  r - Can Read
 // @description  w - Can Write
 // @description  x - Can Execute
+// @description  l - Include Symlinks
 // @example g.func.find(file, "*.so", "br") // Finds all readable libraries (binary files ending in ".so" with the permission "r")
 // @example g.func.find(file, "passwd", "t") // Finds all text files named "passwd"
 // @example g.func.find(file, "guest", "f") // Finds all folders named "guest"
@@ -101,10 +102,11 @@ g.func.find = function(file, name, flags = null)
     r = flags != null and flags.indexOf("r") != null // Can Read
     w = flags != null and flags.indexOf("w") != null // Can Write
     x = flags != null and flags.indexOf("x") != null // Can Execute
+    l = flags != null and flags.indexOf("l") != null // Include Symlinks
 
     results = []
 
-    if file.name.is_match(pattern) or file.path == name then
+    if file.name.is_match("^" + pattern, "i") or file.path == name then
         isMatch = 1
 
         if b and (not file.is_binary or file.is_folder) then isMatch = 0
@@ -113,6 +115,7 @@ g.func.find = function(file, name, flags = null)
         if r and not file.has_permission("r") then isMatch = 0
         if w and not file.has_permission("w") then isMatch = 0
         if x and not file.has_permission("x") then isMatch = 0
+        if not l and file.is_symlink then isMatch = 0
 
         if isMatch then results.push(file)
     end if
@@ -1089,4 +1092,207 @@ g.func.run_binary = function(key, args)
             return 0
         end if
     end if
+end function
+
+g.func.get_computers = function
+    idx = g.context.index
+    if not g.func.checkMetax(idx) and not g.func.attach_metax(idx) then return []
+
+    context = g.stack[idx]
+
+    if not get_router(context.local) then
+        print g.error("Current context is not a router.")
+        //return []
+    end if
+
+    lib = g.const.insecureComp[0].split("/")[-1]
+    ver = g.const.insecureComp[1]
+    mem = g.const.insecureComp[2]
+    value = g.const.insecureComp[3]
+
+    if context.computer.File("/lib/" + lib) == null or context.metax.load("/lib/" + lib) == null or context.metax.load("/lib/" + lib).version != ver then
+        g.tools.poison.exec
+    end if
+
+    metaLib = context.metax.load("/lib/" + lib)
+
+    devices = g.func.get_devices(context.local)
+    computers = []
+
+    for device in devices
+        comp = metaLib.overflow(mem, value, device)
+
+        if comp then computers.push(comp)
+    end for
+
+    return computers
+end function
+
+g.func.get_devices = function(ip)
+    deviceList = []
+
+    getDevices = function(router)
+        if router == null then return
+
+        ip = router.local_ip
+
+        if deviceList.indexOf(ip) == null then deviceList.push(ip)
+
+        devices = router.devices_lan_ip
+
+        for device in devices
+            if device != ip then
+                type = getType(device)
+
+                if type == "router" and deviceList.indexOf(device) == null then
+                    deviceList.push(device)
+                    getDevices(get_router(device))
+                else if type == "switch" and deviceList.indexOf(device) == null then
+                    deviceList.push(device)
+                    getDevices(get_switch(device))
+                else if type == "device" and deviceList.indexOf(device) == null then
+                    deviceList.push(device)
+                end if
+            end if
+        end for
+    end function
+
+    getType = function(ip)
+        if get_switch(ip) then return "switch"
+        if get_router(ip) then return "router"
+        return "device"
+    end function
+
+    router = get_router(ip)
+
+    if not router then
+        if is_lan_ip(ip) then
+            router = get_router
+        else
+            print g.error("Could not reach: " + ip)
+            return []
+        end if
+    end if
+
+    getDevices(router)
+
+    return deviceList
+end function
+
+g.func.network_files = function(computers, type = "all")
+    results = []
+
+    for computer in computers
+        files = g.func.interesting_files(computer)
+
+        item = {
+            "ip": computer.local_ip,
+            "key": computer.local_ip.toInt,
+            "files": []
+        }
+
+        for file in files
+            if type != "mail" and file.name == "Mail.txt" then continue
+            if type == "mail" and file.name != "Mail.txt" then continue
+            if type != "bank" and file.name == "Bank.txt" then continue
+            if type == "bank" and file.name != "Bank.txt" then continue
+            if type != "pass" and file.name == "passwd" then continue
+            if type == "pass" and file.name != "passwd" then continue
+
+            item.files.push(file)
+        end for
+
+        results.push(item)
+    end for
+
+    return results
+end function
+
+g.func.interesting_files = function(computer)
+    ignore = ["xorg.conf", "fstab", "init.so", "kernel_module.so", "net.so", "aptclient.so", "xorg.sys", "config.sys", "network.cfg", "system.log", "cd", "ls", "ps", "pwd",
+    "ifconfig", "iwconfig", "iwlist", "cat", "rm", "mv", "cp", "ssh", "ftp", "mkdir", "rmdir", "chmod", "reboot", "whois", "sudo", "useradd", "userdel", "nslookup",
+    "build", "touch", "chown", "chgrp", "groupadd", "groupdel", "groups", "kill", "ping", "apt-get", "man", "whoami", "ln", "scp", "bash", "FileExplorer.exe", "Terminal.exe",
+    "Mail.exe", "Browser.exe", "Notepad.exe", "Settings.exe", "LogViewer.exe", "CodeEditor.exe", "ImageViewer.exe", "PDFReader.exe", "System.map", "initrd.img", "kernel.img",
+    "sshd", "sshd.conf", "ftpd", "ftpd.conf", "httpd", "httpd.conf", "smtpd", "smtpd.conf", "criminals.db", "criminald", "employees.db", "employeesd", "students.db", "studentsd",
+    "account.db", "accountsd", "camd.conf", "camd", "rshelld.conf", "rshelld", "repod.conf", "repod", "sappl.conf", "sappl", "adbd.conf", "adbd", "website.html", "kernel_router.so",
+    "libhttp.so", "libsql.so", "libssh.so", "encode.src", "decode.bin", "libsmartappliance.so", "libftp.so", "libcam.so", "Clock.exe", "libsmtp.so"]
+
+    files = g.func.find(computer.File("/"), "*", "t") + g.func.find(computer.File("/"), "*", "b")
+
+    interesting = []
+
+    for file in files
+        if ignore.indexOf(file.name) != null then continue
+        if file.name == "passwd" and file.is_binary then continue
+
+        if file.name == "sources.txt" then
+            sources = file.get_content
+
+            matches = sources.matches(g.const.ipPattern)
+
+            if matches.len == 0 then continue
+        end if
+
+        interesting.push(file)
+    end for
+
+    return interesting
+end function
+
+g.func.print_files = function(items)
+    g.util.clear.exec
+    print g.func.getPrompt
+
+    for item in items
+        if item.files.len == 0 then continue
+
+        output = g.const.indent + g.s3(item.ip)
+
+        for idx in range(0,item.files.len - 1)
+            file = item.files[idx]
+
+            if idx > 0 then
+                output = output + g.const.nl
+            end if
+
+            if file.has_permission("r") or not file.is_binary then
+                output = output + "<pos=250>" + g.l2(file.path.split("/").join(" > "))
+            else
+                output = output + "<pos=250>" + g.r1(file.path.split("/").join(" > "))
+            end if
+
+            if file.name == "Mail.txt" or file.name == "Bank.txt" or (file.name == "passwd" and not file.is_binary) then
+                if file.has_permission("r") then
+                    lines = file.get_content.split(char(10))
+
+                    for line in lines
+                        if line == "" then continue
+                        output = output + g.const.nl + "<pos=250>" + " "*4 + "<size=80%>" + g.g1(line, "i") + "</size>"
+                    end for
+                end if
+            end if
+
+            if file.name == "sources.txt" or file.name == "Browser.txt" then
+                sources = file.get_content
+
+                matches = sources.matches(g.const.ipPattern)
+
+                for index in matches.indexes
+                    output = output + g.const.nl + "<pos=250>" + " "*4 + "<size=80%>" + g.g1(matches[index], "i") + "</size>"
+                end for
+            end if
+
+            if file.name == "Map.conf" then
+                content = file.get_content
+
+                obj = g.func.deserialize(content)
+
+                for account in obj.accounts
+                    output = output + g.const.nl + "<pos=250>" + " "*4 + "<size=80%>" + g.g1("IP: " + account.ip + ", User: " + account.user + ", Pass: " + account.password, "i") + "</size>"
+                end for
+            end if
+        end for
+
+        print output
+    end for
 end function

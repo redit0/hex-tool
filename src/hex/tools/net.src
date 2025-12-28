@@ -1,0 +1,65 @@
+netHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Searches for any interesting files in all systems in the current network.  Must be run in the context of a router, and can only be run from a shell.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-b/bank]") + g.l2(" Prints all bank credentials in the network (does not decipher them).") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-l/log]") + g.l2(" Clears the logs on every device in the network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-m/mail]") + g.l2(" Prints all mail credentials in the network (does not decipher them).") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-n/nuke]") + g.l2(" Nukes all systems in the current network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-s/secure]") + g.l2(" Deletes /home, /passwd, and chmods every system in the network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-u/users]") + g.l2(" Lists all users and credentials in the network (does not decipher them).") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doNet = function(args)
+    if g.context.index != "0" and not g.tools.net.data.hasIndex("remoted") then
+        if args == null or args.len == 0 then
+            src = "g = get_custom_object" + char(10) + "g.registerExtensions" + char(10) + "g.tools.net.data.remoted = 1" + char(10) + "g.tools.net.exec"
+        else
+            src = "g = get_custom_object" + char(10) + "g.registerExtensions" + char(10) + "g.tools.net.data.remoted = 1" + char(10) + "g.tools.net.exec([""" + args[0] + """])"
+        end if
+
+        g.func.run(src)
+    else
+        if args == null or args.len == 0 then
+            computers = g.func.get_computers
+            files = g.func.network_files(computers)
+            g.func.print_files(files)
+        else if args[0] == "-b" or args[0] == "bank" then
+            computers = g.func.get_computers
+            files = g.func.network_files(computers, "bank")
+            g.func.print_files(files)
+        else if args[0] == "-l" or args[0] == "log" then
+            print g.error("Not implemented.")
+        else if args[0] == "-m" or args[0] == "mail" then
+            computers = g.func.get_computers
+            files = g.func.network_files(computers, "mail")
+            g.func.print_files(files)
+        else if args[0] == "-n" or args[0] == "nuke" then
+            print g.error("Not implemented.")
+        else if args[0] == "-p" or args[0] == "pass" then
+            computers = g.func.get_computers
+            files = g.func.network_files(computers, "pass")
+            g.func.print_files(files)
+        else if args[0] == "-s" or args[0] == "secure" then
+            print g.error("Not implemented.")
+        else if args[0] == "-u" or args[0] == "users" then
+            print g.error("Not implemented.")
+        else if args[0] == "-h" or args[0] == "help" then
+            netHelp
+        else
+            netHelp
+        end if
+
+        if g.tools.net.data.hasIndex("remoted") then g.tools.net.data.remove("remoted")
+    end if
+end function
+
+g.tools.net = {
+    "name": "net",
+    "shortDescription": "Run operations network-wide",
+    "exec": @doNet,
+    "help": @netHelp,
+    "data": {}
+}

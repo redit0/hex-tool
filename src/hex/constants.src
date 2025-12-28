@@ -1,7 +1,7 @@
 g.const.version = "0.0.277"
 g.const.vhex = "v" + g.const.version
 g.const.indent = "    "
-g.const.insecureComp = ["/root/InsecureLibs/net.so", "0x6E25996", "imagepatic_tr_scroller32"]
+g.const.insecureComp = ["/root/InsecureLibs/libhttp.so", "1.0.4", "0x7DD8F3DE", "alse"]
 g.const.insecureShell = ["/root/InsecureLibs/libssh.so", "0x48DB8262", "notb"]
 g.const.nl = char(10)
 g.const.tab = char(9)

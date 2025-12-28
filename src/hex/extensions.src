@@ -32,6 +32,21 @@ g.registerExtensions = function
         return g.b2(self)
     end function
 
+    string.toInt = function
+        if not is_valid_ip(self) then return self.to_int
+
+        parts = self.split("\.")
+
+        result = 0
+        for i in range(0,3)
+            octet = parts[i].to_int
+
+            result = result + (octet * (256 ^ (3 - i)))
+        end for
+
+        return result
+    end function
+
     // Retrieves the guest folder in a system from a file object.
     // @return {folder|null} - The guest folder or null if not found.
     map.getGuestFolder = function

@@ -14,8 +14,7 @@ clear = function(args = null)
         end if
     end if
 
-    clear_screen
-    print(g.func.getBanner)
+    print(g.func.getBanner, 1)
 end function
 
 g.util.clear = {
