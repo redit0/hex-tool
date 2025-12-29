@@ -146,7 +146,7 @@ hack = function(args)
                         result.address = ""
                     end if
 
-                    if type != "null" then
+                    if result.type != "null" then
                         print
                         cont = g.const.indent + "<size=110%><voffset=0.5em>" + result.type
 
@@ -164,16 +164,16 @@ hack = function(args)
                     results.push(result)
 
                     if savedResult == "" then
-                        if type == "shell" or type == "computer" or type == "file" or result.type == "password reset" then
+                        if result.type == "shell" or result.type == "computer" or result.type == "file" or result.type == "password reset" then
                             user = result.user
 
                             if user == "root" or user == "guest" then
-                                g.database[metalib.lib_name][metalib.version][mem][value] = type + " " + user
+                                g.database[metalib.lib_name][metalib.version][mem][value] = result.type + " " + user
                             else if user != null then
-                                g.database[metalib.lib_name][metalib.version][mem][value] = type + " user (" + user + ")"
+                                g.database[metalib.lib_name][metalib.version][mem][value] = result.type + " user (" + user + ")"
                             end if
                         else
-                            g.database[metalib.lib_name][metalib.version][mem][value] = type
+                            g.database[metalib.lib_name][metalib.version][mem][value] = result.type
                         end if
                     end if
                 end for
@@ -210,7 +210,7 @@ hack = function(args)
                 for value in values
                     savedResult = g.database[metalib.lib_name][metalib.version][mem][value]
 
-                    if savedResult == "" or typeof(savedResult.indexOf("computer")) == "number" then    
+                    if savedResult == "" or savedResult == "null" or typeof(savedResult.indexOf("computer")) == "number" then    
                         temp = metalib.overflow(mem, value, address)
                         if not temp then continue
 
@@ -434,17 +434,17 @@ hack = function(args)
                             print g.const.nl + g.const.indent + g.g1("Found computer object for " + args[1] + " with access level " + result.getUser(0))
                             return
                         else
-                            g.util.clear.exec
+                            //g.util.clear.exec
                             print g.const.nl + g.const.indent + g.r1(g.const.indent + "No computer object found for " + args[1])
                             return
                         end if
                     else
-                        g.util.clear.exec
+                        //g.util.clear.exec
                         print(g.const.nl + g.const.indent + g.error("Provided IP address must be a LAN address."))
                         return
                     end if
                 else
-                    g.util.clear.exec
+                    //g.util.clear.exec
                     print(g.const.nl + g.const.indent + g.error("Invalid argument: " + args[1]))
                     return
                 end if

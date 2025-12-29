@@ -8,6 +8,7 @@ if not g.hasIndex("hexed") then
 	g.database = {}
 	g.func = {}
 	g.fs = {}
+	g.rt = {}
 	g.stack = {}
 	g.target = {}
 	g.tools = {}
@@ -57,6 +58,7 @@ if not g.hasIndex("hexed") then
 
 	g.func.init_rshell
 	g.func.initMail
+	g.func.rt_load
 
 	g.hexed = 1
 

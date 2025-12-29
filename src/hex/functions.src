@@ -1267,7 +1267,13 @@ g.func.print_files = function(items)
 
                     for line in lines
                         if line == "" then continue
-                        output = output + g.const.nl + "<pos=250>" + " "*4 + "<size=80%>" + g.g1(line, "i") + "</size>"
+                        parts = line.split(":")
+                        if g.rt.hasIndex(parts[1]) then
+                            password = g.rt[parts[1]]
+                        else
+                            password = parts[1]
+                        end if
+                        output = output + g.const.nl + "<pos=250>" + " "*4 + "<size=80%>" + g.g1(parts[0] + ":" + password, "i") + "</size>"
                     end for
                 end if
             end if
@@ -1295,4 +1301,30 @@ g.func.print_files = function(items)
 
         print output
     end for
+end function
+
+g.func.rt_load = function
+    dir = g.stack["0"].computer.File(g.stack["0"].path + "/rt")
+
+    if dir != null and dir.get_files.len > 0 then
+        files = g.func.find(dir, "hex.*.rt", "tr")
+
+        if files.len > 0 then
+            print g.const.indent + g.s3("Loading passwords...")
+            for file in files
+                lines = file.get_content.split(char(10))
+
+                for line in lines
+                    if line == "" or line.indexOf(":") == null then continue
+                    parts = line.split(":")
+
+                    if not g.rt.hasIndex(parts[1]) then
+                        g.rt[parts[1]] = parts[0]
+                    end if
+                end for
+            end for
+
+            print g.const.indent + g.s3("Loaded " + g.rt.indexes.len + " passwords.")
+        end if
+    end if
 end function

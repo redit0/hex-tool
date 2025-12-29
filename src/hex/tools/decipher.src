@@ -18,7 +18,11 @@ doDec = function(args = null)
             encPass = line
         end if
 
-        password = g.stack["0"].crypto.decipher(encPass)
+        if g.rt.hasIndex(encPass) then
+            password = g.rt[encPass]
+        else
+            password = g.stack["0"].crypto.decipher(encPass)
+        end if
 
         return [username, password]
     end function
@@ -190,7 +194,10 @@ doDec = function(args = null)
                 print g.error(result)
             end if
         end if
+    end function
 
+    updateTables = function
+        
     end function
 
     if args == null or args == [] then
