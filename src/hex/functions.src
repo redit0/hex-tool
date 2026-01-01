@@ -1180,127 +1180,93 @@ g.func.get_devices = function(ip)
 end function
 
 g.func.network_files = function(computers, type = "all")
-    results = []
-
+    output = []
     for computer in computers
-        files = g.func.interesting_files(computer)
-
-        item = {
-            "ip": computer.local_ip,
-            "key": computer.local_ip.toInt,
-            "files": []
-        }
-
-        for file in files
-            if type != "mail" and file.name == "Mail.txt" then continue
-            if type == "mail" and file.name != "Mail.txt" then continue
-            if type != "bank" and file.name == "Bank.txt" then continue
-            if type == "bank" and file.name != "Bank.txt" then continue
-            if type != "pass" and file.name == "passwd" then continue
-            if type == "pass" and file.name != "passwd" then continue
-
-            item.files.push(file)
-        end for
-
-        results.push(item)
+        output = output + g.func.interesting_files(computer, type)
     end for
 
-    return results
+    print output.join(char(10))
 end function
 
-g.func.interesting_files = function(computer)
+g.func.interesting_files = function(computer, type)
     ignore = ["xorg.conf", "fstab", "init.so", "kernel_module.so", "net.so", "aptclient.so", "xorg.sys", "config.sys", "network.cfg", "system.log", "cd", "ls", "ps", "pwd",
     "ifconfig", "iwconfig", "iwlist", "cat", "rm", "mv", "cp", "ssh", "ftp", "mkdir", "rmdir", "chmod", "reboot", "whois", "sudo", "useradd", "userdel", "nslookup",
     "build", "touch", "chown", "chgrp", "groupadd", "groupdel", "groups", "kill", "ping", "apt-get", "man", "whoami", "ln", "scp", "bash", "FileExplorer.exe", "Terminal.exe",
     "Mail.exe", "Browser.exe", "Notepad.exe", "Settings.exe", "LogViewer.exe", "CodeEditor.exe", "ImageViewer.exe", "PDFReader.exe", "System.map", "initrd.img", "kernel.img",
     "sshd", "sshd.conf", "ftpd", "ftpd.conf", "httpd", "httpd.conf", "smtpd", "smtpd.conf", "criminals.db", "criminald", "employees.db", "employeesd", "students.db", "studentsd",
     "account.db", "accountsd", "camd.conf", "camd", "rshelld.conf", "rshelld", "repod.conf", "repod", "sappl.conf", "sappl", "adbd.conf", "adbd", "website.html", "kernel_router.so",
-    "libhttp.so", "libsql.so", "libssh.so", "encode.src", "decode.bin", "libsmartappliance.so", "libftp.so", "libcam.so", "Clock.exe", "libsmtp.so"]
+    "libhttp.so", "libsql.so", "libssh.so", "encode.src", "decode.bin", "libsmartappliance.so", "libftp.so", "libcam.so", "Clock.exe", "libsmtp.so", "hex.src", "hex", "libtrafficnet.so"]
 
-    files = g.func.find(computer.File("/"), "*", "t") + g.func.find(computer.File("/"), "*", "b")
+    first = 1
+    output = []
 
-    interesting = []
+    walk = function(dir, prefix)
+        files = dir.get_folders + dir.get_files
+        files.sort
 
-    for file in files
-        if ignore.indexOf(file.name) != null then continue
-        if file.name == "passwd" and file.is_binary then continue
+        for file in files
+            if not file.is_folder then
+                if ignore.indexOf(file.name) != null then continue
+                if file.name == "passwd" and file.is_binary then continue
+                if file.name == "sources.txt" and file.get_content.matches(g.const.ipPattern).len == 0 then continue
+                if type != "mail" and file.name == "Mail.txt" then continue
+                if type == "mail" and file.name != "Mail.txt" then continue
+                if type != "bank" and file.name == "Bank.txt" then continue
+                if type == "bank" and file.name != "Bank.txt" then continue
+                if type != "pass" and file.name == "passwd" then continue
+                if type == "pass" and file.name != "passwd" then continue
 
-        if file.name == "sources.txt" then
-            sources = file.get_content
+                temp = ""
+                if outer.first then
+                    outer.first = 0
+                    temp = g.const.indent + g.s3(computer.local_ip)
+                end if
 
-            matches = sources.matches(g.const.ipPattern)
+                if file.is_binary or file.has_permission("r") then
+                    outer.output.push(temp + "<pos=250>" + g.l2(prefix + file.name))
+                else
+                    outer.output.push(temp + "<pos=250>" + g.r1(prefix + file.name))
+                end if
 
-            if matches.len == 0 then continue
-        end if
+                if file.name == "Mail.txt" or file.name == "Bank.txt" or (file.name == "passwd" and not file.is_binary) and file.has_permission("r") then
+                    if file.has_permission("r") then
+                        lines = file.get_content.split(char(10))
 
-        interesting.push(file)
-    end for
+                        for line in lines
+                            if line == "" then continue
+                            parts = line.split(":")
+                            if g.rt.hasIndex(parts[1]) then
+                                password = g.rt[parts[1]]
+                            else
+                                password = parts[1]
+                            end if
+                            outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1(parts[0] + ":" + password, "i") + "</size>")
+                        end for
+                    end if
+                end if
 
-    return interesting
-end function
-
-g.func.print_files = function(items)
-    g.util.clear.exec
-    print g.func.getPrompt
-
-    for item in items
-        if item.files.len == 0 then continue
-
-        output = g.const.indent + g.s3(item.ip)
-
-        for idx in range(0,item.files.len - 1)
-            file = item.files[idx]
-
-            if idx > 0 then
-                output = output + g.const.nl
-            end if
-
-            if file.has_permission("r") or not file.is_binary then
-                output = output + "<pos=250>" + g.l2(file.path.split("/").join(" > "))
-            else
-                output = output + "<pos=250>" + g.r1(file.path.split("/").join(" > "))
-            end if
-
-            if file.name == "Mail.txt" or file.name == "Bank.txt" or (file.name == "passwd" and not file.is_binary) then
-                if file.has_permission("r") then
-                    lines = file.get_content.split(char(10))
-
-                    for line in lines
-                        if line == "" then continue
-                        parts = line.split(":")
-                        if g.rt.hasIndex(parts[1]) then
-                            password = g.rt[parts[1]]
-                        else
-                            password = parts[1]
-                        end if
-                        output = output + g.const.nl + "<pos=250>" + " "*4 + "<size=80%>" + g.g1(parts[0] + ":" + password, "i") + "</size>"
+                if file.name == "sources.txt" or file.name == "Browser.txt" and file.has_permission("r") then
+                    for index in file.get_content.matches(g.const.ipPattern).indexes
+                        outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1(matches[index], "i") + "</size>")
                     end for
                 end if
-            end if
 
-            if file.name == "sources.txt" or file.name == "Browser.txt" then
-                sources = file.get_content
+                if file.name == "Map.conf" and file.has_permission("r") then
+                    obj = g.func.deserialize(file.get_content)
 
-                matches = sources.matches(g.const.ipPattern)
-
-                for index in matches.indexes
-                    output = output + g.const.nl + "<pos=250>" + " "*4 + "<size=80%>" + g.g1(matches[index], "i") + "</size>"
-                end for
-            end if
-
-            if file.name == "Map.conf" then
-                content = file.get_content
-
-                obj = g.func.deserialize(content)
-
-                for account in obj.accounts
-                    output = output + g.const.nl + "<pos=250>" + " "*4 + "<size=80%>" + g.g1("IP: " + account.ip + ", User: " + account.user + ", Pass: " + account.password, "i") + "</size>"
-                end for
+                    for account in obj.accounts
+                        outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1("IP: " + account.ip + ", User: " + account.user + ", Pass: " + account.password, "i") + "</size>")
+                    end for
+                end if
+            else
+                walk(file, prefix + file.name + " > ")
             end if
         end for
+    end function
 
-        print output
-    end for
+    walk(computer.File("/"), "")
+
+    return output
 end function
 
 g.func.rt_load = function
@@ -1310,7 +1276,6 @@ g.func.rt_load = function
         files = g.func.find(dir, "hex.*.rt", "tr")
 
         if files.len > 0 then
-            print g.const.indent + g.s3("Loading passwords...")
             for file in files
                 lines = file.get_content.split(char(10))
 

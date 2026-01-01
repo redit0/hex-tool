@@ -116,18 +116,24 @@ doGen = function(args = null)
         
         generator.Init
         
-        passwords = generator._samplePasswords.split(",")
+        passwords = []
+        
+        for pw in generator._samplePasswords.split(",")
+            passwords.push(pw)
+            passwords.push(pw[:1].upper + pw[1:])
+        end for
+        
         count = 0
         
-        while count < 2000 and passwords.len < 300000
+        while count < 500000 and passwords.len < 200000
             temp = generator.Next.lower
             if passwords.indexOf(temp) == null then
                 passwords.push(temp)
                 passwords.push(temp[:1].upper + temp[1:])
-                print g.const.indent + "Added password: " + g.o1(temp[:1].upper + temp[1:]) + " and " + g.o1(temp)
+                print g.const.indent + "Added password: " + g.o1(temp[:1].upper + temp[1:]) + " and " + g.o1(temp) + ", after " + count + " tries"
                 print g.const.indent + "Total passwords: " + g.o1(passwords.len)
                 count = 0
-                if passwords.len % 10000 == 0 then print g.const.indent + g.o1(passwords.len + " passwords generated...")
+                if passwords.len % 10000 == 0 or passwords.len % 10000 == 1 then print g.const.indent + g.o1(passwords.len + " passwords generated...")
             else
                 count = count + 1
             end if

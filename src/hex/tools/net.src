@@ -24,24 +24,20 @@ doNet = function(args)
     else
         if args == null or args.len == 0 then
             computers = g.func.get_computers
-            files = g.func.network_files(computers)
-            g.func.print_files(files)
+            g.func.network_files(computers)
         else if args[0] == "-b" or args[0] == "bank" then
             computers = g.func.get_computers
-            files = g.func.network_files(computers, "bank")
-            g.func.print_files(files)
+            g.func.network_files(computers, "bank")
         else if args[0] == "-l" or args[0] == "log" then
             print g.error("Not implemented.")
         else if args[0] == "-m" or args[0] == "mail" then
             computers = g.func.get_computers
-            files = g.func.network_files(computers, "mail")
-            g.func.print_files(files)
+            g.func.network_files(computers, "mail")
         else if args[0] == "-n" or args[0] == "nuke" then
             print g.error("Not implemented.")
         else if args[0] == "-p" or args[0] == "pass" then
             computers = g.func.get_computers
-            files = g.func.network_files(computers, "pass")
-            g.func.print_files(files)
+            g.func.network_files(computers, "pass")
         else if args[0] == "-s" or args[0] == "secure" then
             print g.error("Not implemented.")
         else if args[0] == "-u" or args[0] == "users" then

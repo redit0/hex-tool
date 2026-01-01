@@ -79,7 +79,7 @@ tree = function(args = null)
     count = {"dirs": 0,"files": 0}
 
     // Credit for the pipe and line endings in the following three lines goes to Macha and Virus
-    // I borrowed this from the Unity source code available here: https://github.com/MachaCeleste/CelestialCorp-Unity/
+    // I borrowed these from the Unity source code available here: https://github.com/MachaCeleste/CelestialCorp-Unity/
     continuedLine = "<size=120%><mspace=0.1> <mark=#ffffff>"+char(1564)+"</mark></size><mspace=-0.1>"+char(1564)+"</mspace></mspace> "
     line = "<size=120%><mspace=0.1> <mark=#ffffff>"+char(1564)+"</mark></size><#fff><s></mspace>  </s></color><space=0.3em><size=100%>"
     endLine = "<size=70%><mspace=0.1> <voffset=8><mark=#ffffff>"+char(1564)*2+"</mark></size><voffset=0><#fff><s></mspace>  </s></color><space=0.3em><size=100%>"
