@@ -44,6 +44,9 @@ doNet = function(args)
             print g.error("Not implemented.")
         else if args[0] == "-h" or args[0] == "help" then
             netHelp
+        else if args[0] == "-z" or args[0] == "zday" then
+            computers = g.func.get_computers
+            g.func.network_files(computers, "zday")
         else
             netHelp
         end if

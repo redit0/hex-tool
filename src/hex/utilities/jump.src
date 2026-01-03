@@ -1,4 +1,4 @@
-jumpHelp = function()
+    jumpHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" If the context is a shell, this will transfer libs to the target computer's file system, and then load them into Hex.  Note that this generates log entries... make sure to clean up after yourself.") + g.const.nl
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
@@ -7,9 +7,15 @@ jumpHelp = function()
 end function
 
 doJump = function(args = null)
-    g.func.attach_metax(g.context.index)
-    g.func.attach_crypto(g.context.index)
-    g.func.attach_apt(g.context.index)
+    if args == null or args == [] or (args.len > 0 and args[0] == "metax") then
+        g.func.attach_metax(g.context.index)
+    else if args.len > 0 and args[0] == "crypto" then
+        g.func.attach_crypto(g.context.index)
+    else if args.len > 0 and args[0] == "apt" then
+        g.func.attach_apt(g.context.index)
+    else
+        self.help
+    end if
 end function
 
 g.util.jump = {

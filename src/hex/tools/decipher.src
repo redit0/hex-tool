@@ -221,11 +221,13 @@ doDec = function(args = null)
         else
             credentials = decipherLine(args[0])
 
-            if credentials[0] == "" then
-                print(g.const.indent + g.l3(credentials[1]))
-            else
-                print(g.const.indent + g.s3("Username: ") + g.l3(credentials[0]))
-                print(g.const.indent + g.s3("Password: ") + g.l3(credentials[1]))
+            if not g.tools.decipher.data.hasIndex("silent") and g.tools.decipher.data.silent != 1 then
+                if credentials[0] == "" then
+                    print(g.const.indent + g.l3(credentials[1]))
+                else
+                    print(g.const.indent + g.s3("Username: ") + g.l3(credentials[0]))
+                    print(g.const.indent + g.s3("Password: ") + g.l3(credentials[1]))
+                end if
             end if
 
             return credentials

@@ -1182,7 +1182,17 @@ end function
 g.func.network_files = function(computers, type = "all")
     output = []
     for computer in computers
-        output = output + g.func.interesting_files(computer, type)
+        if type == "zday" then
+            temp = g.func.zday_mail(computer)
+
+            if computer.get_name != "router" and computer.File("/lib/libcam.so") == null and temp == [] then
+                output.push(g.const.indent + g.s3(computer.local_ip) + g.r1("<pos=220>Mail File(s) Missing!!"))
+            else
+                output = output + g.func.zday_mail(computer)
+            end if
+        else
+            output = output + g.func.interesting_files(computer, type)
+        end if
     end for
 
     print output.join(char(10))
@@ -1208,7 +1218,7 @@ g.func.interesting_files = function(computer, type)
             if not file.is_folder then
                 if ignore.indexOf(file.name) != null then continue
                 if file.name == "passwd" and file.is_binary then continue
-                if file.name == "sources.txt" and file.get_content.matches(g.const.ipPattern).len == 0 then continue
+                if file.name == "sources.txt" and file.get_content isa string and file.get_content.matches(g.const.ipPattern).len == 0 then continue
                 if type != "mail" and file.name == "Mail.txt" then continue
                 if type == "mail" and file.name != "Mail.txt" then continue
                 if type != "bank" and file.name == "Bank.txt" then continue
@@ -1245,9 +1255,10 @@ g.func.interesting_files = function(computer, type)
                     end if
                 end if
 
-                if file.name == "sources.txt" or file.name == "Browser.txt" and file.has_permission("r") then
-                    for index in file.get_content.matches(g.const.ipPattern).indexes
-                        outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1(matches[index], "i") + "</size>")
+                if (file.name == "sources.txt" or file.name == "Browser.txt") and file.get_content isa string and file.has_permission("r") then
+                    ipMatches = file.get_content.matches(g.const.ipPattern)
+                    for index in ipMatches.indexes
+                        outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1(ipMatches[index], "i") + "</size>")
                     end for
                 end if
 
@@ -1265,6 +1276,48 @@ g.func.interesting_files = function(computer, type)
     end function
 
     walk(computer.File("/"), "")
+
+    return output
+end function
+
+g.func.zday_mail = function(computer)
+    mails = g.func.find(computer.File("/"), "Mail.txt", "t")
+    first = 1
+    output = []
+
+    for mail in mails
+        content = mail.get_content
+        address = content.split(":")[0]
+        temp = content.split(":")[1]
+
+        if g.rt.hasIndex(temp) then
+            password = g.rt[temp]
+        else
+            g.tools.decipher.data.silent = 1
+            password = g.tools.decipher.exec([temp])[1]
+            g.tools.decipher.data.silent = 0
+        end if
+
+        
+        line = ""
+        if first then
+            first = 0
+            line = g.const.indent + g.s3(computer.local_ip)
+        end if
+
+        output.push(line + "<pos=220>" + g.l2(address + ":" + password))
+
+        messages = mail_login(address, password).fetch
+
+        for msg in messages
+            lines = msg.split(char(10))
+            if lines[4][9:] == "About the company" then
+                output.push(g.r1("<pos=75>  From: " + lines[3][6:] + "<pos=500:>Subject: " + lines[4][9:]))
+            else
+                output.push(g.g2("<pos=75>  From: " + lines[3][6:] + "<pos=500:>Subject: " + lines[4][9:]))
+            end if
+        end for
+    end for
 
     return output
 end function

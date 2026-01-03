@@ -123,6 +123,7 @@ doRshell = function(args = null)
     else if args[0] == "start" then
         if g.func.start_rshell(g.context.index) then
             print g.const.indent + g.s3("Service started.")
+            g.util.log.exec
             return 1
         end if
         return 0
