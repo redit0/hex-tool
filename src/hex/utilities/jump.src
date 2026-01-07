@@ -1,6 +1,8 @@
     jumpHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
-    text = text + g.g2(self.name) + g.l2(" If the context is a shell, this will transfer libs to the target computer's file system, and then load them into Hex.  Note that this generates log entries... make sure to clean up after yourself.") + g.const.nl
+    text = text + g.g2(self.name) + g.l2(" Transfers metaxploit.so to the target and attaches it to the context, then deletes it.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [apt]") + g.l2(" Transfers aptclient.so to the target and attaches it to the context, then deletes it.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [crypto]") + g.l2(" Transfers crypto.so to the target and attaches it to the context, then deletes it.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)

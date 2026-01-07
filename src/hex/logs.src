@@ -1,7 +1,18 @@
 g.func.corrupt_log = function(idx)
     context = g.stack[idx]
-    print g.const.indent + g.s2("Corrupting log file on " + context.public + "/" + context.local + "...")
-    root = context.file.getRootFolder
+    print g.const.indent + g.s2("Corrupting log file on [" + context.public + "]-[" + context.local + "]...")
+    g.func.clean_log(context.file)
+end function
+
+g.func.corrupt_network_logs = function(computers)
+    for computer in computers
+        print g.const.indent + g.s2("Corrupting log file on [" + computer.public_ip + "]-[" + computer.local_ip + "]...")
+        g.func.clean_log(computer.File("/"))
+    end for
+end function
+
+g.func.clean_log = function(file)
+    root = file.getRootFolder
 
     readable = g.func.find(root, "*", "rt")
 

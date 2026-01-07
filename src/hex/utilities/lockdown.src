@@ -27,8 +27,7 @@ lockdown = function(args = null)
     del = function(files)
         for file in files
             print g.const.indent + g.o1("Deleting file: " + file.path)
-            result = file.delete
-            if result != "" then print g.error(result)
+            g.func.silent_delete(file)
         end for
     end function
 

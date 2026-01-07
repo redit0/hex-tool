@@ -280,4 +280,30 @@ g.registerExtensions = function
         item.currentPath = item.path
         return item
     end function
+
+    string.trimEnd = function(text)
+        if not self isa string then
+            print(g.error("Expected string, got " + typeof(self)))
+            return self
+        end if
+
+        if self[-1*text.len:] == text then
+            return self[:-1*text.len]
+        else
+            return self
+        end if
+    end function
+
+    string.trimStart = function(text)
+        if not self isa string then
+            print(g.error("Expected string, got " + typeof(self)))
+            return self
+        end if
+
+        if self[:text.len] == text then
+            return self[text.len:]
+        else
+            return self
+        end if
+    end function
 end function

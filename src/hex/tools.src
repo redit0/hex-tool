@@ -27,6 +27,7 @@ import_code("utilities/sudo.src")
 import_code("utilities/download.src")
 import_code("utilities/upload.src")
 import_code("utilities/sudo.src")
+import_code("utilities/restore.src")
 
 import_code("fs/cd.src")
 import_code("fs/rm.src")

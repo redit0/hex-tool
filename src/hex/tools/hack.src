@@ -308,24 +308,26 @@ hack = function(args)
         if g.hasIndex("proxy") and not is_lan_ip(ip) then
             context = g.stack[g.proxy]
             print g.g1(g.const.indent + "Using proxy: " + context.public)
+            idx = g.proxy
         else
             context = g.stack[g.context.index]
+            idx = g.context.index
         end if
 
-        if context.type != "shell" then
-            print(g.const.indent + g.y1("Context must be a shell to use this tool on a remote target's libraries."))
-        end if
+        if not g.func.checkShell(idx) then return []
 
-        if not context.metax then
-            print(g.error("Context does not contain a metax library (Hint: Use 'jump')."))
-            return []
-        end if
+        if not g.func.checkMetax(idx) and not g.func.attach_metax(idx) then return []
 
         metax = context.metax
         session = metax.net_use(ip, port)
 
         if not session then
             print(g.error("Could not connect to " + ip + ":" + port))
+            return []
+        end if
+
+        if session isa string then
+            print(g.error(session))
             return []
         end if
 
@@ -357,11 +359,13 @@ hack = function(args)
                     ports.push(item)
                 end if
 
-                if not port.is_closed and port.get_lan_ip == ip then
+                if port.get_lan_ip == ip then
                     item = {}
                     item.port = port.port_number
                     item.address = port.get_lan_ip
                     ports.push(item)
+                else
+                    //print g.const.indent + g.s3("Port Number: " + port.port_number + ", Is_Closed: " + port.is_closed + ", LAN IP: " + port.get_lan_ip)
                 end if
             end for
         else
@@ -471,7 +475,7 @@ hack = function(args)
                 print(output)
                 return
             end if
-        else if is_valid_ip(args[0]) then
+        else if is_valid_ip(args[0]) or is_valid_ip(nslookup(args[0])) then
             argsStr = g.func.serialize(args, 1).replace("char(10)", "").replace("char(13)", "").replace("\\n", "").replace("\n", "")
 
             if g.context.index != "0" and not g.tools.hack.data.hasIndex("remoted") then
@@ -480,14 +484,18 @@ hack = function(args)
                 g.func.run(src)
             else
                 if g.tools.hack.data.hasIndex("remoted") then g.tools.hack.data.remove("remoted")
+
+                target = args[0]
+                if not is_valid_ip(target) then target = nslookup(target)
+
                 if args.len > 1 then
                     if is_valid_ip(args[1]) then
                         if is_lan_ip(args[1]) then
                             g.tools.scan.data.silent = 1
-                            if g.tools.scan.exec([args[0]]) == 0 then return 0
+                            if g.tools.scan.exec([target]) == 0 then return 0
                             g.tools.scan.data.silent = 0
 
-                            metaLibs = getRemoteLib(args[0], 0, args[1])
+                            metaLibs = getRemoteLib(target, 0, args[1])
 
                             result = getBounce(metaLibs, args[1])
 
@@ -510,13 +518,13 @@ hack = function(args)
                         end if
                     else if typeof(args[1].to_int) == "number" and args[1].to_int >= 0 and args[1].to_int <= 65535 then
                         g.tools.scan.data.silent = 1
-                        if g.tools.scan.exec([args[0], args[1]]) == 0 then return 0
+                        if g.tools.scan.exec([target, args[1]]) == 0 then return 0
                         g.tools.scan.data.silent = 0
 
-                        router = g.func.getRouter(args[0])
+                        router = g.func.getRouter(target)
 
-                        if is_lan_ip(args[0]) then
-                            ports = router.device_ports(args[0])
+                        if is_lan_ip(target) then
+                            ports = router.device_ports(target)
                         else
                             ports = router.used_ports
                         end if
@@ -529,7 +537,7 @@ hack = function(args)
                             end if
                         end for
 
-                        metaLibs = getRemoteLib(args[0], args[1].to_int, address)
+                        metaLibs = getRemoteLib(target, args[1].to_int, address)
 
                         extra = ""
                         if args.len > 2 then
@@ -551,12 +559,12 @@ hack = function(args)
                     end if
                 else
                     g.tools.scan.data.silent = 1
-                    if g.tools.scan.exec([args[0]]) == 0 then return 0
+                    if g.tools.scan.exec([target]) == 0 then return 0
                     g.tools.scan.data.silent = 0
 
-                    metaLibs = getAllRemoteLibs(args[0])
+                    metaLibs = getAllRemoteLibs(target)
 
-                    router = g.func.getRouter(args[0])
+                    router = g.func.getRouter(target)
 
                     extra = ""
                     if args.len > 2 then

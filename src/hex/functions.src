@@ -425,6 +425,76 @@ g.func.getHackshop = function
     end while
 end function
 
+g.func.loop_terminal = function
+    context = g.stack["0"]
+
+    path = context.currentPath + "/hex_loop"
+    file = context.computer.File(path.replace("//", "/"))
+
+    if file then
+        // We have finished the loop and run start_terminal.  This instance is running as the default bash.
+        //g.func.silent_delete(file)
+        hex_path = file.get_content
+        bash = context.computer.File("/bin/bash")
+        if not bash then return
+        if hex_path != null then 
+            print "bash.move(parent_path(" + hex_path + "), """ + hex_path + """.split(""/"")[-1])"
+            bash.move(parent_path(hex_path), hex_path.split("/")[-1])
+        else
+            bash.move("/bin", "hex")
+        end if
+        bash_bak = context.computer.File("/bin/bash.bak")
+        if bash_bak then
+            bash_bak.move("/bin", "bash")
+        end if
+        return
+    end if
+
+    // This is the initial run, we have not looped the terminals yet.
+    // Back up the existing custom bash, if present, and replace it with hex.
+    context.computer.touch(context.currentPath, "hex_loop")
+    file = context.computer.File(path.replace("//", "/"))
+    file.set_content(program_path)
+
+    bash = context.computer.File("/bin/bash")
+    if bash then
+        bash.move("/bin", "bash.bak")
+    end if
+
+    hex = context.computer.File(program_path)
+    hex.move("/bin", "bash")
+
+    ssh = include_lib("/lib/libssh.so")
+    if not ssh then
+        context.apt.install("libssh.so")
+        ssh = include_lib("/lib/libssh.so")
+    end if
+
+    ssh.start_service
+
+    sh = context.shell
+
+    print g.const.indent + g.s3("Starting proxy service...")
+    pass = user_input(g.const.indent + g.l1("Enter the root password for this device: "), 1, 0, 0)
+
+    for _ in range(1, 40)
+        sh = sh.connect_service(context.local, 22, "root", pass)
+        if sh == null then
+            print g.error("Could not connect!")
+            return
+        else if sh isa string then
+            print g.error(sh)
+            return
+        end if
+    end for
+    ssh.stop_service
+
+    sshLib = context.computer.File("/lib/libssh.so")
+    g.func.silent_delete(sshLib)
+
+    sh.start_terminal
+end function
+
 // Sets some initial values for **HEX**.
 // @return {none}
 g.func.init = function
@@ -874,7 +944,6 @@ g.func.checkMetax = function(idx)
     end if
 
     if g.stack[idx].metax == null then
-        print g.error("No metaxploit library found. (Hint: Use 'jump' and try again!)")
         return 0
     end if
 
@@ -1043,6 +1112,132 @@ g.func.clear_custom_object = function
     end for
 end function
 
+g.func.restore_shop = function
+    if not g.func.checkShell(g.context.index) then return 0
+    context = g.stack[g.context.index]
+
+    if not context.computer.File(context.currentPath).has_permission("w") then
+        print g.error("Can't write to " + context.currentPath)
+        return 0
+    end if
+
+    if not context.computer.File("/Public/htdocs/downloads") and not context.computer.File("/Public/htdocs/downloads").has_permission("w") then
+        print g.error("Can't write to /Public/htdocs/downloads")
+        return 0
+    end if
+
+    for f in context.computer.File("/Public/htdocs/downloads").get_files
+        if f.name[-3].lower == "exe" then continue
+        print g.const.indent + g.s3("Deleting " + f.name)
+        g.func.silent_delete(f)
+    end for
+
+    context.computer.touch(context.currentPath, "hex.src")
+    file = context.computer.File(context.currentPath + "/hex.src")
+
+    for idx in g.defaults.indexes
+        print g.const.indent + g.s3("Restoring /Public/htdocs/downloads/" + idx + "...")
+        file.set_content(g.defaults[idx])
+        context.shell.build(file.path, parent_path(file.path))
+        wait 0.5
+        bin = context.computer.File(file.path[:-4])
+        if not bin then
+            print g.error("Unable to find compiled binary at " + file.path[:-4])
+            continue
+        end if
+        result = bin.move("/Public/htdocs/downloads", idx)
+        if result != 1 and result isa string then
+            print g.error(result)
+        end if
+    end for
+
+    g.func.silent_delete(file)
+end function
+
+g.func.silent_delete = function(file)
+    sac_file = null
+    sac_folder = null
+
+    walk = function(file)
+        files = file.get_folders + file.get_files
+
+        for f in files
+            if f.path == "/etc/xorg.conf" then outer.sac_file = f
+            if f.path == "/etc" then outer.sac_folder = f
+
+            if f.is_folder then walk(f)
+        end for
+    end function
+
+    if file == null then
+        print g.error("File is null")
+        return 0
+    end if
+
+    if file.path == "/" then
+        files = file.get_files + file.get_folders
+        count = 0
+        for f in files
+            count = count + g.func.silent_delete(f)
+        end for
+        return count
+    end if
+
+    root = file
+
+    while root.path != "/"
+        root = root.parent
+    end while
+
+    walk(root)
+
+    if file.is_folder then
+        old_path = sac_folder.path
+
+        result = sac_folder.move(parent_path(file.path), file.name)
+        if result == null then
+            print g.error("Unknown Error.")
+            return 0
+        end if
+        if result isa string then
+            print g.error(result)
+            return 0
+        end if
+
+        result = sac_folder.move(parent_path(old_path), old_path.split("/")[-1])
+        if result == null then
+            print g.error("Unknown Error.")
+            return 0
+        end if
+        if result isa string then
+            print g.error(result)
+            return 0
+        end if
+    else
+        old_path = sac_file.path
+        
+        result = sac_file.move(parent_path(file.path), file.name)
+        if result == null then
+            print g.error("Unknown Error.")
+            return 0
+        end if
+        if result isa string then
+            print g.error(result)
+            return 0
+        end if
+
+        result = sac_file.move(parent_path(old_path), old_path.split("/")[-1])
+        if result == null then
+            print g.error("Unknown Error.")
+            return 0
+        end if
+        if result isa string then
+            print g.error(result)
+            return 0
+        end if
+    end if
+end function
+
 // **Run Binary:**
 // Searches for a binary file matching the given key and launches it with the provided arguments from the current shell context.
 // If multiple binaries are found, prompts the user to select one. Returns 1 on success, 0 on failure or invalid selection.
@@ -1179,7 +1374,7 @@ g.func.get_devices = function(ip)
     return deviceList
 end function
 
-g.func.network_files = function(computers, type = "all")
+g.func.network_files = function(computers, type)
     output = []
     for computer in computers
         if type == "zday" then
@@ -1219,12 +1414,14 @@ g.func.interesting_files = function(computer, type)
                 if ignore.indexOf(file.name) != null then continue
                 if file.name == "passwd" and file.is_binary then continue
                 if file.name == "sources.txt" and file.get_content isa string and file.get_content.matches(g.const.ipPattern).len == 0 then continue
-                if type != "mail" and file.name == "Mail.txt" then continue
-                if type == "mail" and file.name != "Mail.txt" then continue
-                if type != "bank" and file.name == "Bank.txt" then continue
-                if type == "bank" and file.name != "Bank.txt" then continue
-                if type != "pass" and file.name == "passwd" then continue
-                if type == "pass" and file.name != "passwd" then continue
+                if type != "all" then
+                    if type != "mail" and file.name == "Mail.txt" then continue
+                    if type == "mail" and file.name != "Mail.txt" then continue
+                    if type != "bank" and file.name == "Bank.txt" then continue
+                    if type == "bank" and file.name != "Bank.txt" then continue
+                    if type != "pass" and file.name == "passwd" then continue
+                    if type == "pass" and file.name != "passwd" then continue
+                end if
 
                 temp = ""
                 if outer.first then

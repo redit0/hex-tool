@@ -268,13 +268,19 @@ nmap = function(args = null)
         end if
     else if args.len > 1 or args[0] == "-h" or args[0] == "help" then
         self.help
-    else if args.len == 1 and is_valid_ip(args[0]) then
+    else if args.len == 1 and is_valid_ip(args[0]) or is_valid_ip(nslookup(args[0])) then
+        if args[0][:4] == "www." then
+            address = nslookup(args[0])
+        else
+            address = args[0]
+        end if
+
         if g.context.index != "0" and not g.tools.nmap.data.hasIndex("remoted") then
-            src = "g = get_custom_object" + char(10) + "g.tools.nmap.data.remoted = 1" + char(10) + "g.tools.nmap.exec([""" + args[0] + """])"
+            src = "g = get_custom_object" + char(10) + "g.tools.nmap.data.remoted = 1" + char(10) + "g.tools.nmap.exec([""" + address + """])"
     
             g.func.run(src)
         else
-            results = doNmap(args[0])
+            results = doNmap(address)
 
             if g.tools.nmap.data.hasIndex("remoted") then g.tools.nmap.data.remove("remoted")
 

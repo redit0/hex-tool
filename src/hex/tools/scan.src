@@ -179,7 +179,7 @@ doScan = function(args)
         router = g.func.getRouter(ip)
 
         if not is_lan_ip(ip) then
-            ports = router.used_ports
+            ports = router.device_ports(router.local_ip)
             isRouter = 1
         else
             ports = router.device_ports(ip)
@@ -189,6 +189,7 @@ doScan = function(args)
         metaLibs = []
 
         for port in ports
+            if is_lan_ip(ip) and port.get_lan_ip != ip then continue
             if port.port_number == 8080 then isRouter = 1
             if port.is_closed then continue
 
@@ -208,9 +209,15 @@ doScan = function(args)
         if isRouter then
             netSession = g.stack[idx].metax.net_use(ip, 0)
 
-            metaLib = netSession.dump_lib
+            if not netSession then
+                print(g.error("Could not connect to " + ip + ":0"))
+            else if typeof(netSession) == "string" then
+                print(g.error(netSession))
+            else
+                metaLib = netSession.dump_lib
 
-            metaLibs.push(metaLib)
+                metaLibs.push(metaLib)
+            end if
         end if
 
         scanMetaLibs(metaLibs)

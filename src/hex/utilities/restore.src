@@ -1,0 +1,28 @@
+restoreHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-s/shop]") + g.l2(" Restores the original version of the default downloadable binaries in an NPC shop, excluding EXE files.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-b/bin]") + g.l2(" Restores the original version of the default binaries in an NPC computer's /bin directory.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doRestore = function(args)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+    else if args[0] == "-s" or args[0] == "shop" then
+        g.func.restore_shop
+    else if args[0] == "-b" or args[0] == "bin" then
+        print g.error("Not implemented.")
+    else
+        self.help
+    end if
+end function
+
+g.util.restore = {
+    "name": "restore",
+    "shortDescription": "Restores original versions of default binaries",
+    "exec": @doRestore,
+    "help": @restoreHelp,
+    "data": {}
+}

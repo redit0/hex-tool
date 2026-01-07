@@ -11,7 +11,14 @@ doTerminal = function(args)
     if not context.shell then print(g.error("Current context is not a shell."))
 
     g.command = "exit"
-    context.shell.start_terminal
+    term = g.func.find(context.computer.File("/"), "Terminal.exe", "b").push(null)[0]
+
+    if term != null then
+        context.shell.launch(term.path)
+    else
+        print g.const.indent + g.y1("Falling back to start_terminal...")
+        context.shell.start_terminal
+    end if
 end function
 
 g.util.terminal = {

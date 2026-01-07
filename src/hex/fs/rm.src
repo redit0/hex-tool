@@ -1,7 +1,7 @@
 remHelp = function
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [folder name or path]") + g.l2(" Delete the specified file.  Use '*' as a wildcard (unless using a file path instead of a file name).") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [-r] [folder name or path]") + g.l2(" Use -r to delete a directory that is not empty.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [folder name or path]") + g.l2(" Delete the specified file.  Use '*' as a wildcard (unless using a file path instead of a file name).  Does not leave logs.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-r] [folder name or path]") + g.l2(" Use -r to delete a directory that is not empty.  Does not leave logs.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
@@ -79,7 +79,7 @@ rem = function(args = null)
             print g.error("The directory " + f.name + " is not empty.  Use [rm -r " + args[0] + "] to delete it anyway.")
         else
             print g.const.indent + g.s3("Deleting " + f.path + "...")
-            result = f.delete
+            result = g.func.silent_delete(f)
             if typeof(result) == "string" and result.len > 0 then
                 print g.error(result)
             end if
