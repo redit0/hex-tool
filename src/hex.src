@@ -1,18 +1,18 @@
 g = get_custom_object
 
-g.colors = {}
-g.const = {}
-g.context = {}
-g.command = ""
-g.database = {}
-g.defaults = {}
-g.func = {}
-g.fs = {}
-g.rt = {}
-g.stack = {}
-g.target = {}
-g.tools = {}
-g.util = {}
+if not g.hasIndex("colors") then g.colors = {}
+if not g.hasIndex("const") then g.const = {}
+if not g.hasIndex("context") then g.context = {}
+if not g.hasIndex("command") then g.command = ""
+if not g.hasIndex("database") then g.database = {}
+if not g.hasIndex("defaults") then g.defaults = {}
+if not g.hasIndex("func") then g.func = {}
+if not g.hasIndex("fs") then g.fs = {}
+if not g.hasIndex("rt") then g.rt = {}
+if not g.hasIndex("stack") then g.stack = {}
+if not g.hasIndex("target") then g.target = {}
+if not g.hasIndex("tools") then g.tools = {}
+if not g.hasIndex("util") then g.util = {}
 
 import_code("hex/json.src")
 import_code("hex/colors.src")
@@ -49,13 +49,17 @@ if params.len > 1 then
 	end if
 end if
 
+print "init"
 g.func.init
+print "updateApt"
 g.func.updateApt
 output = g.func.updateLibs
+print "loadLibs"
 g.func.loadLibs
+print "loop_terminal"
 g.func.loop_terminal
 
-print(g.func.getBanner, 1)
+print(g.func.getBanner)
 print(output)
 
 g.func.init_rshell

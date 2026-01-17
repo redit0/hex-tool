@@ -426,27 +426,33 @@ g.func.getHackshop = function
 end function
 
 g.func.loop_terminal = function
+    print "start 1"
     context = g.stack["0"]
 
     path = context.currentPath + "/hex_loop"
     file = context.computer.File(path.replace("//", "/"))
 
     if file then
+        print "start 2"
         // We have finished the loop and run start_terminal.  This instance is running as the default bash.
-        //g.func.silent_delete(file)
+        g.func.silent_delete(file)
         hex_path = file.get_content
         bash = context.computer.File("/bin/bash")
         if not bash then return
-        if hex_path != null then 
-            print "bash.move(parent_path(" + hex_path + "), """ + hex_path + """.split(""/"")[-1])"
+        if hex_path != null and hex_path != "" then
+            print 0
+            print "bash.move(parent_path(""" + hex_path + """), """ + hex_path + """.split(""/"")[-1])"
             bash.move(parent_path(hex_path), hex_path.split("/")[-1])
         else
+            print 1
             bash.move("/bin", "hex")
         end if
         bash_bak = context.computer.File("/bin/bash.bak")
         if bash_bak then
+            print 2
             bash_bak.move("/bin", "bash")
         end if
+        print "end 2"
         return
     end if
 
@@ -458,10 +464,13 @@ g.func.loop_terminal = function
 
     bash = context.computer.File("/bin/bash")
     if bash then
+        print 3
         bash.move("/bin", "bash.bak")
     end if
 
     hex = context.computer.File(program_path)
+    print 4
+    print program_path
     hex.move("/bin", "bash")
 
     ssh = include_lib("/lib/libssh.so")
@@ -474,7 +483,7 @@ g.func.loop_terminal = function
 
     sh = context.shell
 
-    print g.const.indent + g.s3("Starting proxy service...")
+    print g.const.indent + g.s3("Starting terminal loop...")
     pass = user_input(g.const.indent + g.l1("Enter the root password for this device: "), 1, 0, 0)
 
     for _ in range(1, 40)
@@ -492,6 +501,7 @@ g.func.loop_terminal = function
     sshLib = context.computer.File("/lib/libssh.so")
     g.func.silent_delete(sshLib)
 
+    print "end 1"
     sh.start_terminal
 end function
 
@@ -762,6 +772,7 @@ g.func.run = function(src)
 
     dir = context.computer.File(prefix + "/temp")
     if dir != null then
+        print "end run"
         dir.move(prefix + "/temp/1", dir.name)
     end if
 
@@ -897,6 +908,7 @@ g.func.putLib = function(dir, libName, dest = "/lib")
         return 0
     end if
 
+    print "putLib file.move"
     result = file.move(dest, libName)
 
     if result == 1 then return 1
@@ -1127,7 +1139,7 @@ g.func.restore_shop = function
     end if
 
     for f in context.computer.File("/Public/htdocs/downloads").get_files
-        if f.name[-3].lower == "exe" then continue
+        if f.name[-3:].lower == "exe" then continue
         print g.const.indent + g.s3("Deleting " + f.name)
         g.func.silent_delete(f)
     end for
@@ -1145,6 +1157,7 @@ g.func.restore_shop = function
             print g.error("Unable to find compiled binary at " + file.path[:-4])
             continue
         end if
+        print "restore shop bin.move"
         result = bin.move("/Public/htdocs/downloads", idx)
         if result != 1 and result isa string then
             print g.error(result)
@@ -1155,24 +1168,20 @@ g.func.restore_shop = function
 end function
 
 g.func.silent_delete = function(file)
-    sac_file = null
-    sac_folder = null
+    if file == null then return 0
 
-    walk = function(file)
+    walk = function(file, path)
         files = file.get_folders + file.get_files
 
         for f in files
-            if f.path == "/etc/xorg.conf" then outer.sac_file = f
-            if f.path == "/etc" then outer.sac_folder = f
+            if f.path == path then return f
 
-            if f.is_folder then walk(f)
+            if f.is_folder then
+                temp = walk(f, path)
+                if temp != null then return temp
+            end if
         end for
     end function
-
-    if file == null then
-        print g.error("File is null")
-        return 0
-    end if
 
     if file.path == "/" then
         files = file.get_files + file.get_folders
@@ -1189,53 +1198,48 @@ g.func.silent_delete = function(file)
         root = root.parent
     end while
 
-    walk(root)
-
     if file.is_folder then
-        old_path = sac_folder.path
-
-        result = sac_folder.move(parent_path(file.path), file.name)
-        if result == null then
-            print g.error("Unknown Error.")
-            return 0
-        end if
-        if result isa string then
-            print g.error(result)
-            return 0
-        end if
-
-        result = sac_folder.move(parent_path(old_path), old_path.split("/")[-1])
-        if result == null then
-            print g.error("Unknown Error.")
-            return 0
-        end if
-        if result isa string then
-            print g.error(result)
-            return 0
-        end if
+        sac = walk(root, "/boot")
     else
-        old_path = sac_file.path
-        
-        result = sac_file.move(parent_path(file.path), file.name)
-        if result == null then
-            print g.error("Unknown Error.")
-            return 0
-        end if
-        if result isa string then
-            print g.error(result)
-            return 0
-        end if
-
-        result = sac_file.move(parent_path(old_path), old_path.split("/")[-1])
-        if result == null then
-            print g.error("Unknown Error.")
-            return 0
-        end if
-        if result isa string then
-            print g.error(result)
-            return 0
-        end if
+        sac = walk(root, "/etc/xorg.conf")
     end if
+
+    success = 1
+
+    original_path = file.path
+    folder = file.is_folder
+
+    print "silent_delete sac.move"
+    result = sac.move(parent_path(original_path), file.name)
+    if result == null then
+        print g.error("Unknown Error.")
+        success = 0
+    end if
+    if result isa string then
+        print g.error(result)
+        success = 0
+    end if
+
+    file = walk(root, original_path)
+
+    if folder then
+        print "silent_delete file.move 1"
+        result = file.move("/", "boot")
+    else
+        print "silent_delete file.move 2"
+        result = file.move("/etc/", "xorg.conf")
+    end if
+
+    if result == null then
+        print g.error("Unknown Error.")
+        success = 0
+    end if
+    if result isa string then
+        print g.error(result)
+        success = 0
+    end if
+
+    return success
 end function
 
 // **Run Binary:**

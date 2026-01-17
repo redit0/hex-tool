@@ -213,6 +213,23 @@ g.registerExtensions = function
         return g.r1("null")
     end function
 
+    list.distinct = function
+        if not self isa list then return self
+        if self == null then return self
+        seen = {}
+        i = 0
+        while i < self.len
+            key = str(self[i])
+            if seen.hasIndex(key) then
+                self.remove(i)
+            else
+                seen[key] = true
+                i = i + 1
+            end if
+        end while
+        return self
+    end function
+
     list.max = function
         max = -2147483648
 

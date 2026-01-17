@@ -116,7 +116,7 @@ g.func.add_proxy = function(ip, port, user, pass, final = 1)
         metas = g.func.find(ctx.file, "metaxploit.so", "b")
 
         for metax in metas
-            metax.delete
+            g.func.silent_delete(metax)
         end for
     end if
 
@@ -136,11 +136,14 @@ g.func.set_proxy = function(prox)
     metas = g.func.find(g.stack[prox].file, "metaxploit.so", "b")
 
     for metax in metas
-        metax.delete
+        g.func.silent_delete(metax)
     end for
 
     g.func.corrupt_log(prox)
     g.proxy = prox
+
+    num = g.func.max_proxy + 1
+    g.stack[prox].source = "proxy (" + num + ")"
 
     return 1
 end function

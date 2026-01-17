@@ -9,8 +9,7 @@ end function
 doTerminal = function(args)
     context = g.stack[g.context.index]
     if not context.shell then print(g.error("Current context is not a shell."))
-
-    g.command = "exit"
+    
     term = g.func.find(context.computer.File("/"), "Terminal.exe", "b").push(null)[0]
 
     if term != null then

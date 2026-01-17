@@ -42,6 +42,7 @@ changeDir = function(args = null)
             path.pop
 
             context.currentPath = path.join("/")
+            if context.currentPath == "" then context.currentPath = "/"
             return
         else if args[0] == "." then
             return

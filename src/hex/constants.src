@@ -1,4 +1,4 @@
-g.const.version = "0.0.467"
+g.const.version = "0.0.528"
 g.const.vhex = "v" + g.const.version
 g.const.indent = "    "
 g.const.insecureComp = ["/root/InsecureLibs/libhttp.so", "1.0.4", "0x7DD8F3DE", "alse"]
