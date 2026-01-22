@@ -49,14 +49,10 @@ if params.len > 1 then
 	end if
 end if
 
-print "init"
 g.func.init
-print "updateApt"
 g.func.updateApt
 output = g.func.updateLibs
-print "loadLibs"
 g.func.loadLibs
-print "loop_terminal"
 g.func.loop_terminal
 
 print(g.func.getBanner)

@@ -426,35 +426,32 @@ g.func.getHackshop = function
 end function
 
 g.func.loop_terminal = function
-    print "start 1"
     context = g.stack["0"]
 
     path = context.currentPath + "/hex_loop"
     file = context.computer.File(path.replace("//", "/"))
 
     if file then
-        print "start 2"
         // We have finished the loop and run start_terminal.  This instance is running as the default bash.
-        g.func.silent_delete(file)
         hex_path = file.get_content
+        g.func.silent_delete(file)
         bash = context.computer.File("/bin/bash")
         if not bash then return
         if hex_path != null and hex_path != "" then
-            print 0
-            print "bash.move(parent_path(""" + hex_path + """), """ + hex_path + """.split(""/"")[-1])"
             bash.move(parent_path(hex_path), hex_path.split("/")[-1])
         else
-            print 1
             bash.move("/bin", "hex")
         end if
         bash_bak = context.computer.File("/bin/bash.bak")
         if bash_bak then
-            print 2
             bash_bak.move("/bin", "bash")
         end if
-        print "end 2"
+
         return
     end if
+
+    print g.const.indent + g.s3("Starting terminal loop...")
+    pass = user_input(g.const.indent + g.l1("Enter the root password for this device: "), 1, 0, 0)
 
     // This is the initial run, we have not looped the terminals yet.
     // Back up the existing custom bash, if present, and replace it with hex.
@@ -464,27 +461,28 @@ g.func.loop_terminal = function
 
     bash = context.computer.File("/bin/bash")
     if bash then
-        print 3
         bash.move("/bin", "bash.bak")
     end if
 
     hex = context.computer.File(program_path)
-    print 4
-    print program_path
     hex.move("/bin", "bash")
-
-    ssh = include_lib("/lib/libssh.so")
-    if not ssh then
-        context.apt.install("libssh.so")
-        ssh = include_lib("/lib/libssh.so")
-    end if
-
-    ssh.start_service
 
     sh = context.shell
 
-    print g.const.indent + g.s3("Starting terminal loop...")
-    pass = user_input(g.const.indent + g.l1("Enter the root password for this device: "), 1, 0, 0)
+    test = sh.connect_service(context.local, 22, "root", pass)
+    kill_ssh = 0
+    delete_ssh = 0
+
+    if test == null or test isa string then
+        ssh = include_lib("/lib/libssh.so")
+        if not ssh then
+            delete_ssh = 1
+            context.apt.install("libssh.so")
+            ssh = include_lib("/lib/libssh.so")
+        end if
+        ssh.start_service
+        kill_ssh = 1
+    end if
 
     for _ in range(1, 40)
         sh = sh.connect_service(context.local, 22, "root", pass)
@@ -496,12 +494,15 @@ g.func.loop_terminal = function
             return
         end if
     end for
-    ssh.stop_service
 
-    sshLib = context.computer.File("/lib/libssh.so")
-    g.func.silent_delete(sshLib)
+    if kill_ssh then
+        ssh.stop_service
+        if delete_ssh then
+            sshLib = context.computer.File("/lib/libssh.so")
+            g.func.silent_delete(sshLib)
+        end if
+    end if
 
-    print "end 1"
     sh.start_terminal
 end function
 
@@ -772,7 +773,6 @@ g.func.run = function(src)
 
     dir = context.computer.File(prefix + "/temp")
     if dir != null then
-        print "end run"
         dir.move(prefix + "/temp/1", dir.name)
     end if
 
@@ -908,7 +908,6 @@ g.func.putLib = function(dir, libName, dest = "/lib")
         return 0
     end if
 
-    print "putLib file.move"
     result = file.move(dest, libName)
 
     if result == 1 then return 1
@@ -1157,7 +1156,7 @@ g.func.restore_shop = function
             print g.error("Unable to find compiled binary at " + file.path[:-4])
             continue
         end if
-        print "restore shop bin.move"
+        
         result = bin.move("/Public/htdocs/downloads", idx)
         if result != 1 and result isa string then
             print g.error(result)
@@ -1209,7 +1208,6 @@ g.func.silent_delete = function(file)
     original_path = file.path
     folder = file.is_folder
 
-    print "silent_delete sac.move"
     result = sac.move(parent_path(original_path), file.name)
     if result == null then
         print g.error("Unknown Error.")
@@ -1223,10 +1221,8 @@ g.func.silent_delete = function(file)
     file = walk(root, original_path)
 
     if folder then
-        print "silent_delete file.move 1"
         result = file.move("/", "boot")
     else
-        print "silent_delete file.move 2"
         result = file.move("/etc/", "xorg.conf")
     end if
 
