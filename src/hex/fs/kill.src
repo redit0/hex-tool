@@ -1,0 +1,68 @@
+killHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [#]") + g.l2(" Kills the process on the target with the provided PID") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-a/all]") + g.l2(" Kills all running processes on the target") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+doKill = function(args = null)
+    if args != null and args isa list and args.len  == 1 then
+        if args[0] == "-h" or args[0] == "help" then
+            self.help
+            return 1
+        end if
+
+        idx = g.context.index
+
+        if args[0].to_int isa number then
+            if g.stack[idx].computer == null then
+                print g.error("Context must be a shell or computer")
+                return 0
+            end if
+
+            result = g.stack[idx].computer.close_program(args[0].to_int)
+
+            if result isa string then
+                print g.error(result)
+                return 0
+            end if
+
+            return result
+        end if
+
+        if args[0] == "-a" or args[0] == "all" then
+            if g.stack[idx].computer == null then
+                print g.error("Context must be a shell or computer")
+                return 0
+            end if
+
+            procs = g.stack[idx].computer.show_procs.split(char(10))[1:]
+
+            for proc in procs
+                pid = proc.split(" ")[1].to_int
+                command = proc.split(" ")[4]
+
+                if ["dsession", "Xorg", "kernel_task"].indexOf(command) == null then
+                    result = g.stack[idx].computer.close_program(pid)
+                    if result isa string then print g.error(result)
+                end if
+            end for
+
+            return 1
+        end if
+    end if
+
+    self.help
+    return 0
+end function
+
+g.fs.kill = {
+    "name": "kill",
+    "shortDescription": "Kills processes on the target",
+    "exec": @doKill,
+    "help": @killHelp,
+}

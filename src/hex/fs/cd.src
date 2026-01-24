@@ -23,9 +23,9 @@ changeDir = function(args = null)
         return null
     end function
 
-    if args == null or args == [] or args.len > 1 then
+    if args == null or args == [] or args.len > 1 or args[0] == "-h" or args[0] == "help" then
         changeDirHelp
-        return
+        return 1
     end if
 
     if typeof(args[0] == "string") then
@@ -34,7 +34,7 @@ changeDir = function(args = null)
 
         if args[0] == "/" then
             context.currentPath = "/"
-            return
+            return 1
         else if args[0] == ".." then
             if context.currentPath == "/" then return
 
@@ -43,23 +43,23 @@ changeDir = function(args = null)
 
             context.currentPath = path.join("/")
             if context.currentPath == "" then context.currentPath = "/"
-            return
+            return 1
         else if args[0] == "." then
-            return
+            return 1
         else
             file = checkFile(root)
 
             if file then
                 context.currentPath = file.path
-                return
+                return 1
             end if
         end if
 
         print(g.error("No such directory."))
-        return
+        return 0
     else
         print(g.error("Invalid argument type."))
-        return
+        return 0
     end if
 end function
 

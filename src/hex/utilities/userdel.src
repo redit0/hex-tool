@@ -1,0 +1,61 @@
+userdelHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" {-r} [user]") + g.l2(" Delete the specified user.  Optionally delete their home directory as well.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" {-r} [-a/all]") + g.l2(" Delete all users (except root) on the target.  Optionally delete their home directories as well.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+doUserdel = function(args = null)
+    if args != null and args isa list and args.len  == 1 then
+        if args[0] == "-h" or args[0] == "help" then
+            self.help
+            return 1
+        end if
+
+        idx = g.context.index
+
+        if g.stack[idx].computer == null then
+            print g.error("Context must be a shell or computer")
+            return 0
+        end if
+
+        delete_home = args[0] == "-r"
+
+        if args[-1] == "-a" or args[-1] == "all" then
+            home = g.stack[idx].computer.File("/home")
+
+            if not home then return 0
+
+            users = home.get_folders
+
+            for user in users
+                if user.name == "guest" then continue
+                result = g.stack[idx].computer.delete_user(user.name, delete_home)
+                if result isa string then print g.error(result)
+            end for
+
+            return 1
+        end if
+
+        user = args[-1]
+
+        result = g.stack[idx].computer.delete_user(user, delete_home)
+        if result isa string then print g.error(result)
+
+        return 1
+    end if
+
+    self.help
+    return 0
+end function
+
+g.util.userdel = {
+    "name": "userdel",
+    "shortDescription": "Delete users",
+    "exec": @doUserdel,
+    "help": @userdelHelp,
+}

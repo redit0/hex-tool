@@ -1,0 +1,42 @@
+rebootHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Reboots the target device if the context is a shell or computer object.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+doReboot = function(args = null)
+    if args != null and args isa list and (args[0] == "-h" or args[0] == "help") then
+        self.help
+        return 1
+    end if
+
+    if args == null or args == [] then
+        idx = g.context.index
+        
+        if g.stack[idx].computer == null then
+            print g.error("Context must be a shell or computer")
+            return 0
+        end if
+
+        result = g.stack[idx].computer.reboot
+        if result isa string then
+            print g.error(result)
+            return 0
+        end if
+
+        return 1
+    end if
+
+    return 0
+end function
+
+g.fs.reboot = {
+    "name": "reboot",
+    "shortDescription": "Reboots the target",
+    "exec": @doReboot,
+    "help": @rebootHelp,
+}

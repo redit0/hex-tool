@@ -1,0 +1,52 @@
+procsHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" List all processes running on the target.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+doProcs = function(args = null)
+    if args != null and args isa list and (args[0] == "-h" or args[0] == "help") then
+        self.help
+        return 1
+    end if
+
+    if args == null or args == [] then
+        idx = g.context.index
+        
+        if g.stack[idx].computer == null then
+            print g.error("Context must be a shell or computer")
+            return 0
+        end if
+
+        lines = format_columns(g.stack[idx].computer.show_procs).split(char(10))
+
+        for i in range(0, lines.len -1)
+            if i == 0 then lines[i] = "<b>" + line + "</b>"
+            line = lines[i]
+            line = line.replace("5hell", "<color=#d00>5</color><color=#FFF>hell</color>")
+            line = line.replace("hex", g.s2("hex"))
+            if line.indexOf("dsession") != null then
+                lines[i] = g.const.indent + "<mark=" + g.colors.r1 + "99><color=#FFF><b>" + line + "</b></color></mark>"
+            else
+                lines[i] = g.const.indent + g.s3(line)
+            end if
+        end for
+
+        print lines.join(char(10))
+
+        return 1
+    end if
+
+    return 0
+end function
+
+g.fs.ps = {
+    "name": "ps",
+    "shortDescription": "Show processes running on the target",
+    "exec": @doProcs,
+    "help": @procsHelp,
+}
