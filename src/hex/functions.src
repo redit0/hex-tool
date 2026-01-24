@@ -1148,7 +1148,7 @@ g.func.restore_shop = function
 
     for idx in g.defaults.indexes
         print g.const.indent + g.s3("Restoring /Public/htdocs/downloads/" + idx + "...")
-        file.set_content(g.defaults[idx])
+        file.set_content(g.const.warning_text + g.defaults[idx])
         context.shell.build(file.path, parent_path(file.path))
         wait 0.5
         bin = context.computer.File(file.path[:-4])
