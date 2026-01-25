@@ -26,7 +26,6 @@ import_code("utilities/htop.src")
 import_code("utilities/sudo.src")
 import_code("utilities/download.src")
 import_code("utilities/upload.src")
-import_code("utilities/sudo.src")
 import_code("utilities/restore.src")
 import_code("utilities/userdel.src")
 

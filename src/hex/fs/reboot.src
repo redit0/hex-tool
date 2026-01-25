@@ -9,6 +9,7 @@ end function
 
 
 doReboot = function(args = null)
+print "reboot"
     if args != null and args isa list and (args[0] == "-h" or args[0] == "help") then
         self.help
         return 1

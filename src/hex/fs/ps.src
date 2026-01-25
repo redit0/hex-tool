@@ -24,7 +24,7 @@ doProcs = function(args = null)
 
         lines = format_columns(g.stack[idx].computer.show_procs).split(char(10))
 
-        for i in range(0, lines.len -1)
+        for i in range(0, lines.len - 1)
             if i == 0 then lines[i] = "<b>" + line + "</b>"
             line = lines[i]
             line = line.replace("5hell", "<color=#d00>5</color><color=#FFF>hell</color>")
