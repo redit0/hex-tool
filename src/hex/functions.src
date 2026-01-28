@@ -155,20 +155,56 @@ end function
 // Generates a random valid IP address that is not a LAN IP.
 // @return {string} - The generated IP address.
 g.func.getRandomIp = function
-    ip = ""
+    reserved = [
+        {"from":0,"to":16777215},
+        {"from":167772160,"to":184549375},
+        {"from":1681915904,"to":1686110207},
+        {"from":2130706432,"to":2147483647},
+        {"from":2851995648,"to":2852061183},
+        {"from":2886729728,"to":2887778303},
+        {"from":3221225472,"to":3221225727},
+        {"from":3221225984,"to":3221226239},
+        {"from":3227017984,"to":3323068416},
+        {"from":3325256704,"to":3325256959},
+        {"from":3405803776,"to":3405804031},
+        {"from":3758096384,"to":4026531839},
+        {"from":4026531840,"to":4294967295},
+    ]
 
-    while not is_valid_ip(ip) or is_lan_ip(ip)
-        min = 0
-        max = 255
-        first = floor(rnd * (max - min + 1) + min)
-        second = floor(rnd * (max - min + 1) + min)
-        third = floor(rnd * (max - min + 1) + min)
-        fourth = floor(rnd * (max - min + 1) + min)
+    int_to_ip = function(num)
+        if num < 0 or num > 4294967295 then return null
+        
+        parts = []
+        for i in range(0, 3)
+            parts.push(floor(num / (256 ^ (3 - i))) % 256)
+        end for
+        
+        return parts.join(".")
+    end function
 
-        ip = first + "." + second + "." + third + "." + fourth
+    router = null
+
+    while not router
+        num = floor(rnd * 4294967295)
+
+        if num >= reserved[0].from and num <= reserved[0].to then continue
+        if num >= reserved[1].from and num <= reserved[1].to then continue
+        if num >= reserved[2].from and num <= reserved[2].to then continue
+        if num >= reserved[3].from and num <= reserved[3].to then continue
+        if num >= reserved[4].from and num <= reserved[4].to then continue
+        if num >= reserved[5].from and num <= reserved[5].to then continue
+        if num >= reserved[6].from and num <= reserved[6].to then continue
+        if num >= reserved[7].from and num <= reserved[7].to then continue
+        if num >= reserved[8].from and num <= reserved[8].to then continue
+        if num >= reserved[9].from and num <= reserved[9].to then continue
+        if num >= reserved[10].from and num <= reserved[10].to then continue
+        if num >= reserved[11].from and num <= reserved[11].to then continue
+        if num >= reserved[12].from and num <= reserved[12].to then continue
+
+        router = get_router(int_to_ip(num))
     end while
 
-    return ip
+    return router.public_ip
 end function
 
 // Creates a heading string centered within two lines of ='s.
@@ -1197,16 +1233,24 @@ g.func.silent_delete = function(file)
         root = root.parent
     end while
 
-    if file.is_folder then
-        sac = walk(root, "/boot")
+    original_path = file.path
+    folder = file.is_folder
+
+    if folder then
+        if original_path == "/boot" then
+            sac = walk(root, "/sys")
+        else
+            sac = walk(root, "/boot")
+        end if
     else
-        sac = walk(root, "/etc/xorg.conf")
+        if original_path == "/etc/xorg.conf" then
+            sac = walk(root, "/sys/config.sys")
+        else
+            sac = walk(root, "/etc/xorg.conf")
+        end if
     end if
 
     success = 1
-
-    original_path = file.path
-    folder = file.is_folder
 
     result = sac.move(parent_path(original_path), file.name)
     if result == null then
@@ -1380,7 +1424,7 @@ g.func.network_files = function(computers, type)
         if type == "zday" then
             temp = g.func.zday_mail(computer)
 
-            if computer.get_name != "router" and computer.File("/lib/libcam.so") == null and temp == [] then
+            if computer.get_name != "router" and computer.File("/lib/libcam.so") == null and computer.File("/lib/libsmartappliance.so") == null and temp == [] then
                 output.push(g.const.indent + g.s3(computer.local_ip) + g.r1("<pos=220>Mail File(s) Missing!!"))
             else
                 output = output + g.func.zday_mail(computer)
@@ -1435,18 +1479,18 @@ g.func.interesting_files = function(computer, type)
                     outer.output.push(temp + "<pos=250>" + g.r1(prefix + file.name))
                 end if
 
-                if file.name == "Mail.txt" or file.name == "Bank.txt" or (file.name == "passwd" and not file.is_binary) and file.has_permission("r") then
+                if file.name == "Mail.txt" or file.name == "Bank.txt" or (file.name == "passwd" and not file.is_binary) then
                     if file.has_permission("r") then
                         lines = file.get_content.split(char(10))
 
                         for line in lines
                             if line == "" then continue
                             parts = line.split(":")
-                            if g.rt.hasIndex(parts[1]) then
-                                password = g.rt[parts[1]]
-                            else
-                                password = parts[1]
-                            end if
+
+                            g.tools.decipher.data.silent = 1
+                            password = g.tools.decipher.exec([parts[1]])[1]
+                            g.tools.decipher.data.silent = 0
+
                             outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1(parts[0] + ":" + password, "i") + "</size>")
                         end for
                     end if

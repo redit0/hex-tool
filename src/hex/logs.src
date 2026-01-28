@@ -11,6 +11,20 @@ g.func.corrupt_network_logs = function(computers)
     end for
 end function
 
+g.func.nuke_network = function(computers)
+    for computer in computers
+        print g.const.indent + g.s2("Nuking [" + computer.public_ip + "]-[" + computer.local_ip + "]...")
+        g.func.nuke_hard(computer.File("/"))
+    end for
+end function
+
+g.func.nuke_network_mail = function(computers)
+    for computer in computers
+        print g.const.indent + g.s2("Deleting Mail.txt on [" + computer.public_ip + "]-[" + computer.local_ip + "]...")
+        g.func.nuke_mail(computer.File("/"))
+    end for
+end function
+
 g.func.clean_log = function(file)
     root = file.getRootFolder
 

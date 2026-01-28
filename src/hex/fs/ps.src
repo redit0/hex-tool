@@ -6,10 +6,8 @@ procsHelp = function
     print(text)
 end function
 
-
-
 doProcs = function(args = null)
-    if args != null and args isa list and (args[0] == "-h" or args[0] == "help") then
+    if args != null and args isa list and args.len == 1 and (args[0] == "-h" or args[0] == "help") then
         self.help
         return 1
     end if
@@ -22,21 +20,28 @@ doProcs = function(args = null)
             return 0
         end if
 
-        lines = format_columns(g.stack[idx].computer.show_procs).split(char(10))
+        lines = g.stack[idx].computer.show_procs.split(char(10))[1:]
+        output = [g.const.indent + g.s3("<size=115%><voffset=0.5em>USER<pos=200>PID<pos=300>CPU<pos=400>MEM<pos=500>COMMAND</voffset></size>")]
 
-        for i in range(0, lines.len - 1)
-            if i == 0 then lines[i] = "<b>" + line + "</b>"
-            line = lines[i]
+        for line in lines
             line = line.replace("5hell", "<color=#d00>5</color><color=#FFF>hell</color>")
-            line = line.replace("hex", g.s2("hex"))
-            if line.indexOf("dsession") != null then
-                lines[i] = g.const.indent + "<mark=" + g.colors.r1 + "99><color=#FFF><b>" + line + "</b></color></mark>"
+            line = line.replace("hex", g.r1("hex"))
+            parts = line.split(" ")
+
+            user = parts[0]
+            pid = parts[1]
+            cpu = parts[2]
+            mem = parts[3]
+            command = parts[4]
+
+            if command == "dsession" then
+                output.push(g.const.indent + "<mark=" + g.colors.r1 + "99><color=#FFF><b>" + user + "<pos=200>" + pid + "<pos=300>" + cpu + "<pos=400>" + mem + "<pos=500>" + command + "</b></color></mark>")
             else
-                lines[i] = g.const.indent + g.s3(line)
+                output.push(g.const.indent + g.s2(user + "<pos=200>" + pid + "<pos=300>" + cpu + "<pos=400>" + mem + "<pos=500>" + command))
             end if
         end for
 
-        print lines.join(char(10))
+        print output.join(char(10))
 
         return 1
     end if

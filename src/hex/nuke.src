@@ -1,3 +1,41 @@
-g.func.nuke = function(computer)
+g.func.nuke_hard = function(file)
+    while file.parent
+        file = file.parent
+    end while
 
+    folders = file.get_folders
+
+    for folder in folders
+        if ["lib", "sys", "boot"].indexOf(folder.name) != null then g.func.silent_delete(folder)
+    end for
+end function
+
+g.func.nuke_soft = function(file)
+    while file.parent
+        file = file.parent
+    end while
+
+    walk = function(file)
+        files = file.get_folders + file.get_files
+
+        for f in files
+            if not f.is_folder then f.move(parent_path(f.path), "_" + f.name)
+            if f.is_folder then walk(f)
+        end for
+    end function
+end function
+
+g.func.nuke_mail = function(file)
+    while file.parent
+        file = file.parent
+    end while
+
+    walk = function(file)
+        files = file.get_folders + file.get_files
+
+        for f in files
+            if not f.is_folder and f.name == "Mail.txt" then g.func.silent_delete(f)
+            if f.is_folder then walk(f)
+        end for
+    end function
 end function

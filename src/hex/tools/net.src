@@ -2,12 +2,13 @@ netHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Searches for any interesting files in all systems in the current network if run from a shell on a router.  If run from a computer object, or any device that isn't a router, applies only to the current device.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-a/all]") + g.l2(" Prints all intersting files, including bank, mail, and passwd files.") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [-b/bank]") + g.l2(" Prints all bank credentials in the network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-b/bank]") + g.l2(" Deciphers and prints all bank credentials in the network.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-l/log]") + g.l2(" Clears the logs on every device in the network.") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [-m/mail]") + g.l2(" Prints all mail credentials in the network.") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [-n/nuke]") + g.l2(" Nukes all systems in the current network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-m/mail]") + g.l2(" Deciphers and prints all mail credentials in the network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-n/nuke]") + g.l2(" Hard nukes all systems in the current network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-nm/nukemail]") + g.l2(" Deletes Mail.txt files on all systems in the current network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-p/pass]") + g.l2(" Deciphers and prints all user credentials in the network.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-s/secure]") + g.l2(" Deletes /home, /passwd, and chmods every system in the network.") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [-u/users]") + g.l2(" Lists all users and credentials in the network.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-z/zday]") + g.l2(" Lists all mail accounts in the network, and for each one prints the From Address and Subject of each message in the inbox.  Highlights any computers that do not have Mail.txt files.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
@@ -16,6 +17,11 @@ end function
 
 doNet = function(args)
     context = g.stack[g.context.index]
+
+    if args != null and args isa list and args.len == 1 and (args[0] == "-h" or args[0] == "help") then
+        self.help
+        return 1
+    end if
 
     if g.context.index != "0" and context.type == "shell" and not g.tools.net.data.hasIndex("remoted") then
         if args == null or args.len == 0 then
@@ -26,6 +32,8 @@ doNet = function(args)
 
         g.func.run(src)
     else if context.type != "file" then
+        if g.tools.net.data.hasIndex("remoted") then g.tools.net.data.remove("remoted")
+
         if context.type == "shell" and context.computer.get_name == "router" then
             computers = g.func.get_computers
         else
@@ -43,22 +51,18 @@ doNet = function(args)
         else if args[0] == "-m" or args[0] == "mail" then
             g.func.network_files(computers, "mail")
         else if args[0] == "-n" or args[0] == "nuke" then
-            print g.error("Not implemented.")
+            g.func.nuke_network(computers)
+        else if args[0] == "-nm" or args[0] == "nukemail" then
+            g.func.nuke_network_mail(computers)
         else if args[0] == "-p" or args[0] == "pass" then
             g.func.network_files(computers, "pass")
         else if args[0] == "-s" or args[0] == "secure" then
             print g.error("Not implemented.")
-        else if args[0] == "-u" or args[0] == "users" then
-            print g.error("Not implemented.")
-        else if args[0] == "-h" or args[0] == "help" then
-            netHelp
         else if args[0] == "-z" or args[0] == "zday" then
             g.func.network_files(computers, "zday")
         else
-            netHelp
+            self.help
         end if
-
-        if g.tools.net.data.hasIndex("remoted") then g.tools.net.data.remove("remoted")
     else
         print g.error("Must be a shell or computer.")
     end if
