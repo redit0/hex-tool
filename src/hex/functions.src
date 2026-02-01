@@ -1564,26 +1564,24 @@ g.func.zday_mail = function(computer)
 end function
 
 g.func.rt_load = function
-    dir = g.stack["0"].computer.File(g.stack["0"].path + "/rt")
+    import_code("passwords/1.src")
+    import_code("passwords/2.src")
+    import_code("passwords/3.src")
+    import_code("passwords/4.src")
+    import_code("passwords/5.src")
+    import_code("passwords/6.src")
+    import_code("passwords/7.src")
 
-    if dir != null and dir.get_files.len > 0 then
-        files = g.func.find(dir, "hex.*.rt", "tr")
+    for line in g.p
+        words = line.split(",")
+        for pw in words
+            g.rt[md5(pw)] = pw
+            cap = pw[:1].upper + pw[1:]
+            g.rt[md5(cap)] = cap
+        end for
+    end for
 
-        if files.len > 0 then
-            for file in files
-                lines = file.get_content.split(char(10))
+    g.remove("passwords")
 
-                for line in lines
-                    if line == "" or line.indexOf(":") == null then continue
-                    parts = line.split(":")
-
-                    if not g.rt.hasIndex(parts[1]) then
-                        g.rt[parts[1]] = parts[0]
-                    end if
-                end for
-            end for
-
-            print g.const.indent + g.s3("Loaded " + g.rt.indexes.len + " passwords.")
-        end if
-    end if
+    print g.const.indent + g.s3("Loaded " + len(g.rt) + " passwords.")
 end function
