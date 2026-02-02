@@ -9,7 +9,6 @@ end function
 
 
 doReboot = function(args = null)
-    print "in doReboot"
     if args != null and args isa list and args.len == 1 and (args[0] == "-h" or args[0] == "help") then
         self.help
         return 1
@@ -23,11 +22,13 @@ doReboot = function(args = null)
             return 0
         end if
 
+        g.context.index = "0"
         result = g.stack[idx].computer.reboot
         if result isa string then
             print g.error(result)
             return 0
         end if
+        g.stack.remove(idx)
 
         return 1
     end if

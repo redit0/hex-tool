@@ -2,7 +2,7 @@ rshellHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Adds new rshells to the stack.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [infect] {ip} {port} {process_name}") + g.l2(" Installs an rshell client on the current context using the provided IP, port, and process name.  If any parameter is omitted, the default is used instead (configured with rshell init).") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [init] {port}") + g.l2(" Sets the default rshell server to the current context, and the default rshell port to the specified port if provided (or 10000 if it is not.)") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [init] {port}") + g.l2(" Sets the default rshell server to the current context, and the default rshell port to the specified port if provided (or 1222 if it is not.)") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [info]") + g.l2(" Displays the default rshell server IP address and port.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-r/remove] [#]") + g.l2(" Kills processes on the provided rshell context (specify which rshell by using the stack index number).  Does not remove it from the stack.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-c/clear]") + g.l2(" Kills processes on all rshell clients.  Does not remove them from the stack.") + g.const.ni
@@ -95,7 +95,7 @@ doRshell = function(args = null)
             port = args[1].to_int
         else
             idx = g.context.index
-            port = 10000
+            port = 1222
         end if
         if g.func.init_rshell(idx, port) then
             print g.const.indent + g.s3("Set rshell defaults with port " + port)

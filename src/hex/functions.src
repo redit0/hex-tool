@@ -265,7 +265,9 @@ g.func.getApt = function()
         return null
     end if
 
-    libFile = g.func.findFile(context.computer.File("/"), "aptclient.so")
+    results = g.func.find(context.computer.File("/"), "aptclient.so", "b") + [0]
+
+    libFile = results[0]
 
     if not libFile then
         print(g.error("Could not locate aptclient.so"))
@@ -313,11 +315,11 @@ end function
 g.func.updateLibs = function
     installLib = function(libName, isUpgrade = 0)
         aptClient = outer.aptClient
-        aptClient.install(libName, context.path)
-        metaxFile = context.computer.File(context.path + "/metaxploit.so")
+        aptClient.install(libName, "/lib")
+        metaxFile = context.computer.File("/lib/metaxploit.so")
         if metaxFile then
-            metax = include_lib(context.path + "/metaxploit.so")
-            lib = metax.load(context.path + "/" + libName)
+            metax = include_lib("/lib/metaxploit.so")
+            lib = metax.load("/lib/" + libName)
 
             if isUpgrade then
                 outer.output = outer.output + g.const.indent + g.g1("Updated " + libName + " to version " + lib.version) + g.const.nl
@@ -392,14 +394,14 @@ g.func.updateLibs = function
         aptClient.update
     end while
     
-    metax = context.computer.File(context.path + "/metaxploit.so")
+    metax = context.computer.File("/lib/metaxploit.so")
 
     if not metax then
         output = output + g.const.indent + g.l2("Installing metaxploit.so...") + g.const.nl
         installLib("metaxploit.so")
     else
-        metaxploit = include_lib(context.path + "/metaxploit.so")
-        lib = metaxploit.load(context.path + "/metaxploit.so")
+        metaxploit = include_lib("/lib/metaxploit.so")
+        lib = metaxploit.load("/lib/metaxploit.so")
 
         output = output + g.const.indent + g.l2("Found metaxploit.so at version " + lib.version) + g.const.nl
 
@@ -412,14 +414,14 @@ g.func.updateLibs = function
         end if
     end if
 
-    crypto = context.computer.File(context.path + "/crypto.so")
+    crypto = context.computer.File("/lib/crypto.so")
 
     if not crypto then
         output = output + g.const.indent + g.l2("Installing crypto.so...") + g.const.nl
         installLib("crypto.so")
     else
-        metaxploit = include_lib(context.path + "/metaxploit.so")
-        lib = metaxploit.load(context.path + "/crypto.so")
+        metaxploit = include_lib("/lib/metaxploit.so")
+        lib = metaxploit.load("/lib/crypto.so")
 
         output = output + g.const.indent + g.l2("Found crypto.so at version " + lib.version) + g.const.nl
 
@@ -553,47 +555,23 @@ g.func.init = function
 
     g.stack[g.context.index] = context
 
-    g.stack[g.context.index].apt = g.func.getApt
+    g.func.attach_apt("0", 1)
 end function
 
 // Loads the necessary libraries for the current context.
 // @return {none}
 g.func.loadLibs = function
-    g.stack[g.context.index].apt = g.func.getApt
-    g.stack[g.context.index].metax = include_lib(g.stack[g.context.index].path + "/metaxploit.so")
-    g.stack[g.context.index].crypto = include_lib(g.stack[g.context.index].path + "/crypto.so")
-end function
-
-// Loads the remote shell library for the current context.
-// @return {none}
-g.func.rshellLib = function
-    if not g.stack[g.context.index].computer then
-        print(g.error("No computer in the current context."))
-        return
-    end if
-
-    libFile = g.func.findFile(g.stack[g.context.index].computer.File("/"), "librshell.so")
-
-    if not libFile then
-        print(g.error("Could not locate librshell.so"))
-        return
-    end if
-
-    lib = include_lib(libFile.path)
-
-    if not lib then
-        print(g.error("Could not load librshell.so"))
-        return
-    end if
-
-    g.stack[g.context.index].rshell = lib
+    idx = g.context.index
+    g.func.attach_apt(idx)
+    g.func.attach_metax(idx)
+    g.func.attach_crypto(idx)
 end function
 
 // Loads the library at the specified path and returns it via get_custom_object
 // @param {string} path - The path to the library.
 // @return {library} - The loaded library.
 g.func.include_lib = function(path)
-    src = "g = get_custom_object" + char(10) + "g.lib = include_lib(""" + @path + """)"
+    src = "g = get_custom_object" + char(10) + "g.lib = include_lib(""" + path + """)"
     g.func.run(src)
     if not g.hasIndex("lib") then return null
 
@@ -1080,19 +1058,57 @@ g.func.checkFile = function(idx)
     return 1
 end function
 
+g.func.attach_rshell = function(idx, silent = 0)
+    if not g.func.checkShell(idx) then return 0
+
+    lib = g.stack[idx].computer.File("/lib/librshell.so")
+
+    if not lib then
+        if not g.func.putLib("/root/SecureLibs", "librshell.so") then
+            print g.error("Could not upload librshell.so.")
+            return 0
+        end if
+        lib = g.stack[idx].computer.File("/lib/librshell.so")
+    end if
+
+    if not silent then print g.const.indent + g.s3("Attaching rshell lib to context...")
+
+    rshell = g.func.include_lib(lib.path)
+
+    if not rshell then
+        print g.error("Could not retrieve library via include_lib")
+        return 0
+    end if
+
+    g.stack[idx].rshell = rshell
+
+    return 1
+end function
+
 // Attaches the metaxploit library to the context at the given index.
 // @param {string} idx - The index of the context.
 // @return {number} - 1 if successful, 0 otherwise.
-g.func.attach_metax = function(idx)
+g.func.attach_metax = function(idx, silent = 0)
     if not g.func.checkShell(idx) then return 0
 
-    if not g.func.putLib(g.stack["0"].path, "metaxploit.so", g.stack[idx].path) then
-        print g.error("Could not upload metaxploit.so.")
+    filePath = g.stack[idx].path + "/metaxploit.so"
+    lib = g.stack[idx].computer.File(filePath.replace("//", "/"))
+
+    if not lib then
+        lib = g.stack[idx].computer.File("/lib/metaxploit.so")
     end if
 
-    print g.const.indent + g.s3("Attaching metaxploit lib to context...")
-    filePath = g.stack[idx].path + "/metaxploit.so"
-    metax = g.func.include_lib(filePath.replace("//", "/"))
+    if not lib then
+        if not g.func.putLib("/lib", "metaxploit.so", g.stack[idx].path) then
+            print g.error("Could not upload metaxploit.so.")
+            return 0
+        end if
+        lib = g.stack[idx].computer.File(filePath.replace("//", "/"))
+    end if
+
+    if not silent then print g.const.indent + g.s3("Attaching metaxploit lib to context...")
+
+    metax = g.func.include_lib(lib.path)
 
     if not metax then
         print g.error("Could not retrieve library via include_lib")
@@ -1107,16 +1123,27 @@ end function
 // Attaches the crypto library to the context at the given index.
 // @param {string} idx - The index of the context.
 // @return {number} - 1 if successful, 0 otherwise.
-g.func.attach_crypto = function(idx)
+g.func.attach_crypto = function(idx, silent = 0)
     if not g.func.checkShell(idx) then return 0
 
-    if not g.func.putLib(g.stack["0"].path, "crypto.so", g.stack[idx].path) then
-        print g.error("Could not upload crypto.so.")
+    filePath = g.stack[idx].path + "/crypto.so"
+    lib = g.stack[idx].computer.File(filePath.replace("//", "/"))
+
+    if not lib then
+        lib = g.stack[idx].computer.File("/lib/crypto.so")
     end if
 
-    print g.const.indent + g.s3("Attaching crypto lib to context...")
-    filePath = g.stack[idx].path + "/crypto.so"
-    crypto = g.func.include_lib(filePath.replace("//", "/"))
+    if not lib then
+        if not g.func.putLib("/lib", "crypto.so", g.stack[idx].path) then
+            print g.error("Could not upload crypto.so.")
+            return 0
+        end if
+        lib = g.stack[idx].computer.File(filePath.replace("//", "/"))
+    end if
+
+    if not silent then print g.const.indent + g.s3("Attaching crypto lib to context...")
+
+    crypto = g.func.include_lib(lib.path)
 
     if not crypto then
         print g.error("Could not retrieve library via include_lib")
@@ -1131,16 +1158,27 @@ end function
 // Attaches the aptclient library to the context at the given index.
 // @param {string} idx - The index of the context.
 // @return {number} - 1 if successful, 0 otherwise.
-g.func.attach_apt = function(idx)
+g.func.attach_apt = function(idx, silent = 0)
     if not g.func.checkShell(idx) then return 0
 
-    if not g.func.putLib(g.stack["0"].path, "aptclient.so", g.stack[idx].path) then
-        print g.error("Could not upload aptclient.so.")
+    filePath = g.stack[idx].path + "/aptclient.so"
+    lib = g.stack[idx].computer.File(filePath.replace("//", "/"))
+
+    if not lib then
+        lib = g.stack[idx].computer.File("/lib/aptclient.so")
     end if
 
-    print g.const.indent + g.s3("Attaching aptclient lib to context...")
-    filePath = g.stack[idx].path + "/aptclient.so"
-    aptclient = g.func.include_lib(filePath.replace("//", "/"))
+    if not lib then
+        if not g.func.putLib("/lib", "aptclient.so", g.stack[idx].path) then
+            print g.error("Could not upload aptclient.so.")
+            return 0
+        end if
+        lib = g.stack[idx].computer.File(filePath.replace("//", "/"))
+    end if
+
+    if not silent then print g.const.indent + g.s3("Attaching aptclient lib to context...")
+
+    aptclient = g.func.include_lib(lib.path)
 
     if not aptclient then
         print g.error("Could not retrieve library via include_lib")
@@ -1491,7 +1529,11 @@ g.func.interesting_files = function(computer, type)
                             password = g.tools.decipher.exec([parts[1]])[1]
                             g.tools.decipher.data.silent = 0
 
-                            outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1(parts[0] + ":" + password, "i") + "</size>")
+                            if g.rt.hasIndex(parts[1]) then
+                                outer.output.push("<pos=250>" + " "*4 + g.g1(parts[0] + ":" + password, "i") + "</size>")
+                            else
+                                outer.output.push("<pos=250>" + " "*4 + g.o1(parts[0] + ":" + password, "i") + "</size>")
+                            end if
                         end for
                     end if
                 end if

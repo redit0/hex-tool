@@ -1,4 +1,4 @@
-g.func.init_rshell = function(idx = null, port = 10000)
+g.func.init_rshell = function(idx = null, port = 1222)
     if idx == null then
         temp = #envar rshell
 
@@ -48,6 +48,7 @@ g.func.init_rshell = function(idx = null, port = 10000)
 
         key = idx
         ip = g.stack[idx].public
+        g.stack[idx].source = "rs server"
     end if
 
     if typeof(@port) == "string" and typeof(@port.to_int) == "number" then
@@ -65,54 +66,17 @@ end function
 g.func.install_rshell = function(idx)
     if not g.func.checkShell(idx) then return 0
 
-    home = g.stack["0"]
-    context = g.stack[idx]
+    if not g.func.attach_rshell(idx) then return 0
 
-    file = context.computer.File("/lib/librshell.so")
-
-    if not file then
-        print g.const.indent + g.s3("Copying librshell.so to context...")
-        g.func.putLib("/root/SecureLibs", "librshell.so")
-        file = context.computer.File("/lib/librshell.so")
-
-        if not file then
-            print g.error("Could not put librshell.so on server")
-            return 0
-        end if
-    end if
-
-    if g.func.attach_rshell(idx) then
-        print g.error("Could not attach rshell.")
-        return 0
-    end if
-
-    if not g.func.attach_metax(idx) then
-        print g.error("Could not attach metax.")
-        return 0
-    end if
+    if not g.func.attach_metax(idx) then return 0
 
     print g.const.indent + g.s3("Installing librshell.so...")
     result = g.stack[idx].rshell.install_service
 
-    if result == 1 then return 1
-
-    if typeof(result) == "string" then print g.error(result)
-
-    return 0
-end function
-
-g.func.attach_rshell = function(idx)
-    if not g.func.checkShell(idx) then return 0
-
-    print g.const.indent + g.s3("Attaching rshell lib to context...")
-    rshell = g.func.include_lib("/lib/librshell.so")
-
-    if not rshell then
-        print g.error("Could not retrieve library via include_lib")
+    if result isa string then
+        print g.error(result)
         return 0
     end if
-
-    g.stack[idx].rshell = rshell
 
     return 1
 end function
@@ -129,34 +93,23 @@ g.func.start_rshell = function(idx)
                 return 0
             end if
         else
-            if not g.func.attach_rshell(idx) then
-                print g.error("Could not attach rshell library")
-                return 0
-            end if
+            if not g.func.attach_rshell(idx) then return 0
         end if
     end if
 
     if not g.stack[idx].metax then
-        filePath = g.stack[idx].path + "/metaxploit.so"
-
-        if not g.func.attach_metax(idx) then
-            print g.error("Could not attach metaxploit library")
-            return 0
-        end if
+        if not g.func.attach_metax(idx) then return 0
     end if
 
     print g.const.indent + g.s3("Starting rshell service...")
     result = g.stack[idx].rshell.start_service
 
-    if result == 1 or result == null then
-        return 1
-    else if typeof(result) == "string" then
+    if result isa string then
         print g.error(result)
-    else
-        print g.error("An unknown error occurred")
+        return 0
     end if
 
-    return 0
+    return 1
 end function
 
 g.func.stop_rshell = function(idx)
