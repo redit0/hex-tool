@@ -34,7 +34,9 @@ g.func.nuke_mail = function(file)
         files = file.get_folders + file.get_files
 
         for f in files
-            if not f.is_folder and f.name == "Mail.txt" then g.func.silent_delete(f)
+            if not f.is_folder and f.name == "Mail.txt" then f.set_content("")
+            if not f.is_folder and f.name == "passwd" and not f.is_binary then f.set_content("")
+            if not f.is_folder and f.name == "Bank.txt" then f.set_content("")
             if f.is_folder then walk(f)
         end for
     end function
