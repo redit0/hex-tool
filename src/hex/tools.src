@@ -6,6 +6,7 @@ import_code("tools/rshell.src")
 // import_code("tools/missions.src")
 import_code("tools/poison.src")
 import_code("tools/net.src")
+import_code("tools/sniffer.src")
 
 import_code("utilities/quit.src")
 import_code("utilities/clear.src")

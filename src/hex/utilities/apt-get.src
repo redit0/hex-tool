@@ -14,7 +14,7 @@ apt = function(args)
     context = g.stack[g.context.index]
 
     if not context.apt then
-        print(g.error("Apt-get is not available in this context. (If this is a shell, try running 'jump'.)"))
+        print(g.error("Apt-get is not available in this context. (If this is a shell, try running 'jump apt'.)"))
         return
     end if
 
@@ -38,14 +38,31 @@ apt = function(args)
     end function
 
     remove = function(address)
-        return context.apt.del_repo(address)
+        result = context.apt.update
+
+        if result isa string and result != "" then
+            print(g.error(result))
+            return 0
+        end if
+
+        result = context.apt.del_repo(address)
+        if result isa string and result != "" then
+            print(g.error(result))
+            return 0
+        else
+            return 1
+        end if
     end function
 
     getPackageList = function
         repos = g.func.getRepos
 
         packages = {}
-
+        result = context.apt.update
+        if result isa string and result != "" then
+            print(g.error(result))
+            return packages
+        end if
         for repo in repos
             packageList = context.apt.show(repo)
 
@@ -82,7 +99,7 @@ apt = function(args)
             self.help
             return
         else if cmd == "sources" or cmd == "-s" then
-            sources()
+            sources
             return
         else if cmd == "add" or cmd == "-a" then
             if not opt then
@@ -90,11 +107,11 @@ apt = function(args)
 
                 result = add(hackshop)
 
-                if typeof(result) == "string" and result.len > 0 then
+                if result isa string and result != "" then
                     print(g.error(result))
                 else
                     result = context.apt.update()
-                    if typeof(result) == "string" and result != "" then
+                    if result isa string and result != "" then
                         print(g.error(result))
                     else
                         print(g.const.indent + g.g1("Successfully added repository: " + opt))
@@ -107,11 +124,11 @@ apt = function(args)
             else
                 result = add(opt)
 
-                if typeof(result) == "string" and result.len > 0 then
+                if result isa string and result != "" then
                     print(g.error(result))
                 else
                     result = context.apt.update()
-                    if typeof(result) == "string" and result != "" then
+                    if result isa string and result != "" then
                         print(g.error(result))
                     else
                         print(g.const.indent + g.g1("Successfully added repository: " + opt))
@@ -122,19 +139,17 @@ apt = function(args)
         else if cmd == "remove" or cmd == "-r" then
             if not opt then
                 print(g.error("Invalid number of arguments. (Usage: 'apt-get -r [ip address]')"))
-                return
+                return 0
             else if not is_valid_ip(opt) then
                 print(g.error("Invalid parameter: " + opt))
-                return
+                return 0
             else
                 result = remove(opt)
 
-                if typeof(result) == "string" and result.len > 0 then
-                    print(g.error(result))
-                else
+                if result then
                     print(g.const.indent + g.g1("Successfully removed repository: " + opt))
                 end if
-                return
+                return result
             end if
         else if cmd == "list" or cmd == "-l" then
             packages = getPackageList
@@ -163,9 +178,10 @@ apt = function(args)
                     path = context.path
                 end if
 
+                context.apt.update
                 result = context.apt.install(opt, path)
 
-                if typeof(result) == "string" and result.len > 0 then
+                if result isa string and result != "" then
                     print(g.error(result))
                 else
                     print(g.const.indent + g.g1("Successfully installed: " + opt))

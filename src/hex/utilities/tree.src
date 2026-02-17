@@ -159,7 +159,7 @@ tree = function(args = null)
     output = g.const.indent + "<size=120%>"
     output = output + start.permissions.formatPermissions + " "
     output = output + start.owner.formatUsername + "<pos=350>" + start.group.formatUsername + "<pos=495>"
-    output = output + ".  " + start.getFileColor
+    output = output + "<color=#FFF>.</color>  " + start.getFileColor
 
     print(output)    
 

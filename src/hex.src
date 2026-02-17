@@ -8,6 +8,7 @@ if not g.hasIndex("database") then g.database = {}
 if not g.hasIndex("defaults") then g.defaults = {}
 if not g.hasIndex("func") then g.func = {}
 if not g.hasIndex("fs") then g.fs = {}
+if not g.hasIndex("hackshop") then g.hackshop = {}
 if not g.hasIndex("rt") then g.rt = {}
 if not g.hasIndex("stack") then g.stack = {}
 if not g.hasIndex("target") then g.target = {}

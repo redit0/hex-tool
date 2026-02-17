@@ -1,0 +1,66 @@
+snifferHelp = function()
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" {-n/new}")g.l2(" Launches a sniffer on the target computer.  Optionally, opens it in a new terminal.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doSniffer = function(args)
+    if args == null or args == [] then
+        context = g.stack[g.context.index]
+
+        if not g.func.checkShell(g.context.index) then
+            print(g.error("No shell available in current context."))
+            return 0
+        end if
+
+        src = "g = get_custom_object" + char(10) + "output = g.stack[g.context.index].metax.sniffer(1)" + char(10) + "if not output then exit(""Unknown error: can't start to listening"")" + char(10) + "print(output)"
+        g.func.run(src)
+        return 1
+    else if args[0] == "new" or args[0] == "-n" then
+        idx = g.context.index
+        print g.const.indent + g.s3("Starting sniffer in new terminal...")
+
+        if not g.func.checkShell(idx) then
+            print(g.error("No shell available in current context."))
+            return 0
+        end if
+
+        lib = g.stack[idx].computer.File("/lib/metaxploit.so")
+
+        if not lib then
+            if not g.func.putLib("/lib", "metaxploit.so", "/lib") then
+                print g.error("Could not upload metaxploit.so.")
+                return 0
+            end if
+        end if
+
+        term = g.stack[idx].computer.File("/usr/bin/Terminal.exe")
+
+        if not term then
+            if not g.func.put("/usr/bin/Terminal.exe", "/usr/bin/") then
+                print g.error("Could not upload Terminal.exe.")
+                return 0
+            end if
+        end if
+
+        src = g.hackshop["sniffer"]
+        g.func.run(src, 1)
+        return 1
+    else if args[0] == "help" or args[0] == "-h" then
+        self.help
+        return 1
+    else
+        self.help
+        return 0
+    end if
+end function
+
+g.tools.sniffer = {
+    "name": "sniffer",
+    "shortDescription": "Starts a sniffer on the target",
+    "exec": @doSniffer,
+    "help": @snifferHelp,
+    "data": {}
+}

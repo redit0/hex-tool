@@ -737,7 +737,7 @@ end function
 // Runs the given source code in the current context.
 // @param {string} src - The source code to run.
 // @return {none}
-g.func.run = function(src)
+g.func.run = function(src, newTerminal = 0)
     if not g.func.checkShell(g.context.index) then return 0
 
     context = g.stack[g.context.index]
@@ -747,14 +747,14 @@ g.func.run = function(src)
         return 0
     end if
 
-    prefix = context.path
+    prefix = context.currentPath
 
     if prefix == "/" then prefix = ""
 
     file = context.computer.File(prefix + "/temp")
 
     if not file then
-        result = context.computer.create_folder(context.path, "temp")
+        result = context.computer.create_folder(context.currentPath, "temp")
         if typeof(result) == "string" then print "1: " + g.error(result)
     end if
     
@@ -783,7 +783,12 @@ g.func.run = function(src)
     if typeof(result) == "string" then print "4: " + g.error(result)
 
     context.shell.build(file.path, prefix + "/temp")
-    context.shell.launch(prefix + "/temp/hex")
+    if newTerminal then
+        context.shell.launch("/usr/bin/Terminal.exe", prefix + "/temp/hex")
+        wait 2
+    else
+        context.shell.launch(prefix + "/temp/hex")
+    end if
 
     dir = context.computer.File(prefix + "/temp")
     if dir != null then
@@ -819,7 +824,7 @@ g.func.put = function(srcPath, destPath)
 
     if context.type != "shell" then
         print g.error("Context is not a shell.")
-        return
+        return 0
     end if
 
     f = home.computer.File(srcPath)
@@ -827,11 +832,13 @@ g.func.put = function(srcPath, destPath)
     f.chmod("g+rwx")
     f.chmod("o+rwx")
 
-    g.func.transfer(home.shell, srcPath, context.shell, destPath)
+    result = g.func.transfer(home.shell, srcPath, context.shell, destPath)
 
     f.chmod("u-rwx")
     f.chmod("g-rwx")
     f.chmod("o-rwx")
+
+    return result
 end function
 
 // Transfers a file between two shells.
@@ -843,40 +850,46 @@ end function
 g.func.transfer = function(srcShell, srcPath, destShell, destPath)
     if typeof(@srcShell) != "shell" or typeof(@srcPath) != "string" or typeof(@destShell) != "shell" or typeof(@destPath) != "string" then
         print g.error("Invalid parameter(s).")
-        return
+        return 0
     end if
 
     srcFile = srcShell.host_computer.File(srcPath)
 
     if not srcFile then
         print g.error("Invalid srcPath parameter.")
-        return
+        return 0
     end if
 
     if not srcFile.has_permission("r") then
         print g.error("Cannot read source file.")
-        return
+        return 0
     end if
 
     destFolder = destShell.host_computer.File(destPath)
 
     if not destFolder then
         print g.error("Invalid destPath parameter.")
-        return
+        return 0
     end if
 
     if not destFolder.has_permission("w") then
         print g.error("Cannot write to the destination path.")
-        return
+        return 0
     end if
 
     result = srcShell.scp(srcFile.path, destFolder.path, destShell)
 
     if typeof(result) == "string" then
         print g.error(result)
+
+        return 0
     else if result == null then
         print g.error("An unknown error occurred.")
+
+        return 0
     end if
+
+    return 1
 end function
 
 // Uploads a library to the current context.
