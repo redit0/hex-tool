@@ -584,7 +584,7 @@ hack = function(args)
         else if args[0] == "random" then
             ran = g.func.getRandomIp
 
-            g.command = "hack " + ran
+            g.command = "hack " + ran + " 0"
             return
         else
             self.help
