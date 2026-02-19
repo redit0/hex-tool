@@ -915,6 +915,11 @@ g.func.putLib = function(dir, libName, dest = "/lib")
 
     searchFolder = home.computer.File(dir)
 
+    if not searchFolder then
+        print g.error("Invalid directory: " + dir)
+        return 0
+    end if
+
     libs = g.func.find(searchFolder, searchName + "*.so", "br")
 
     if libs.len == 0 then
@@ -1410,6 +1415,7 @@ g.func.get_computers = function
     computers = []
 
     for device in devices
+        print g.const.indent + g.s3("Trying memory address " + mem + " with value " + value + " in " + metaLib.lib_name + " at version " + metaLib.version)
         comp = metaLib.overflow(mem, value, device)
 
         if comp then computers.push(comp)
@@ -1484,7 +1490,7 @@ g.func.network_files = function(computers, type)
             end if
 
             if computer.get_name != "router" and computer.File("/lib/libcam.so") == null and computer.File("/lib/libsmartappliance.so") == null and temp == [] then
-                output.push(g.const.indent + g.s3(computer.local_ip) + g.r1("<pos=220>Mail File(s) Missing!!"))
+                output.push(g.const.indent + g.s3(computer.local_ip) + g.r1("<pos=220>Mail File(s) Missing or Empty!!"))
             else
                 output = output + temp
             end if
@@ -1511,7 +1517,11 @@ g.func.network_files = function(computers, type)
         year = dateSegments[0].split("/")[2]
         ip = computers[0].public_ip
         admin = whois(ip).split(char(10))[2].split(":")[1].trim
-        password = credentials[admin]
+        if credentials.hasIndex(admin) then
+            password = credentials[admin]
+        else
+            password = ""
+        end if
 
         zoutput = []
         zoutput.push("# " + month + ", " + year + " Zero Day Event")
@@ -1525,14 +1535,80 @@ g.func.network_files = function(computers, type)
             count = count + 1
             zoutput.push("**Subject:** " + z.subject)
             zoutput.push("**From:** " + z.from + " : " + credentials[z.from])
-            zoutput.push("**To:** " + z.to + " : " + z.password)
+            zoutput.push("**To:** " + z.to + " : " + credentials[z.to])
             if zinfo.len > 1 and count < zinfo.len then
                 zoutput.push("-----")
             end if
         end for
+
+        output = output + [""] + zoutput
     end if
 
-    print output.join(char(10)) + char(10) + zoutput.join(char(10))
+    print output.join(char(10))
+end function
+
+g.func.zday_mail = function(computer, credentials, zday)
+    mails = g.func.find(computer.File("/"), "Mail.txt", "t")
+    first = 1
+    output = []
+
+    for mail in mails
+        content = mail.get_content
+        if content == "" or content.indexOf(":") == null then continue
+        address = content.split(":")[0]
+        temp = content.split(":")[1]
+
+        if g.rt.hasIndex(temp) then
+            password = g.rt[temp]
+        else
+            g.tools.decipher.data.silent = 1
+            password = g.tools.decipher.exec([temp])[1]
+            g.tools.decipher.data.silent = 0
+        end if
+        
+        if credentials != null and credentials isa map then
+            credentials[address] = password
+        end if
+        
+        line = ""
+        if first then
+            first = 0
+            line = g.const.indent + g.s3(computer.local_ip)
+        end if
+
+        output.push(line + "<pos=220>" + g.l2(address + ":" + password))
+
+        meta = mail_login(address, password)
+
+        messages = meta.fetch
+
+        for msg in messages
+            lines = msg.split(char(10))
+            id = lines[2][8:]
+            text = meta.read(id).split(char(10))[3]
+            if lines[4][9:] == "About the company" and text[0] != ">" then
+                output.push(g.r1("<pos=75>  From: " + lines[3][6:] + "<pos=500:>Subject: " + lines[4][9:]))
+                subject = "Unknown"
+                if text != null and text.indexOf("not found") == null then
+                    if text.is_match("comfortable|longer|promise|truth") then
+                        subject = "Not being taken seriously"
+                    else
+                        subject = "It's under control"
+                    end if
+                end if
+
+                if zday != null and zday isa map then
+                    zday["to"] = lines[3][6:]
+                    zday["from"] = address
+                    zday["subject"] = subject
+                end if
+            else
+                output.push(g.g2("<pos=75>  From: " + lines[3][6:] + "<pos=500:>Subject: " + lines[4][9:]))
+            end if
+        end for
+    end for
+
+    return output
 end function
 
 g.func.interesting_files = function(computer, type)
@@ -1619,70 +1695,6 @@ g.func.interesting_files = function(computer, type)
     end function
 
     walk(computer.File("/"), "")
-
-    return output
-end function
-
-g.func.zday_mail = function(computer, credentials, zday)
-    mails = g.func.find(computer.File("/"), "Mail.txt", "t")
-    first = 1
-    output = []
-
-    for mail in mails
-        content = mail.get_content
-        address = content.split(":")[0]
-        temp = content.split(":")[1]
-
-        if g.rt.hasIndex(temp) then
-            password = g.rt[temp]
-        else
-            g.tools.decipher.data.silent = 1
-            password = g.tools.decipher.exec([temp])[1]
-            g.tools.decipher.data.silent = 0
-        end if
-        
-        if credentials != null and credentials isa map then
-            credentials[address] = password
-        end if
-        
-        line = ""
-        if first then
-            first = 0
-            line = g.const.indent + g.s3(computer.local_ip)
-        end if
-
-        output.push(line + "<pos=220>" + g.l2(address + ":" + password))
-
-        meta = mail_login(address, password)
-
-        messages = meta.fetch
-
-        for msg in messages
-            lines = msg.split(char(10))
-            if lines[4][9:] == "About the company" then
-                output.push(g.r1("<pos=75>  From: " + lines[3][6:] + "<pos=500:>Subject: " + lines[4][9:]))
-                id = lines[2][8:]
-                text = meta.read(id)
-                subject = "Unknown"
-                if text != null and text.indexOf("not found") == null then
-                    if text.is_match("(The worst part|this point|the internal database exposed|without much effort|intercept sensitive data subject)") then
-                        subject = "Not being taken seriously"
-                    else
-                        subject = "It's under control"
-                    end if
-                end if
-
-                if zday != null and zday isa map then
-                    zday["from"] = lines[3][6:]
-                    zday["to"] = address
-                    zday["password"] = password
-                    zday["subject"] = subject
-                end if
-            else
-                output.push(g.g2("<pos=75>  From: " + lines[3][6:] + "<pos=500:>Subject: " + lines[4][9:]))
-            end if
-        end for
-    end for
 
     return output
 end function

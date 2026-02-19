@@ -23,6 +23,8 @@ g.func.nuke_soft = function(file)
             if f.is_folder then walk(f)
         end for
     end function
+
+    walk(file)
 end function
 
 g.func.nuke_mail = function(file)
@@ -34,12 +36,23 @@ g.func.nuke_mail = function(file)
         files = file.get_folders + file.get_files
 
         for f in files
-            if not f.is_folder and f.name == "Mail.txt" then f.set_content("")
-            if not f.is_folder and f.name == "passwd" and not f.is_binary then f.set_content("")
-            if not f.is_folder and f.name == "Bank.txt" then f.set_content("")
+            if not f.is_folder and f.name == "Mail.txt" then
+                print g.const.indent + g.s2("Clearing contents: " + f.path + "...")
+                f.set_content("")
+            end if
+            if not f.is_folder and f.name == "passwd" and not f.is_binary then
+                print g.const.indent + g.s2("Clearing contents: " + f.path + "...")
+                f.set_content("")
+            end if
+            if not f.is_folder and f.name == "Bank.txt" then
+                print g.const.indent + g.s2("Clearing contents: " + f.path + "...")
+                f.set_content("")
+            end if
             if f.is_folder then walk(f)
         end for
     end function
+
+    walk(file)
 end function
 
 g.func.nuke_network = function(computers)
@@ -51,7 +64,7 @@ end function
 
 g.func.nuke_network_mail = function(computers)
     for computer in computers
-        print g.const.indent + g.s2("Deleting Mail.txt on [" + computer.public_ip + "]-[" + computer.local_ip + "]...")
+        print g.const.indent + g.s2("Cleaning files on [" + computer.public_ip + "]-[" + computer.local_ip + "]...")
         g.func.nuke_mail(computer.File("/"))
     end for
 end function

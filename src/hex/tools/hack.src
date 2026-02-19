@@ -80,7 +80,7 @@ hack = function(args)
                 for value in values
                     savedResult = g.database[metalib.lib_name][metalib.version][mem][value]
 
-                    print
+                    print g.const.indent + g.s3("Trying memory address " + mem + " with value " + value + " in " + metalib.lib_name + " at version " + metalib.version)
                     temp = metalib.overflow(mem, value, extra)
 
                     result = {}
@@ -210,7 +210,8 @@ hack = function(args)
                 for value in values
                     savedResult = g.database[metalib.lib_name][metalib.version][mem][value]
 
-                    if savedResult == "" or savedResult == "null" or typeof(savedResult.indexOf("computer")) == "number" then    
+                    if savedResult == "" or savedResult == "null" or typeof(savedResult.indexOf("computer")) == "number" then
+                        print g.const.indent + g.s3("Trying memory address " + mem + " with value " + value + " in " + metalib.lib_name + " at version " + metalib.version)
                         temp = metalib.overflow(mem, value, address)
                         if not temp then continue
 
