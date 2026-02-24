@@ -1,3 +1,6 @@
+// Registers all extension methods on built-in types (string, list, map) and on the
+// g.Target prototype.  Must be called once at startup before any extensions are used.
+// @return {none}
 g.registerExtensions = function
     // Retrieves the user based on file permissions for different object types.
     // @param {number} color - Whether to return the username in color (1) or not (0).
@@ -26,12 +29,17 @@ g.registerExtensions = function
         return g.r1("null")
     end function
 
+    // Returns a color-formatted version of a username string.
+    // @return {string} - Red for "root", dim for "guest", or blue for all other names.
     string.getUser = function
         if self == "root" then return g.r1(self)
         if self == "guest" then return g.l3(self)
         return g.b2(self)
     end function
 
+    // Converts a string to an integer.  If the string is a valid IPv4 address, converts it
+    // to a 32-bit integer representation; otherwise delegates to the built-in to_int.
+    // @return {number} - The integer value.
     string.toInt = function
         if not is_valid_ip(self) then return self.to_int
 
@@ -213,6 +221,8 @@ g.registerExtensions = function
         return g.r1("null")
     end function
 
+    // Removes duplicate entries from the list in-place, preserving first-occurrence order.
+    // @return {list} - The deduplicated list.
     list.distinct = function
         if not self isa list then return self
         if self == null then return self
@@ -230,6 +240,9 @@ g.registerExtensions = function
         return self
     end function
 
+    // Returns the largest numeric value in the list.  Both number and numeric-string
+    // entries are considered.  Returns -2147483648 if the list is empty or contains no numbers.
+    // @return {number} - The maximum numeric value found.
     list.max = function
         max = -2147483648
 
@@ -248,6 +261,10 @@ g.registerExtensions = function
         return max
     end function
 
+    // Creates a new g.Target context object from a shell, computer, or file.
+    // Sets the IPs, working directory, and user based on the object type and source string.
+    // @param {string} source - A label for how this context was obtained (e.g. "overflow", "home").
+    // @return {g.Target|null} - The populated context object, or null if the type is invalid.
     map.createContext = function(source)
         item = new g.Target
         item.source = source
@@ -298,6 +315,9 @@ g.registerExtensions = function
         return item
     end function
 
+    // Removes a trailing occurrence of text from the string, if present.
+    // @param {string} text - The suffix to remove.
+    // @return {string} - The trimmed string, or self unchanged if the suffix was not found.
     string.trimEnd = function(text)
         if not self isa string then
             print(g.error("Expected string, got " + typeof(self)))
@@ -311,6 +331,9 @@ g.registerExtensions = function
         end if
     end function
 
+    // Removes a leading occurrence of text from the string, if present.
+    // @param {string} text - The prefix to remove.
+    // @return {string} - The trimmed string, or self unchanged if the prefix was not found.
     string.trimStart = function(text)
         if not self isa string then
             print(g.error("Expected string, got " + typeof(self)))

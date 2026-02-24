@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the clear utility.
+// @return {none}
 clearHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Clears the screen and prints the banner") + g.const.nl
@@ -6,6 +8,9 @@ clearHelp = function()
     print(text)
 end function
 
+// Clears the screen and reprints the HEX banner.
+// @param {list<string>|null} args - Pass ["-h"] or ["help"] to show usage instead.
+// @return {none}
 clear = function(args = null)
     if args != null and args.len > 0 then
         if args[0] == "help" or args[0] == "-h" then

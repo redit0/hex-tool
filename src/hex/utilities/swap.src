@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the swap utility.
+// @return {none}
 swapHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" {index}") + g.l2(" Swaps the context with the one at the provided index (use 'stack' to view contexts and indexes).  If no index is specified, swaps with the previously selected context.") + g.const.ni
@@ -6,6 +8,10 @@ swapHelp = function(self)
     print(text)
 end function
 
+// Switches the active context to the stack entry at the provided index.  When no index
+// is given, toggles back to the previously active context.
+// @param {list<string>|null} args - Optional list with one element: the stack index to swap to.
+// @return {none}
 doSwap = function(args = null)
     if args != null and args.len > 0 then
         if args[0] == "help" or args[0] == "-h" then

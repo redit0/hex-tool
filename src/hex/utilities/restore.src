@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the restore utility.
+// @return {none}
 restoreHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-s/shop]") + g.l2(" Restores the original version of the default downloadable binaries in an NPC shop, excluding EXE files.") + g.const.ni
@@ -7,6 +9,10 @@ restoreHelp = function()
     print(text)
 end function
 
+// Restores default NPC binaries based on the flag: [-s/shop] rebuilds the hackshop
+// downloads directory; [-b/bin] is reserved for /bin restoration (not yet implemented).
+// @param {list<string>} args - One flag: ["-s"], ["-b"], or ["-h"].
+// @return {none}
 doRestore = function(args)
     if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
         self.help

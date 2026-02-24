@@ -1,3 +1,10 @@
+// Initialises the rshell subsystem.  When called with no index, reads the rshell server
+// credentials from the "rshell" environment variable and connects via the current proxy or
+// home shell, storing the result as a "rs server" context.  When an existing stack index
+// is provided, promotes that context to the rshell server role without connecting.
+// @param {string|null} idx - An existing shell stack index, or null to connect from env vars.
+// @param {number} port - The default port for rshell clients (default: 1222).
+// @return {number} - 1 if the server was set, 0 otherwise.
 g.func.init_rshell = function(idx = null, port = 1222)
     if idx == null then
         temp = #envar rshell
@@ -63,6 +70,10 @@ g.func.init_rshell = function(idx = null, port = 1222)
     return 1
 end function
 
+// Installs the rshell service on the shell context at the given stack index by uploading
+// librshell.so, attaching it, and calling install_service.
+// @param {string} idx - The stack index of the target shell context.
+// @return {number} - 1 if installation succeeded, 0 otherwise.
 g.func.install_rshell = function(idx)
     if not g.func.checkShell(idx) then return 0
 
@@ -81,6 +92,10 @@ g.func.install_rshell = function(idx)
     return 1
 end function
 
+// Starts the rshell service on the context at the given index.  Installs librshell.so
+// and metaxploit.so first if they are not already present.
+// @param {string} idx - The stack index of the target shell context.
+// @return {number} - 1 if the service started, 0 otherwise.
 g.func.start_rshell = function(idx)
     if not g.func.checkShell(idx) then return 0
 
@@ -112,6 +127,9 @@ g.func.start_rshell = function(idx)
     return 1
 end function
 
+// Stops the rshell service on the context at the given index.
+// @param {string} idx - The stack index of the target shell context.
+// @return {number} - 1 if the service stopped, 0 otherwise.
 g.func.stop_rshell = function(idx)
     if not g.func.checkShell(idx) then return 0
 
@@ -135,6 +153,10 @@ g.func.stop_rshell = function(idx)
     return 0
 end function
 
+// Queries the rshell server at the given stack index for connected clients, adds each
+// returned shell to the stack as an "rshell" context, and prints how many were found.
+// @param {string} idx - The stack index of the rshell server context.
+// @return {number} - 1 if rshells were retrieved, 0 otherwise.
 g.func.get_rshells = function(idx)
     if not g.func.checkShell(idx) then return 0
 
@@ -160,6 +182,9 @@ g.func.get_rshells = function(idx)
     return 1
 end function
 
+// Kills all processes (except dsession, Xorg, kernel_task) on every "rshell" shell context
+// currently in the stack.
+// @return {none}
 g.func.clear_rshells = function
     for key in g.stack.indexes
         if typeof(key.to_int) == "number" and g.stack[key].source == "rshell" and g.stack[key].type == "shell" then
@@ -169,6 +194,10 @@ g.func.clear_rshells = function
     end for
 end function
 
+// Kills all non-essential processes on the rshell client at the given stack index.
+// The context is not removed from the stack.
+// @param {string} idx - The stack index of the rshell context to clean up.
+// @return {number} - 1 if successful, 0 otherwise.
 g.func.remove_rshell = function(idx)
     if not g.func.checkShell(idx) then return 0
 
@@ -193,6 +222,8 @@ g.func.remove_rshell = function(idx)
     return 1
 end function
 
+// Prints the configured rshell server IP address and port from g.rshell.
+// @return {number} - 1 if info was displayed, 0 if rshell is not configured.
 g.func.rshell_info = function
     if not g.rshell or not g.rshell.ip or not g.rshell.port then
         print g.const.indent + g.o1("Rshell server ip and/or port are not set.")
@@ -204,6 +235,13 @@ g.func.rshell_info = function
     return 1
 end function
 
+// Deploys an rshell client on the context at the given index, instructing it to connect
+// back to the given IP and port under the specified process name.
+// @param {string} idx - The stack index of the target shell context.
+// @param {string} ip - The rshell server IP to call home to.
+// @param {number} port - The rshell server port to call home to.
+// @param {string} process - The process name for the client (default: "rshell_client").
+// @return {number} - 1 if the client was deployed, 0 otherwise.
 g.func.deploy_rshell = function(idx, ip, port, process = "rshell_client")
     if not g.func.checkShell(idx) then return 0
 
@@ -225,6 +263,8 @@ g.func.deploy_rshell = function(idx, ip, port, process = "rshell_client")
     return 1
 end function
 
+// Validates that g.rshell is fully configured with a valid IP, port, and stack index.
+// @return {number} - 1 if the rshell configuration is valid, 0 otherwise.
 g.func.check_rshell = function
     if not g.hasIndex("rshell") then
         print g.error("rshell server not set")

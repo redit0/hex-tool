@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the terminal utility.
+// @return {none}
 terminalHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Starts a terminal on the current context.") + g.const.ni
@@ -6,6 +8,10 @@ terminalHelp = function()
     print(text)
 end function
 
+// Opens a terminal on the current context's shell.  Prefers launching Terminal.exe if it
+// exists on the target filesystem; falls back to start_terminal.
+// @param {list<string>|null} args - Unused; pass ["-h"] or ["help"] to show usage.
+// @return {none}
 doTerminal = function(args)
     context = g.stack[g.context.index]
     if not context.shell then print(g.error("Current context is not a shell."))

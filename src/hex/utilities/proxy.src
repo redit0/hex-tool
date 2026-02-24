@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the proxy utility.
+// @return {none}
 proxyHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" {#}") + g.l2(" Switches the selected proxy to the context in the stack at the provided index.") + g.const.ni
@@ -9,6 +11,10 @@ proxyHelp = function()
     print(text)
 end function
 
+// Manages the proxy chain.  Dispatches to connect, clean, disconnect, or select a proxy
+// context based on the provided flag or stack index argument.
+// @param {list<string>} args - One of: a stack index, ["-s"], ["-c"], ["-d"], or ["-h"].
+// @return {none}
 doProxy = function(args)
     if args == null or args == [] then
         self.help

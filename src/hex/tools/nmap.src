@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the nmap tool.
+// @return {none}
 nmapHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" {ip}") + g.l2(" Displays port, whois, and firewall (if available) information for the specified ip address.  If no IP address is specified, will show saved info from the last nmap, if available.") + g.const.ni
@@ -11,6 +13,10 @@ end function
 //                 Format and print the output.                //
 /////////////////////////////////////////////////////////////////
 
+// Formats an nmap result object into a rich-text output string showing network info,
+// firewall rules (if present), and a device/port table sorted by activity level.
+// @param {map} data - The result object produced by doNmap.
+// @return {string} - The formatted output string ready to be passed to print.
 getOutput = function(data)
     retVal = ""
 
@@ -100,6 +106,10 @@ end function
 //                        Do the scan.                         //
 /////////////////////////////////////////////////////////////////
 
+// Collects network information for the router at the given IP: whois data, firewall rules,
+// and a per-device port listing.  Recursively discovers all LAN devices and routers.
+// @param {string} ip - The target IP address (public or LAN).
+// @return {map} - A result object with keys: info, firewall, devices.
 doNmap = function(ip)
     deviceList = []
 
@@ -259,6 +269,12 @@ end function
 //    Main entry point. Handle arguments, call out to other functions    //
 ///////////////////////////////////////////////////////////////////////////
 
+// **Nmap:**
+// Entry point for the nmap tool.  If an IP is provided, runs a full scan and saves the
+// result.  If called with no args, displays the last saved scan result.  When called
+// from a non-home context, re-executes remotely so the scan runs from the home shell.
+// @param {list<string>|null} args - Optional list with one IP or domain argument.
+// @return {none}
 nmap = function(args = null)
     if not args or args == [] then
         if not self.data.hasIndex("saved") then

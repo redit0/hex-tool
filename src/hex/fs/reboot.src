@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the reboot fs command.
+// @return {none}
 rebootHelp = function
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Reboots the target device if the context is a shell or computer object.") + g.const.ni
@@ -8,6 +10,10 @@ end function
 
 
 
+// Reboots the computer of the current context and removes it from the context stack.
+// Resets the active context index to "0" (home) before rebooting.
+// @param {list<string>|null} args - Pass ["-h"] or ["help"] to show usage, or null/[] to reboot.
+// @return {number} - 1 on success, 0 on failure.
 doReboot = function(args = null)
     if args != null and args isa list and args.len == 1 and (args[0] == "-h" or args[0] == "help") then
         self.help

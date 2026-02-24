@@ -1,3 +1,7 @@
+// Builds and returns the multi-line command prompt string for the current context.
+// Includes the context type, user, hostname, public/local IPs, and current path,
+// formatted and padded to fill the terminal width defined in g.const.ll.
+// @return {string} - The formatted prompt string ready to be passed to print.
 g.func.getPrompt = function()
 	idx = g.context.index
 	

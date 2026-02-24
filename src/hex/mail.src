@@ -1,3 +1,7 @@
+// Reads mail credentials from the "emailAddress" and "emailPassword" environment variables
+// and calls mail_login to establish a session, storing the result in g.mail.
+// Removes itself from g after running.
+// @return {none}
 g.func.initMail = function
     emailAddress = #envar emailAddress
     emailPassword = #envar emailPassword

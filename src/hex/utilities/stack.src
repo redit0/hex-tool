@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the stack utility.
+// @return {none}
 stackHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Prints a list of all contexts currently stored in the stack") + g.const.ni
@@ -7,6 +9,10 @@ stackHelp = function(self)
     print(text)
 end function
 
+// Prints all contexts in the stack grouped by public IP, highlighting the active context
+// and the selected proxy.  Accepts [-c/clear] to wipe non-home, non-proxy contexts.
+// @param {list<string>|null} args - Optional flags: ["-c"] clears the stack, ["-h"] shows help.
+// @return {none}
 doStack = function(args = null)
     if args != null and args.len > 0 then
         if args[0] == "help" or args[0] == "-h" then
@@ -72,6 +78,13 @@ doStack = function(args = null)
     return
 end function
 
+// Adds a context to the stack, or updates an existing entry for the same host and type
+// if the new item provides a higher access level.  When force is 1, always inserts a new
+// entry without deduplication.  Also upserts lower-tier contexts (computer for shell, file
+// for computer) when the new item improves on what is already stored.
+// @param {g.Target} item - The context object to add.
+// @param {number} force - If 1, always insert a new entry (default: 0).
+// @return {string} - The stack key at which the item was stored.
 g.stack.add = function(item, force = 0)
     updateItem = function(i, item)
         g.stack[i][item.type] = item[item.type]
@@ -162,6 +175,9 @@ g.stack.add = function(item, force = 0)
     return key
 end function
 
+// Removes all non-home, non-proxy contexts from the stack, resetting the active context
+// index to "0" if needed.
+// @return {none}
 g.stack.clear = function
     keys = g.stack.indexes
 

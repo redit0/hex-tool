@@ -1,3 +1,5 @@
+    // Prints usage and flag descriptions for the jump utility.
+    // @return {none}
     jumpHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Transfers metaxploit.so to the target and attaches it to the context, then deletes it.") + g.const.ni
@@ -8,6 +10,11 @@
     print(text)
 end function
 
+// Transfers and attaches a library to the current context based on the argument:
+// no arg or "metax" attaches metaxploit.so, "crypto" attaches crypto.so,
+// "apt" attaches aptclient.so.  Deletes the uploaded copy after attaching.
+// @param {list<string>|null} args - Optional list with one element specifying the library.
+// @return {none}
 doJump = function(args = null)
     if args == null or args == [] or (args.len > 0 and args[0] == "metax") then
         g.func.attach_metax(g.context.index)

@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the hackshop utility.
+// @return {none}
 hackshopHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Prints a random hackshop IP address.") + g.const.ni
@@ -6,6 +8,9 @@ hackshopHelp = function()
     print(text)
 end function
 
+// Finds and prints a random hackshop IP address by scanning nearby routers.
+// @param {list<string>|null} args - Pass ["-h"] or ["help"] to show usage, or null to run.
+// @return {none}
 doHackshop = function(args = null)
     if args != null and args != [] then
         self.help

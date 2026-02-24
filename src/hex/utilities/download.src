@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the download utility.
+// @return {none}
 downloadHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.nl
     text = text + g.g2(self.name) + g.b3(" [path or filename]") + g.l2(" Downloads file at the specified path.  If a filename is provided instead, searches for and downloads all files matching the provided name (use * for wildcard). Files are saved in the targets folder.") + g.const.nl
@@ -6,6 +8,10 @@ downloadHelp = function(self)
     print(text)
 end function
 
+// Downloads files matching the given path or filename pattern from the current context's
+// filesystem to the home computer's targets folder.
+// @param {list<string>|null} args - One element: the file path or name pattern to download.
+// @return {number} - 1 on success, 0 otherwise.
 doDownload = function(args = null)
     if args != null and args.len ==1 and args[0] != "-h" and args[0] != "help" then
         path = args[0]

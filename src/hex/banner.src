@@ -1,3 +1,6 @@
+// Builds and returns the ASCII art HEX banner string with version number and author tag,
+// formatted using the project color palette.
+// @return {string} - The full banner string ready to be passed to print.
 g.func.getBanner = function()
     banner = ""
     banner = banner + g.s2("        __    __    __    __    __    __    __    __    __    __    __    __    ") + g.const.nl

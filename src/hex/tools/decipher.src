@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the decipher tool.
+// @return {none}
 decHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" {credentials or password}") + g.l2(" Searches file system for all passwd files.  Optionally add 'bank' or 'mail' as an argument to decipher those files instead, or 'all' to decipher all files.  Deciphers and lists any credentials it finds in them.  If an encrypted password (or a set of credentials in the format username:encrypted_passsword) is passed in, it deciphers that instead.") + g.const.ni
@@ -6,9 +8,21 @@ decHelp = function(self)
     print(text)
 end function
 
+// **Decipher:**
+// Finds credential files on the current context's filesystem and deciphers them using the
+// crypto library or the rainbow table.  Can be scoped to passwd, mail, bank, or all three.
+// Optionally accepts a raw encrypted password or "user:password" string to decipher inline.
+// Saves results to credentials.txt in the home targets folder.
+// @param {list<string>|null} args - Optional: ["all"], ["mail"], ["bank"], [encrypted_string], or null.
+// @return {map|list|none} - The results map when searching files, or a [user, password] list
+//                          when deciphering a single credential string.
 doDec = function(args = null)
     context = g.stack[g.context.index]
 
+    // Deciphers a single credential line in "user:encrypted_password" or "encrypted_password" format.
+    // Checks the rainbow table first; falls back to the crypto library decipher call.
+    // @param {string} line - The raw credential line to parse.
+    // @return {list} - A two-element list: [username (may be ""), plaintext_password].
     decipherLine = function(line)
         username = ""
         if line.indexOf(":") != null then
@@ -27,6 +41,9 @@ doDec = function(args = null)
         return [username, password]
     end function
 
+    // Searches the current context's filesystem for credential files matching the which filter.
+    // @param {string} which - One of "all", "mail", "bank", or null/other (defaults to passwd only).
+    // @return {list<file>} - A list of readable, non-binary credential files found.
     findFiles = function(which)
         if which == "all" then
             fileNames = ["passwd","Mail.txt","Bank.txt"]
@@ -53,6 +70,10 @@ doDec = function(args = null)
         return files
     end function
 
+    // Deciphers all credentials found in the provided file list, keyed by username.
+    // Handles /etc/passwd, Mail.txt, and Bank.txt formats separately.
+    // @param {list<file>} files - The list of credential files to process.
+    // @return {map} - A map of username → {password, mail?, bank?} entries.
     decipherFiles = function(files)
         results = {}
         homePattern = "home\/[a-zA-Z0-9]+\/"
@@ -104,6 +125,9 @@ doDec = function(args = null)
         return results
     end function
 
+    // Formats and prints the deciphered credentials map to the terminal.
+    // @param {map} results - The results map from decipherFiles.
+    // @return {none}
     doOutput = function(results)
         if results == null or not results.indexes or results.indexes.len == 0 then
             print g.const.nl + g.const.indent + g.s3("<size=120%>No credentials found.</size>") + g.const.nl
@@ -143,6 +167,9 @@ doDec = function(args = null)
         print(output, 1)
     end function
 
+    // Writes the deciphered credentials map to credentials.txt in the home targets folder.
+    // @param {map} results - The results map from decipherFiles.
+    // @return {none}
     save = function(results)
         if results == null or not results.indexes then return
 

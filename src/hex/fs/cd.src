@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the cd fs command.
+// @return {none}
 changeDirHelp = function
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [folder name or path]") + g.l2(" Switch to the specified directory.") + g.const.ni
@@ -8,7 +10,14 @@ end function
 
 
 
+// Changes the current working directory of the active context to the specified folder.
+// Supports absolute paths, relative names, ".." to go up one level, "." to stay, and "/" for root.
+// @param {list<string>|null} args - One element: a folder name, path, "..", ".", or "/".
+// @return {number} - 1 on success, 0 on failure.
 changeDir = function(args = null)
+    // Recursively searches the directory tree for a folder matching the given name or path.
+    // @param {file} file - The directory to search within.
+    // @return {file|null} - The matching folder, or null if not found.
     checkFile = function(file)
         files = file.get_folders
 

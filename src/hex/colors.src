@@ -18,6 +18,11 @@ g.colors.d1 = "#666666"
 g.colors.d2 = "#333333"
 g.colors.y1 = "#dbd700"
 
+// Wraps str in one or more rich-text tags supplied via args.  Each element of args is
+// applied as an opening/closing XML-style tag pair around the string.
+// @param {string} str - The string to wrap.
+// @param {list<string>|null} args - Optional list of tag names (e.g. ["size=120%", "b"]).
+// @return {string} - The tagged string.
 g.func.format = function(str, args = null)
     if args and args.len > 0 then
         for x in range(args.len-1)
@@ -27,6 +32,10 @@ g.func.format = function(str, args = null)
     return str
 end function
 
+// Creates a color-formatter function at g[idx] that wraps its argument in a bold, colored
+// rich-text span using the hex color stored at g.colors[idx].
+// @param {string} idx - The color key (e.g. "r1", "g2") matching a key in g.colors.
+// @return {none}
 initColor = function(idx)
     g[idx] = function(str, args = null)
         return g.func.format("<color=" + g.colors[idx] + "><b>" + str + "</b></color>", args)
@@ -37,6 +46,9 @@ for idx in g.colors.indexes
     initColor(idx)
 end for
 
+// Formats an error message with the standard indent prefix, wrapped in the r1 error color.
+// @param {string} str - The error message text.
+// @return {string} - The formatted error string.
 g.error = function(str)
     return g.r1(g.const.indent + "[Error] " + str)
 end function

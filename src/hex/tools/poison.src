@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the poison tool.
+// @return {none}
 poisonHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Uploads insecure libraries to the target computer in /lib.  Checks for a folder (anywhere) called InsecureLibs and uploads all libraries contained therein.") + g.const.ni
@@ -6,6 +8,10 @@ poisonHelp = function()
     print(text)
 end function
 
+// Uploads all .so libraries from the InsecureLibs folder on the home computer to /lib on
+// the current target context.
+// @param {list<string>|null} args - Pass ["-h"] or ["help"] to show help, or null to run.
+// @return {number} - 1 on success, 0 on failure.
 doPoison = function(args)
     if args == null or args == [] then
         home = g.stack["0"]

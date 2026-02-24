@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the sniffer tool.
+// @return {none}
 snifferHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" {-n/new}")g.l2(" Launches a sniffer on the target computer.  Optionally, opens it in a new terminal.") + g.const.ni
@@ -6,6 +8,10 @@ snifferHelp = function()
     print(text)
 end function
 
+// Launches a metaxploit sniffer on the current shell context.  With no args, runs inline;
+// with [-n/new], uploads Terminal.exe and metaxploit.so if needed and opens a new terminal.
+// @param {list<string>|null} args - Optional: ["-n"] or ["new"] to open in a new terminal.
+// @return {number} - 1 on success, 0 on failure.
 doSniffer = function(args)
     if args == null or args == [] then
         context = g.stack[g.context.index]

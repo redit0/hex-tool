@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the tree utility.
+// @return {none}
 treeHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" {path}") + g.l2(" Displays the file system contents in a tree view starting from the specified path, or the root if a path is not specified") + g.const.ni
@@ -6,7 +8,15 @@ treeHelp = function(self)
     print(text)
 end function
 
+// Displays the filesystem of the current context in a tree view with permissions, owner,
+// and group columns.  Optionally starts from a specified path; defaults to root.
+// Files are color-coded by type and sensitivity.
+// @param {list<string>|null} args - Optional: [path] to start from, or null for root.
+// @return {none}
 tree = function(args = null)
+    // Wraps a permissions string in a color-coded bracket.  Fully locked-down strings
+    // are dimmed; all others are styled with s2.
+    // @return {string} - The formatted permissions label.
     string.formatPermissions = function
         if not self isa string then
             print(g.error("Invalid type: " + typeof(self)))
@@ -20,6 +30,8 @@ tree = function(args = null)
         end if
     end function
 
+    // Wraps a username string in a color-coded bracket.  "root" is dimmed; others use s2.
+    // @return {string} - The formatted username label.
     string.formatUsername = function
         if not self isa string then
             return self
@@ -28,6 +40,9 @@ tree = function(args = null)
         if self == "root" then return g.l2("[" + self + "]") else return g.s2("[" + self + "]")
     end function
 
+    // Returns a sortable key string for a file object by stripping non-alphanumeric
+    // characters from its path.
+    // @return {string} - The sort key, or an empty string if self is not a file.
     map.sortKey = function(self)
         if typeof(self) == "file" then
             return self.path.replace("[^a-zA-Z0-9]","")
@@ -36,6 +51,10 @@ tree = function(args = null)
         return ""
     end function
 
+    // Returns a color-formatted version of a file's name based on its type and sensitivity.
+    // Folders use s2, executables use l2, libraries use l3, sensitive text files use g1/o1,
+    // and other source files use b1.
+    // @return {string} - The color-formatted filename.
     map.getFileColor = function
         if typeof(self) != "file" then
             print(g.error("Invalid type: " + typeof(self)))
@@ -84,6 +103,11 @@ tree = function(args = null)
     line = "<size=120%><mspace=0.1> <mark=#ffffff>"+char(1564)+"</mark></size><#fff><s></mspace>  </s></color><space=0.3em><size=100%>"
     endLine = "<size=70%><mspace=0.1> <voffset=8><mark=#ffffff>"+char(1564)*2+"</mark></size><voffset=0><#fff><s></mspace>  </s></color><space=0.3em><size=100%>"
 
+    // Recursively walks a directory, printing each entry with permissions, owner, group,
+    // tree-drawing characters, and color-coded filename.
+    // @param {file} directory - The folder to enumerate.
+    // @param {string} prefix - The current tree-drawing prefix string (grows with depth).
+    // @return {none}
     walk = function(directory, prefix)
         files = directory.get_folders + directory.get_files
 

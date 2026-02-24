@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the upload utility.
+// @return {none}
 uploadHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.nl
     text = text + g.g2(self.name) + g.b3(" [path or filename]") + g.l2(" Uploads file at the specified path.  If a filename is provided instead, searches for and uploads all files matching the provided name (use * for wildcard). Files are saved in the target's current working directory.") + g.const.nl
@@ -6,6 +8,12 @@ uploadHelp = function(self)
     print(text)
 end function
 
+// Uploads files matching the given path or filename pattern from the home computer to the
+// current context's working directory.  Temporarily adds world-read/write/execute permissions
+// for the transfer, restoring them afterwards.  Preserves execute permissions for excluded
+// system binaries (sudo, Terminal.exe) when running from a home computer.
+// @param {list<string>|null} args - One element: the file path or name pattern to upload.
+// @return {number} - 1 on success, 0 otherwise.
 doUpload = function(args = null)
     if args != null and args.len ==1 and args[0] != "-h" and args[0] != "help" then
         excludes = ["sudo","Terminal","Terminal.exe"]

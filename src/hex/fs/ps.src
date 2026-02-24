@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the ps fs command.
+// @return {none}
 procsHelp = function
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" List all processes running on the target.") + g.const.ni
@@ -6,6 +8,10 @@ procsHelp = function
     print(text)
 end function
 
+// Lists all running processes on the current context's computer in a formatted table.
+// Highlights dsession processes in red and hex processes using the accent color.
+// @param {list<string>|null} args - Pass ["-h"] or ["help"] to show usage, or null/[] to list processes.
+// @return {number} - 1 on success, 0 on failure.
 doProcs = function(args = null)
     if args != null and args isa list and args.len == 1 and (args[0] == "-h" or args[0] == "help") then
         self.help

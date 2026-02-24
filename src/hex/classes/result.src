@@ -1,0 +1,25 @@
+Result = {
+    "classID": "Result",
+    "success": null,
+    "output": null,
+    "data": null
+}
+
+// **New:**
+// Creates a new Result object with the specified success status, data payload, and optional output message.
+// This is the standard constructor for Result objects used throughout the HEX framework for consistent return values.
+// @param {bool} success - Success flag (1 for success, 0 for failure).
+// @param {any} data - The data payload to return (can be any type or null).
+// @param {string} output - Optional output message, typically error details (default: "").
+// @return {Result} - A new Result object with the specified properties.
+// @example Result.New(1, fileList, null) // Success with file list data
+// @example Result.New(0, null, "File not found") // Failure with error message
+Result.New = function(success, data, output = "")
+    result = new self
+
+    result.success = success
+    result.output = output
+    result.data = data
+
+    return result
+end function

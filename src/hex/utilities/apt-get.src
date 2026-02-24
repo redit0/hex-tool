@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the apt-get utility.
+// @return {none}
 aptHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-i/install] [library.so] {path}") + g.l2(" Installs whichever library or program is specified in the parameters.  If a path is provided, the library is installed at that location, otherwise, it is installed in whatever location HEX is run from.") + g.const.ni
@@ -10,6 +12,12 @@ aptHelp = function()
     print(text)
 end function
 
+// **Apt-get:**
+// Manages apt repositories and installs libraries on the current context.  Requires an
+// aptclient.so library attached to the context (use 'jump apt' first).
+// Supports listing packages, adding/removing repos, and installing specific libraries.
+// @param {list<string>} args - Subcommand and optional parameter (e.g. ["-i", "lib.so"]).
+// @return {none}
 apt = function(args)
     context = g.stack[g.context.index]
 
@@ -22,6 +30,8 @@ apt = function(args)
 //                               Functions                               //
 ///////////////////////////////////////////////////////////////////////////
 
+    // Prints all configured apt repository IPs from the current context's sources.txt.
+    // @return {none}
     sources = function
         repos = g.func.getRepos
 
@@ -33,10 +43,16 @@ apt = function(args)
         print output
     end function
 
+    // Adds a repository IP to the context's apt sources.
+    // @param {string} address - The IP address of the repository to add.
+    // @return {string|number} - Empty string on success, or an error string.
     add = function(address)
         return context.apt.add_repo(address)
     end function
 
+    // Removes a repository IP from the context's apt sources.
+    // @param {string} address - The IP address of the repository to remove.
+    // @return {number} - 1 on success, 0 on failure.
     remove = function(address)
         result = context.apt.update
 
@@ -54,6 +70,8 @@ apt = function(args)
         end if
     end function
 
+    // Queries all configured apt repositories and returns a map of package name → description.
+    // @return {map} - A map of available package names to their descriptions.
     getPackageList = function
         repos = g.func.getRepos
 

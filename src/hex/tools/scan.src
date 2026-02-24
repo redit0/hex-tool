@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the scan tool.
+// @return {none}
 scanHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [ip] {port}") + g.l2(" Scans for vulnerabilities at the specified ip address and port. If the port is omitted it will scan all open ports instead.") + g.const.ni
@@ -7,11 +9,20 @@ scanHelp = function()
     print(text)
 end function
 
+// **Scan:**
+// Discovers and records exploitable memory addresses and values in metaxploit libraries.
+// Accepts an IP with optional port for remote scanning, or a library name for local scanning.
+// Results are cached in g.database and displayed unless the silent flag is set.
+// @param {list<string>} args - [ip] or [ip, port] for remote; [library.so] for local.
+// @return {number} - 1 on success, 0 on failure.
 doScan = function(args)
     idx = g.context.index
     context = g.stack[idx]
     if not g.tools.scan.data.hasIndex("silent") then g.tools.scan.data.silent = 0
 
+    // Formats and prints the scan results from the given meta libraries, grouped by lib and version.
+    // @param {list<metaLib>} metaLibs - The scanned library objects.
+    // @return {number} - Always 1.
     doOutput = function(metaLibs)
         results = {}
 
@@ -58,6 +69,10 @@ doScan = function(args)
         return 1
     end function
 
+    // Scans each library in metaLibs for memory addresses and vulnerable values, populating
+    // g.database with the results.  Skips entries that are already fully resolved.
+    // @param {list<metaLib>} metaLibs - The meta library objects to scan.
+    // @return {number} - Always 1.
     scanMetaLibs = function(metaLibs)
         for metaLib in metaLibs
             if not g.database.hasIndex(metaLib.lib_name) then
@@ -109,6 +124,9 @@ doScan = function(args)
         return 1
     end function
 
+    // Scans a local library by loading it from /lib on the current context and running scanMetaLibs.
+    // @param {string} libName - Full path to the library (e.g. "/lib/metaxploit.so").
+    // @return {number} - 1 on success, 0 on failure.
     scanLocal = function(libName)
         idx = g.context.index
 
@@ -132,6 +150,10 @@ doScan = function(args)
         return 1
     end function
 
+    // Connects to a single remote port via metaxploit and scans the dumped library.
+    // @param {string} ip - Target IP address.
+    // @param {number} port - Target port number.
+    // @return {number} - 1 on success, 0 on failure.
     scanRemote = function(ip, port)
         idx = g.context.index
 
@@ -165,6 +187,10 @@ doScan = function(args)
         return 1
     end function
 
+    // Scans all open ports on the target IP by connecting to each via metaxploit, dumping
+    // and scanning each library.  Also scans port 0 (kernel_router) if a router is detected.
+    // @param {string} ip - Target IP address (public or LAN).
+    // @return {number} - 1 on success, 0 on failure.
     scanAllPorts = function(ip)
         idx = g.context.index
 

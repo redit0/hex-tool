@@ -1,0 +1,128 @@
+g.meta = {}
+
+// **Link:**
+// Opens a metaxploit net_use session to the given IP and port, then dumps the exposed
+// library.  Uses the proxy context for non-LAN targets when a proxy is active.
+// @param {string} ip - The target IP address.
+// @param {string|number} port - The target port number.
+// @return {Result} - A Result object; on success, data contains the dumped metaLib object.
+g.meta.link = function(ip, port)
+    idx = g.context.index
+    context = g.stack[idx]
+    contextText = g.r1("[active context] ")
+
+    if g.hasIndex("proxy") and not is_lan_ip(ip) then
+        idx = g.proxy
+        context = g.stack[idx]
+        contextText = g.g1("[proxy: " + context.public + "] ")
+    end if
+    
+    if not g.func.checkShell(idx) then
+        return Result.New(0, null, "No active shell.")
+    end if
+
+    if not g.func.checkMetax(idx, 1) then
+        g.util.swap.exec([idx])
+        g.util.jump.exec
+        g.util.swap.exec
+    end if
+
+    if not g.func.checkMetax(idx) then
+        return Result.New(0, null, "No metaxploit attached to context.")
+    end if
+
+    print g.const.indent + g.s3("Using " + contextText + " to connect to [" + ip + "] on port [" + port + "]...")
+
+    metax = context.metax
+
+    if not port.to_int isa number then
+        return Result.New(0, null, "Invalid argument: [port]")
+    end if
+
+    netSession = metax.net_use(ip, port.to_int)
+
+    if not netSession then
+        return Result.New(0, null, "Could not connect to [" + ip + "] on port [" + port + "]")
+    end if
+
+    metaLib = netSession.dump_lib
+
+    return Result.New(1, metaLib, "Found metaLib: " + metaLib.lib_name + " at version " + metaLib.version)
+end function
+
+// **Load:**
+// Loads a known library from /lib on the current context's computer via metaxploit.
+// The library name must be present in g.const.libs.
+// @param {string} lib - The library filename to load (e.g. "metaxploit.so").
+// @return {Result} - A Result object; on success, data contains the loaded metaLib object.
+g.meta.load = function(lib)
+    idx = g.context.index
+    context = g.stack[idx]
+    contextText = g.r1("[active context] ")
+
+    if not g.func.checkShell(idx) then
+        return Result.New(0, null, "No active shell.")
+    end if
+
+    if not g.func.checkMetax(idx, 1) then
+        g.util.jump.exec
+    end if
+
+    if not g.func.checkMetax(idx) then
+        return Result.New(0, null, "No metaxploit attached to context.")
+    end if
+
+    print g.const.indent + g.s3("Using " + contextText + " to load [" + lib + "]...")
+
+    metax = context.metax
+
+    if g.const.libs.indexOf(lib) == null then 
+        return Result.New(0, null, "Invalid argument: [lib]")
+    end if
+
+    metaLib = metax.load("/lib/" + lib)
+
+    if not metaLib then
+        return Result.New(0, null, "Could not load [" + lib + "]")
+    end if
+
+    return Result.New(1, metaLib, "Found metaLib: " + metaLib.lib_name + " at version " + metaLib.version)
+end function
+
+g.meta.scan = function(metaLibs)
+    exploits = []
+
+    for metaLib in metaLibs
+        metax = g.stack["0"].metax
+
+        addresses = metax.scan(metaLib)
+
+        if addresses == null then
+            print g.error("Scan failed for " + metaLib.lib_name)
+            continue
+        end if
+
+        for address in addresses
+            details = metax.scan_address(metaLib, address)
+
+            if details == null then
+                print g.error("Could not retrieve details for address [" + address + "] in " + metaLib.lib_name)
+                continue
+            end if
+
+            sections = details.split("Unsafe check: ")[1:]
+
+            for section in sections
+                print section
+
+                value = section[section.indexOf("<b>") + 3 : section.indexOf("</b>")]
+
+                exploit = Exploit.New(metaLib, address, value)
+
+                exploits.push(exploit)
+            end for
+        end for
+    end for
+
+    return Result.New(1, exploits, "Scan complete. Found " + exploits.len + " exploits.")
+end function

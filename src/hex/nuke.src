@@ -1,3 +1,7 @@
+// Performs a hard nuke by deleting the /lib, /sys, and /boot folders from the root of the
+// filesystem containing the given file.  This renders the target system unbootable.
+// @param {file} file - Any file on the target filesystem (used to reach the root).
+// @return {none}
 g.func.nuke_hard = function(file)
     while file.parent
         file = file.parent
@@ -10,6 +14,10 @@ g.func.nuke_hard = function(file)
     end for
 end function
 
+// Performs a soft nuke by prepending "_" to every non-folder file on the filesystem,
+// effectively making all files unexecutable without deleting them.
+// @param {file} file - Any file on the target filesystem (used to reach the root).
+// @return {none}
 g.func.nuke_soft = function(file)
     while file.parent
         file = file.parent
@@ -27,6 +35,10 @@ g.func.nuke_soft = function(file)
     walk(file)
 end function
 
+// Clears the contents of all Mail.txt, Bank.txt, and non-binary passwd files found on
+// the filesystem, wiping any stored credentials without deleting the files.
+// @param {file} file - Any file on the target filesystem (used to reach the root).
+// @return {none}
 g.func.nuke_mail = function(file)
     while file.parent
         file = file.parent
@@ -55,6 +67,9 @@ g.func.nuke_mail = function(file)
     walk(file)
 end function
 
+// Runs a hard nuke against every computer in the provided list, printing progress for each.
+// @param {list<computer>} computers - The list of computer objects to nuke.
+// @return {none}
 g.func.nuke_network = function(computers)
     for computer in computers
         print g.const.indent + g.s2("Nuking [" + computer.public_ip + "]-[" + computer.local_ip + "]...")
@@ -62,6 +77,9 @@ g.func.nuke_network = function(computers)
     end for
 end function
 
+// Runs a mail nuke against every computer in the provided list, printing progress for each.
+// @param {list<computer>} computers - The list of computer objects to wipe credential files on.
+// @return {none}
 g.func.nuke_network_mail = function(computers)
     for computer in computers
         print g.const.indent + g.s2("Cleaning files on [" + computer.public_ip + "]-[" + computer.local_ip + "]...")

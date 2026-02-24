@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the lockdown utility.
+// @return {none}
 lockdownHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Secures the system by changing permissions on all files and folders to u-rwx, g-rwx, o-rwx. If this is your home system, it leaves the ability to run terminal, sudo, mail, map, chat, settings, and manual. Also deletes all files named Mail.txt, Bank.txt, and passwd.") + g.const.ni
@@ -6,7 +8,41 @@ lockdownHelp = function(self)
     print(text)
 end function
 
+// Entry point for the lockdown utility.  Reads the file and computer objects from the
+// current context and delegates to g.func.lockdown to apply filesystem restrictions.
+// @param {list<string>|null} args - Optional list; pass ["-h"] or ["help"] to show help.
+// @return {number} - 1 if the lockdown succeeded, 0 otherwise.
 lockdown = function(args = null)
+    if args != null and args.len > 0 then
+        if args[0] == "help" or args[0] == "-h" then
+            self.help
+            return 1
+        end if
+    end if
+
+    idx = g.context.index
+
+    file = g.stack[idx].file
+    comp = g.stack[idx].computer
+
+    if g.func.lockdown(file, comp) then
+        print(g.const.ni + g.g2("System locked down."))
+        return 1
+    else
+        print(g.const.ni + g.error("Failed to lock down system."))
+        return 0
+    end if
+end function
+
+// Secures a filesystem by removing writable guest folders, deleting sensitive files
+// (passwd, Bank.txt, Mail.txt, .Trash), and applying u-rwx/g-rwx/o-rwx permissions
+// recursively from the root.  On a home computer (detected by an active Xorg process),
+// restores execute permissions for essential applications such as Terminal and Mail.
+// @param {file} file - Any file or folder on the target filesystem (used to reach the root).
+// @param {computer} comp - The computer object for the target system, or null.
+// @param {number} silent - If 1, suppresses per-file deletion messages.
+// @return {number} - 1 on success.
+g.func.lockdown = function(file, comp, silent = 0)
     setHomePerms = function(obj)
         result = obj.chmod("g+rx")
         if result != "" then print(g.error(result))
@@ -26,22 +62,10 @@ lockdown = function(args = null)
 
     del = function(files)
         for file in files
-            print g.const.indent + g.o1("Deleting file: " + file.path)
+            if not silent then print(g.const.indent + g.o1("Deleting file: " + file.path))
             g.func.silent_delete(file)
         end for
     end function
-
-    if args != null and args.len > 0 then
-        if args[0] == "help" or args[0] == "-h" then
-            self.help
-            return
-        end if
-    end if
-
-    idx = g.context.index
-
-    file = g.stack[idx].file
-    comp = g.stack[idx].computer
 
     home = 0
 
@@ -79,8 +103,7 @@ lockdown = function(args = null)
 
     if home then walk(root)
 
-    print(g.const.ni + g.g2("System locked down."))
-    return
+    return 1
 end function
 
 g.util.lockdown = {

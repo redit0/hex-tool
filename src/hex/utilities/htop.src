@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the htop utility.
+// @return {none}
 htopHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Runs an htop process which turns HEX into a process and resource utilization monitor.  Exit with ctrl-c.") + g.const.nl
@@ -6,6 +8,11 @@ htopHelp = function()
     print(text)
 end function
 
+// Runs a continuous process and resource monitor loop for the current context, refreshing
+// every 0.5 seconds.  Displays CPU/RAM usage bars, a user count, an admin-online warning,
+// and a per-process table.  Requires a computer or shell context.  Exit with Ctrl-C.
+// @param {list<string>|null} args - Pass any arg to show help instead.
+// @return {none}
 htop = function(args = null)
     if args != null and args.len > 0 then
         self.help

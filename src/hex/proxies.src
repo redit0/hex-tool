@@ -1,3 +1,7 @@
+// Reads the proxy list from the "proxies" environment variable, deserializes it, and
+// stores the entries in g.proxies.  Each entry is expected to be [ip, port, user, pass].
+// Removes itself from g after running.
+// @return {none}
 g.func.initProxies = function
     // g.proxies = [["ip address",22,"username","password"],["ip address",22,"username","password"], ..., ["ip address",22,"username","password"]]
     g.proxies = []
@@ -30,6 +34,9 @@ g.func.initProxies = function
     g.func.remove("initProxies")
 end function
 
+// Searches for Map.conf files in the current context's filesystem and appends any proxy
+// accounts found within them to g.proxies, skipping duplicates.
+// @return {none}
 g.func.getMap = function
     context = g.stack[g.context.index]
 
@@ -59,6 +66,9 @@ g.func.getMap = function
     end for
 end function
 
+// Connects to every entry in g.proxies in order, chaining each SSH connection through the
+// previous one.  The last proxy in the chain becomes the active proxy context.
+// @return {none}
 g.func.connect_proxies = function
     if g.proxies.len == 0 then
         print g.error("No proxies found.  Add proxies using Map.exe.")
@@ -71,6 +81,15 @@ g.func.connect_proxies = function
     end for
 end function
 
+// Connects to the given SSH endpoint via the current proxy (or home context if none is set),
+// adds the resulting shell to the stack as a proxy context, and optionally attaches metaxploit
+// and corrupts the log.  When final is 1, this proxy becomes the active g.proxy.
+// @param {string} ip - The proxy server IP address.
+// @param {number} port - The SSH port to connect to.
+// @param {string} user - The SSH username.
+// @param {string} pass - The SSH password.
+// @param {number} final - If 1 (default), activates metaxploit and sets this as the proxy.
+// @return {number} - 1 if successful, 0 otherwise.
 g.func.add_proxy = function(ip, port, user, pass, final = 1)
     if not is_valid_ip(@ip) then
         print g.error("Invalid IP address: " + @ip)
@@ -126,6 +145,10 @@ g.func.add_proxy = function(ip, port, user, pass, final = 1)
     return 1
 end function
 
+// Designates an existing stack entry as the active proxy context.  Attaches metaxploit,
+// removes any leftover metaxploit.so files, and corrupts the log.
+// @param {string} prox - The stack index of the context to use as the proxy.
+// @return {number} - 1 if successful, 0 otherwise.
 g.func.set_proxy = function(prox)
     if not g.func.checkShell(prox) then return 0
 
@@ -148,6 +171,9 @@ g.func.set_proxy = function(prox)
     return 1
 end function
 
+// Returns the highest proxy sequence number currently present in the stack, based on
+// "proxy (N)" source labels.  Returns 0 if no proxies exist.
+// @return {number} - The highest proxy number found.
 g.func.max_proxy = function
     count = 0
     for idx in g.stack.indexes
@@ -162,6 +188,10 @@ g.func.max_proxy = function
     return count
 end function
 
+// Corrupts the log on every proxy context in the stack.  When disconnect is 1, also
+// removes each proxy from the stack and clears the g.proxy reference.
+// @param {number} disconnect - If 1, removes proxy contexts from the stack after cleaning.
+// @return {none}
 g.func.clean_proxies = function(disconnect)
     for i in g.stack.indexes
         if typeof(i.to_int) != "number" then continue

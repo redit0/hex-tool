@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the nuke tool.
+// @return {none}
 nukeHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Destroys the current context system.  If the optional parameter -h is supplied, does so irreversibly.") + g.const.ni
@@ -6,6 +8,9 @@ nukeHelp = function()
     print(text)
 end function
 
+// Placeholder entry point for the nuke tool.  Not yet implemented.
+// @param {list<string>|null} args - Unused.
+// @return {none}
 doNuke = function(args)
     print g.error("Not implemented.")
 end function

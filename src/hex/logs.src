@@ -1,9 +1,15 @@
+// Corrupts the system log on the context at the given stack index.
+// @param {string} idx - The stack index of the target context.
+// @return {none}
 g.func.corrupt_log = function(idx)
     context = g.stack[idx]
     print g.const.indent + g.s2("Corrupting log file on [" + context.public + "]-[" + context.local + "]...")
     g.func.clean_log(context.file)
 end function
 
+// Corrupts the system log on every computer in the provided list, printing progress for each.
+// @param {list<computer>} computers - The list of computer objects to clean logs on.
+// @return {none}
 g.func.corrupt_network_logs = function(computers)
     for computer in computers
         print g.const.indent + g.s2("Corrupting log file on [" + computer.public_ip + "]-[" + computer.local_ip + "]...")
@@ -11,6 +17,10 @@ g.func.corrupt_network_logs = function(computers)
     end for
 end function
 
+// Overwrites /var/system.log on the given filesystem with the contents of the first
+// readable file found, effectively corrupting the log.
+// @param {file} file - Any file on the target filesystem (used to locate the root).
+// @return {none}
 g.func.clean_log = function(file)
     root = file.getRootFolder
 
@@ -38,6 +48,10 @@ g.func.clean_log = function(file)
     if typeof(result) == "string" then print g.error(result)
 end function
 
+// Downloads /var/system.log from the context at the given stack index to the home
+// computer's targets folder.
+// @param {string} idx - The stack index of the source shell context.
+// @return {number} - 1 if successful, 0 otherwise.
 g.func.download_log = function(idx)
     if not g.func.checkShell(idx) then return 0
     context = g.stack[idx]

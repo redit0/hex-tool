@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the rm fs command.
+// @return {none}
 remHelp = function
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [folder name or path]") + g.l2(" Delete the specified file.  Use '*' as a wildcard (unless using a file path instead of a file name).  Does not leave logs.") + g.const.ni
@@ -9,6 +11,11 @@ end function
 
 
 
+// Deletes the specified file or directory from the current context's computer without leaving logs.
+// Supports wildcard patterns for filename matching within the current directory.
+// Use [-r] to recursively delete non-empty directories.
+// @param {list<string>|null} args - One or two elements: optional ["-r"] and a file name, path, or wildcard pattern.
+// @return {number} - 1 on success, 0 on failure.
 rem = function(args = null)
     if args == null or args == [] or args.len > 2 then
         self.help

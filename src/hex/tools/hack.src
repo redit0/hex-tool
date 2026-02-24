@@ -415,7 +415,7 @@ hack = function(args)
 
                     output = output(results)
 
-                    g.util.clear.exec
+                    //g.util.clear.exec
                     print g.func.getPrompt
                     print(output)
                     return
@@ -513,7 +513,7 @@ hack = function(args)
                                 return
                             end if
                         else
-                            g.util.clear.exec
+                            //g.util.clear.exec
                             print(g.const.nl + g.const.indent + g.error("Provided IP address must be a LAN address."))
                             return
                         end if
@@ -549,7 +549,7 @@ hack = function(args)
 
                         output = output(results)
 
-                        g.util.clear.exec
+                        //g.util.clear.exec
                         print g.func.getPrompt
                         print(output)
                         return

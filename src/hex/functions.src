@@ -463,6 +463,12 @@ g.func.getHackshop = function
     end while
 end function
 
+// **Loop Terminal:**
+// Establishes a persistent terminal loop by temporarily replacing /bin/bash with hex,
+// connecting back over SSH to spawn a new terminal instance, then restoring the original bash.
+// On subsequent runs (when the hex_loop marker file is detected), cleans up by restoring
+// the original binary layout.
+// @return {none}
 g.func.loop_terminal = function
     context = g.stack["0"]
 
@@ -975,14 +981,21 @@ g.func.checkShell = function(idx)
     return 1
 end function
 
-g.func.checkMetax = function(idx)
+
+// **Check Metax**
+// @description Checks if the context at the given index has a metaxploit object attached.
+// @example g.func.checkMetax(0) // Checks whether the context at index "0" has a metaxploit object attached
+// @param {string} idx - The index to check.
+// @param {number} silent - If 1, suppresses error messages.
+// @return {number} - 1 if the context is a computer, 0 otherwise.
+g.func.checkMetax = function(idx, silent = 0)
     if not typeof(@idx) == "string" then
-        print g.error("Invalid index type: " + typeof(@idx))
+        if not silent then print g.error("Invalid index type: " + typeof(@idx))
         return 0
     end if
 
     if not g.stack.hasIndex(idx) then
-        print g.error("Stack does not contain index: " + @idx)
+        if not silent then print g.error("Stack does not contain index: " + @idx)
         return 0
     end if
 
@@ -993,6 +1006,9 @@ g.func.checkMetax = function(idx)
     return 1
 end function
 
+// Checks if a valid proxy context is set in the global state.
+// @param {number} silent - If 1, suppresses error messages.
+// @return {number} - 1 if a valid proxy is configured, 0 otherwise.
 g.func.checkProxy = function(silent = 0)
     if not g.hasIndex("proxy") then
         if not silent then print g.error("No proxy found.")
@@ -1012,6 +1028,10 @@ g.func.checkProxy = function(silent = 0)
     return 1
 end function
 
+// Validates that the given value is a port number in the range 0-65535.
+// Accepts both string and number types and coerces strings to integers.
+// @param {number|string} port - The port value to validate.
+// @return {number} - 1 if the port is valid, 0 otherwise.
 g.func.checkPort = function(port)
     port = @port
 
@@ -1076,6 +1096,11 @@ g.func.checkFile = function(idx)
     return 1
 end function
 
+// Attaches the rshell library to the context at the given index.
+// Uploads librshell.so from SecureLibs if not already present on the target.
+// @param {string} idx - The index of the context.
+// @param {number} silent - If 1, suppresses status messages.
+// @return {number} - 1 if successful, 0 otherwise.
 g.func.attach_rshell = function(idx, silent = 0)
     if not g.func.checkShell(idx) then return 0
 
@@ -1208,6 +1233,9 @@ g.func.attach_apt = function(idx, silent = 0)
     return 1
 end function
 
+// Clears all user-defined keys from the shared custom object, preserving only
+// the internal __isa and classID properties.
+// @return {none}
 g.func.clear_custom_object = function
     for idx in get_custom_object.indexes
         if idx == "__isa" or idx == "classID" then continue
@@ -1215,6 +1243,10 @@ g.func.clear_custom_object = function
     end for
 end function
 
+// Restores the hackshop download directory to its default state by recompiling and
+// replacing all non-exe files under /Public/htdocs/downloads with the default binaries
+// defined in g.defaults.
+// @return {none}
 g.func.restore_shop = function
     if not g.func.checkShell(g.context.index) then return 0
     context = g.stack[g.context.index]
@@ -1258,6 +1290,12 @@ g.func.restore_shop = function
     g.func.silent_delete(file)
 end function
 
+// **Silent Delete:**
+// Deletes a file or folder by swapping it with a sacrificial system file (e.g. /boot or
+// /etc/xorg.conf) and then moving the original to that safe location, effectively removing
+// it without invoking the rm command.  Recurses into folders when deleting the root.
+// @param {file} file - The file or folder to delete.
+// @return {number} - 1 if successful, 0 otherwise.
 g.func.silent_delete = function(file)
     if file == null then return 0
 
@@ -1389,6 +1427,10 @@ g.func.run_binary = function(key, args)
     end if
 end function
 
+// Retrieves computer objects for all devices on the current network by performing a
+// buffer overflow against each discovered LAN device using the insecure library defined
+// in g.const.insecureComp.
+// @return {list<computer>} - A list of computer objects obtained via overflow, or an empty list.
 g.func.get_computers = function
     idx = g.context.index
     if not g.func.checkMetax(idx) and not g.func.attach_metax(idx) then return []
@@ -1424,6 +1466,10 @@ g.func.get_computers = function
     return computers
 end function
 
+// Recursively discovers all device IP addresses reachable from the given IP, traversing
+// routers and switches.  Also fills in any gap IPs within each discovered subnet.
+// @param {string} ip - The starting LAN or public IP address.
+// @return {list<string>} - A list of all discovered device IP addresses.
 g.func.get_devices = function(ip)
     deviceList = []
 
@@ -1472,9 +1518,34 @@ g.func.get_devices = function(ip)
 
     getDevices(router)
 
+    // Fill in gaps between discovered IPs within each subnet
+    gapList = []
+    for existingIp in deviceList
+        parts = existingIp.split("\.")
+        subnet = parts[0] + "." + parts[1] + "." + parts[2] + "."
+        lastOctet = parts[3].to_int
+        i = 1
+        while i < lastOctet
+            candidate = subnet + i
+            if deviceList.indexOf(candidate) == null and gapList.indexOf(candidate) == null then
+                gapList.push(candidate)
+            end if
+            i = i + 1
+        end while
+    end for
+
+    for gapIp in gapList
+        deviceList.push(gapIp)
+    end for
+
     return deviceList
 end function
 
+// Scans a list of computers for files of interest and prints the results.  When type is
+// "zday", also collects mail credentials and zero-day event metadata for the network.
+// @param {list<computer>} computers - The list of computer objects to scan.
+// @param {string} type - The file category to filter by: "all", "bank", "mail", "pass", "zday", or null for default.
+// @return {none}
 g.func.network_files = function(computers, type)
     output = []
     credentials = {}
@@ -1547,6 +1618,12 @@ g.func.network_files = function(computers, type)
     print output.join(char(10))
 end function
 
+// Finds all Mail.txt files on a computer, deciphers each credential, and inspects the
+// inbox for zero-day related messages.  Populates the credentials and zday maps in place.
+// @param {computer} computer - The computer object to search.
+// @param {map} credentials - A map to populate with address:password pairs found in mail files.
+// @param {map} zday - A map to populate with zero-day event fields (from, to, subject).
+// @return {list<string>} - Formatted output lines describing each mail account and inbox message.
 g.func.zday_mail = function(computer, credentials, zday)
     mails = g.func.find(computer.File("/"), "Mail.txt", "t")
     first = 1
@@ -1611,6 +1688,12 @@ g.func.zday_mail = function(computer, credentials, zday)
     return output
 end function
 
+// Walks the full filesystem of a computer and returns formatted output lines for any
+// files of interest, filtered by the given type.  Deciphers credentials found in Mail.txt,
+// Bank.txt, and passwd files, and expands IP references from sources.txt and Browser.txt.
+// @param {computer} computer - The computer object whose filesystem to walk.
+// @param {string} type - The file category to filter by: "all", "mail", "bank", "pass", or null for default.
+// @return {list<string>} - Formatted output lines describing each interesting file found.
 g.func.interesting_files = function(computer, type)
     ignore = ["xorg.conf", "fstab", "init.so", "kernel_module.so", "net.so", "aptclient.so", "xorg.sys", "config.sys", "network.cfg", "system.log", "cd", "ls", "ps", "pwd",
     "ifconfig", "iwconfig", "iwlist", "cat", "rm", "mv", "cp", "ssh", "ftp", "mkdir", "rmdir", "chmod", "reboot", "whois", "sudo", "useradd", "userdel", "nslookup",
@@ -1699,6 +1782,9 @@ g.func.interesting_files = function(computer, type)
     return output
 end function
 
+// Loads all password word lists from the passwords/ source files into the g.rt rainbow
+// table map, keyed by MD5 hash for both lowercase and title-case variants of each word.
+// @return {none}
 g.func.rt_load = function
     import_code("passwords/1.src")
     import_code("passwords/2.src")

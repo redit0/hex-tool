@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the help utility.
+// @return {none}
 helpHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Displays a list of commands and a brief description of what each does.") + g.const.nl
@@ -7,6 +9,10 @@ helpHelp = function()
     print(text)
 end function
 
+// Lists all available tools, utilities, and filesystem commands with short descriptions,
+// or displays the full help text for a specific command if one is provided.
+// @param {list<string>|null} args - Optional: [command_name] to show that command's help.
+// @return {none}
 doHelp = function(args = null)
     if args == null or args == [] then
         output = g.func.heading("Commands") + g.const.nl

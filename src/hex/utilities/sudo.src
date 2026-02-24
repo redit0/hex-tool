@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the sudo utility.
+// @return {none}
 sudoHelp = function(self)
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Attempts to get a root shell by brute-forcing the password and adds it to the stack if successful") + g.const.ni
@@ -8,6 +10,12 @@ sudoHelp = function(self)
     print(text)
 end function
 
+// Obtains a shell on the current context using credentials.  With no args, brute-forces
+// root using the rainbow table.  With one arg (a password), connects as root.  With two
+// args (user + password), connects as that user.  When called from a non-home context,
+// re-executes remotely.
+// @param {list<string>|null} args - Optional: null, [password], or [username, password].
+// @return {number} - 1 on success, 0 on failure.
 doSudo = function(args = null)
     argsStr = g.func.serialize(args, 1).replace("char(10)", "").replace("char(13)", "").replace("\\n", "").replace("\n", "")
 

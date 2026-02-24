@@ -1,3 +1,5 @@
+// Prints usage and flag descriptions for the net tool.
+// @return {none}
 netHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Searches for any interesting files in all systems in the current network if run from a shell on a router.  If run from a computer object, or any device that isn't a router, applies only to the current device.") + g.const.ni
@@ -6,15 +8,22 @@ netHelp = function()
     text = text + g.g2(self.name) + g.b3(" [-l/log]") + g.l2(" Clears the logs on every device in the network.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-m/mail]") + g.l2(" Deciphers and prints all mail credentials in the network.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-n/nuke]") + g.l2(" Hard nukes all systems in the current network.") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [-nm/nukemail]") + g.l2(" Deletes Mail.txt files on all systems in the current network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-nm/nukemail]") + g.l2(" Clears the contents of Mail, Bank, and passwd files on all systems in the current network.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-p/pass]") + g.l2(" Deciphers and prints all user credentials in the network.") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [-s/secure]") + g.l2(" Deletes /home, /passwd, and chmods every system in the network.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-s/secure]") + g.l2(" Deletes sensitive files and chmods every system in the network.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-z/zday]") + g.l2(" Lists all mail accounts in the network, and for each one prints the From Address and Subject of each message in the inbox.  Highlights any computers that do not have Mail.txt files.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
 end function
 
+// **Net:**
+// Dispatches network-wide operations based on the provided flag.  When called from a
+// non-home shell context, re-executes itself remotely so the operation runs with the
+// correct context.  On a router shell, targets every device in the network; on any other
+// computer, targets only the current device.
+// @param {list<string>|null} args - Optional list containing a single flag (e.g. ["-a"], ["-l"]).
+// @return {number|none} - Returns 1 when displaying help, otherwise none.
 doNet = function(args)
     context = g.stack[g.context.index]
 
@@ -57,7 +66,10 @@ doNet = function(args)
         else if args[0] == "-p" or args[0] == "pass" then
             g.func.network_files(computers, "pass")
         else if args[0] == "-s" or args[0] == "secure" then
-            print g.error("Not implemented.")
+            for comp in computers
+                print g.s3(g.const.indent + "Securing [" + comp.public_ip + "]-[" + comp.local_ip + "]...")
+                g.func.lockdown(comp.File("/"), comp, 1)
+            end for
         else if args[0] == "-z" or args[0] == "zday" then
             g.func.network_files(computers, "zday")
         else
