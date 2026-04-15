@@ -67,6 +67,14 @@ g.func.lockdown = function(file, comp, silent = 0)
         end for
     end function
 
+    clean = function(files)
+        for file in files
+            if file.is_binary then continue
+            if not silent then print(g.const.indent + g.o1("Cleaning file: " + file.path))
+            file.set_content("")
+        end for
+    end function
+
     home = 0
 
     if comp != null then
@@ -87,11 +95,19 @@ g.func.lockdown = function(file, comp, silent = 0)
 
     del(g.func.find(root, "guest", "fw"))
 
-    del(g.func.find(root, "passwd", "t"))
+    if home then
+        del(g.func.find(root, "passwd", "t"))
 
-    del(g.func.find(root, "Bank.txt", "tw"))
+        del(g.func.find(root, "Bank.txt", "tw"))
 
-    del(g.func.find(root, "Mail.txt", "tw"))
+        del(g.func.find(root, "Mail.txt", "tw"))
+    else
+        clean(g.func.find(root, "passwd", "t"))
+
+        clean(g.func.find(root, "Bank.txt", "tw"))
+
+        clean(g.func.find(root, "Mail.txt", "tw"))
+    end if
 
     del(g.func.find(root, ".Trash", "fw"))
 

@@ -155,53 +155,20 @@ end function
 // Generates a random valid IP address that is not a LAN IP.
 // @return {string} - The generated IP address.
 g.func.getRandomIp = function
-    reserved = [
-        {"from":0,"to":16777215},
-        {"from":167772160,"to":184549375},
-        {"from":1681915904,"to":1686110207},
-        {"from":2130706432,"to":2147483647},
-        {"from":2851995648,"to":2852061183},
-        {"from":2886729728,"to":2887778303},
-        {"from":3221225472,"to":3221225727},
-        {"from":3221225984,"to":3221226239},
-        {"from":3227017984,"to":3323068416},
-        {"from":3325256704,"to":3325256959},
-        {"from":3405803776,"to":3405804031},
-        {"from":3758096384,"to":4026531839},
-        {"from":4026531840,"to":4294967295},
-    ]
-
-    int_to_ip = function(num)
-        if num < 0 or num > 4294967295 then return null
-        
-        parts = []
-        for i in range(0, 3)
-            parts.push(floor(num / (256 ^ (3 - i))) % 256)
-        end for
-        
-        return parts.join(".")
-    end function
-
     router = null
 
     while not router
-        num = floor(rnd * 4294967295)
-
-        if num >= reserved[0].from and num <= reserved[0].to then continue
-        if num >= reserved[1].from and num <= reserved[1].to then continue
-        if num >= reserved[2].from and num <= reserved[2].to then continue
-        if num >= reserved[3].from and num <= reserved[3].to then continue
-        if num >= reserved[4].from and num <= reserved[4].to then continue
-        if num >= reserved[5].from and num <= reserved[5].to then continue
-        if num >= reserved[6].from and num <= reserved[6].to then continue
-        if num >= reserved[7].from and num <= reserved[7].to then continue
-        if num >= reserved[8].from and num <= reserved[8].to then continue
-        if num >= reserved[9].from and num <= reserved[9].to then continue
-        if num >= reserved[10].from and num <= reserved[10].to then continue
-        if num >= reserved[11].from and num <= reserved[11].to then continue
-        if num >= reserved[12].from and num <= reserved[12].to then continue
-
-        router = get_router(int_to_ip(num))
+        addr = ""
+        
+        while addr.split("\.").len < 4
+            seg = floor(rnd * 256)
+            if addr != "" then addr = addr + "."
+            addr = addr + seg
+        end while
+    
+        if not is_valid_ip(addr) or is_lan_ip(addr) then continue
+    
+        router = get_router(addr)
     end while
 
     return router.public_ip
@@ -440,10 +407,7 @@ end function
 // Checks random IP addresses for an open port 1542 and then returns that IP address as a string.
 // @return {string} - The IP address of the hackshop.
 g.func.getHackshop = function
-    ip = null
-    hackshop = 0
-
-    while not hackshop
+    while true
         ip = g.func.getRandomIp
 
         if not is_lan_ip(ip) then
@@ -455,7 +419,6 @@ g.func.getHackshop = function
 
             for port in ports
                 if port.port_number == 1542 and not port.is_closed then
-                    hackshop = 1
                     return router.public_ip
                 end if
             end for
@@ -1138,11 +1101,16 @@ g.func.attach_metax = function(idx, silent = 0)
     lib = g.stack[idx].computer.File(filePath.replace("//", "/"))
 
     if not lib then
+        filePath = g.stack[idx].currentPath + "/metaxploit.so"
+        lib = g.stack[idx].computer.File(filePath.replace("//", "/"))
+    end if
+
+    if not lib then
         lib = g.stack[idx].computer.File("/lib/metaxploit.so")
     end if
 
     if not lib then
-        if not g.func.putLib("/lib", "metaxploit.so", g.stack[idx].path) then
+        if not g.func.putLib("/lib", "metaxploit.so", g.stack[idx].currentPath) then
             print g.error("Could not upload metaxploit.so.")
             return 0
         end if
@@ -1663,7 +1631,7 @@ g.func.zday_mail = function(computer, credentials, zday)
             lines = msg.split(char(10))
             id = lines[2][8:]
             text = meta.read(id).split(char(10))[3]
-            if lines[4][9:] == "About the company" and text[0] != ">" then
+            if lines[4][9:] == "About the company" then
                 output.push(g.r1("<pos=75>  From: " + lines[3][6:] + "<pos=500:>Subject: " + lines[4][9:]))
                 subject = "Unknown"
                 if text != null and text.indexOf("not found") == null then
@@ -1675,8 +1643,13 @@ g.func.zday_mail = function(computer, credentials, zday)
                 end if
 
                 if zday != null and zday isa map then
-                    zday["to"] = lines[3][6:]
-                    zday["from"] = address
+                    if text[0] != ">" then
+                        zday["to"] = lines[3][6:]
+                        zday["from"] = address
+                    else
+                        zday["from"] = lines[3][6:]
+                        zday["to"] = address
+                    end if
                     zday["subject"] = subject
                 end if
             else
@@ -1765,11 +1738,14 @@ g.func.interesting_files = function(computer, type)
                 end if
 
                 if file.name == "Map.conf" and file.has_permission("r") then
-                    obj = g.func.deserialize(file.get_content)
+                    content = file.get_content
+                    if content != null and content != "" and content.indexOf("accounts") != null then
+                        obj = g.func.deserialize(content)
 
-                    for account in obj.accounts
-                        outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1("IP: " + account.ip + ", User: " + account.user + ", Pass: " + account.password, "i") + "</size>")
-                    end for
+                        for account in obj.accounts
+                            outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1("IP: " + account.ip + ", User: " + account.user + ", Pass: " + account.password, "i") + "</size>")
+                        end for
+                    end if
                 end if
             else
                 walk(file, prefix + file.name + " > ")
