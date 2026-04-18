@@ -228,14 +228,14 @@ rshell -h                            Display help text
 
 ### `poison`
 
-Uploads insecure/vulnerable library files from your local `InsecureLibs` folder to the target's `/lib` directory, enabling further exploitation via `scan` and `hack`.
+Uploads insecure/vulnerable library files from your local `/root/InsecureLibs` folder to the target's `/lib` directory, enabling further exploitation via `scan` and `hack`.
 
 ```
 poison       Upload insecure libraries to target /lib (will upload all libraries found in /root/InsecureLibs)
 poison -h    Display help text
 ```
 
-**Setup:** Create `~/InsecureLibs/` on your in-game home computer and populate it with vulnerable `.so` files matching the versions configured in `constants.src`.
+**Setup:** Create `/root/InsecureLibs/` on your in-game home computer and populate it with vulnerable `.so` files matching the versions configured in `constants.src`.
 
 ---
 
