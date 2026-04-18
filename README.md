@@ -19,7 +19,7 @@ HEX is written in Miniscript source files and must be compiled before it can be 
 ### 1. Install the Extension
 
 Open VS Code and install **Greybel VS** from the marketplace:
-- Search for `ayecue.greybel-vs` in the Extensions panel, or
+- Search for `greybel-vs` in the Extensions panel, or
 - Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ayecue.greybel-vs)
 
 The extension activates automatically on `.src`, `.gs`, and `.ms` files.
@@ -47,7 +47,7 @@ You can set the build type in VS Code settings under `Greybel > Transpiler > Bui
 | **Uglify** | Minifies code and optimizes namespaces; reduces file size |
 | **Beautify** | Formats code for readability |
 
-For in-game use, **Default** or **Uglify** is recommended.
+Hex will not work if the **uglify** method is chosen - It is recommended to just leave the default setting.
 
 ### Installer Mode (No Message Hook Required)
 
@@ -56,7 +56,7 @@ If you don't have the Message Hook set up (see below), you can use Greybel's **I
 1. Enable `Greybel > Transpiler > Installer > Active` in VS Code settings
 2. Optionally enable `Installer > Auto Compile` to have the installer auto-compile and delete source files after running
 3. Build the project — Greybel generates one or more installer `.src` files
-4. Copy-paste the installer code into Grey Hack's code editor, compile it, and run it
+4. Copy-paste the installer code from each installer file into Grey Hack's code editor, compile it.  Once all files are compiled, run them in order.
 5. Your entire project is recreated in-game automatically
 
 If the installer exceeds Grey Hack's ~160,000 character limit, Greybel splits it across multiple files automatically (configurable via `Installer > Max Chars`).
@@ -89,11 +89,9 @@ Once the Message Hook is installed and Grey Hack is running, configure Greybel-V
 |---|---|
 | `Create in-game > Active` | Enable automatic file creation in-game after each build |
 | `Create in-game > Auto Compile` | After creating files, auto-compile them and delete the `.src` sources |
-| `Create in-game > Allow Import` | Set the `allowImport` flag on the compiled binary |
 | `Transpiler > In-game Directory` | Destination folder inside the game (default: `/root/`) |
-| `Transpiler > Watch` | Auto-rebuild whenever you save a source file |
 
-With **Watch** + **Create in-game > Active** both enabled, every save triggers a rebuild and automatically pushes the updated files into the running game — a near-live development loop.
+With **Create in-game > Active** enabled, building the code will automatically import it into the game and save it in the configured directory.
 
 ### Manual Import
 
@@ -109,10 +107,9 @@ This uploads the current file directly to the in-game directory defined in `Tran
 
 After the files are in-game (via any method above):
 
-1. Open the game's code editor on the compiled `hex` binary
-2. If using the installer, run it once to set up all files, then compile `hex.src`
-3. Move the compiled `hex` binary to `/bin/` or another location on your `$PATH` for easy access
-4. Run `hex` from the terminal
+1. If using the installer, run the installer files in order once to set up all files
+2. Move the compiled `hex` binary to `/bin/` for easy access if it's not already set to save there
+3. Run `hex` from the terminal
 
 ---
 
@@ -126,6 +123,7 @@ When HEX launches, it displays the banner and command prompt. Type `help` to see
 1. nmap <target-ip>          — Discover open ports and network layout
 2. scan <target-ip>          — Find exploitable vulnerabilities on target
 3. hack <target-ip>          — Exploit vulnerabilities and add to context stack
+4. swap <stack index>        — Switch context to one of the objects resulting from the exploits
 4. decipher                  — Extract and decrypt credentials from target
 5. log                       — Corrupt logs to cover your tracks
 6. stack                     — Review all active contexts
@@ -179,9 +177,9 @@ Exploits vulnerabilities discovered by `scan` using metaxploit buffer overflows.
 
 ```
 hack [-l/local] {libname.so}    Exploit local library vulnerabilities
-hack [-l/local] {lan-ip}        Exploit local libs targeting a specific LAN device
+hack [-l/local] {lan-ip}        Exploit all local libs targeting a specific LAN device with a bounce exploit
 hack [ip] {port}                Exploit remote target at specific port
-hack [ip] {lan-ip}              Exploit remote target, pivot to LAN device
+hack [ip] {lan-ip}              Exploit remote target, pivot to LAN device with a bounce exploit
 hack -h                         Display help text
 ```
 
@@ -221,7 +219,7 @@ rshell infect {ip} {port} {name}     Deploy the rshell client on the current tar
 rshell info                          Display current rshell server configuration
 rshell start                         Start the rshell server service
 rshell stop                          Stop the rshell server service
-rshell -r [#]                        Remove a specific rshell from the stack by index
+rshell -r [#]                        Kill the rshell process on a specific rshell by stack index
 rshell -c                            Kill all rshell processes
 rshell -h                            Display help text
 ```
@@ -233,7 +231,7 @@ rshell -h                            Display help text
 Uploads insecure/vulnerable library files from your local `InsecureLibs` folder to the target's `/lib` directory, enabling further exploitation via `scan` and `hack`.
 
 ```
-poison       Upload insecure libraries to target /lib
+poison       Upload insecure libraries to target /lib (will upload all libraries found in /root/InsecureLibs)
 poison -h    Display help text
 ```
 
@@ -267,6 +265,7 @@ Launches a network traffic sniffer on the current context.
 
 ```
 sniffer      Start sniffer on current context
+sniffer -n   Start sniffer on current context in a new terminal window
 sniffer -h   Display help text
 ```
 
@@ -282,7 +281,7 @@ Displays all entries in the context stack. The active context is highlighted.
 
 ```
 stack       Print all contexts (index, public IP, local IP, type, source, user)
-stack -c    Clear all contexts except the home computer
+stack -c    Clear all contexts except the home computer, proxy servers, and rshell servers
 stack -h    Display help text
 ```
 
@@ -305,9 +304,9 @@ swap -h         Display help text
 Attaches essential libraries (metaxploit, crypto, aptclient) from your home computer to the current context by copying them via SCP.
 
 ```
-jump           Transfer metaxploit.so to the target
-jump apt       Transfer aptclient.so to the target
-jump crypto    Transfer crypto.so to the target
+jump           Transfer metaxploit.so to the target and attach it to the context
+jump apt       Transfer aptclient.so to the target and attach it to the context
+jump crypto    Transfer crypto.so to the target and attach it to the context
 jump -h        Display help text
 ```
 
@@ -364,7 +363,7 @@ tree -h        Display help text
 Opens a native interactive terminal session on the current context.
 
 ```
-terminal      Start a terminal session
+terminal      Start a terminal session.  Uses launch(), and falls back to start_terminal if launch() fails.
 terminal -h   Display help text
 ```
 
@@ -439,7 +438,7 @@ upload -h                    Display help text
 Escalates privileges on the current context.
 
 ```
-sudo                           Brute-force root password using the rainbow table
+sudo                           Brute-force root password using the stored password list
 sudo [password]                Get root shell using the given password
 sudo [username] [password]     Get a shell as the specified user
 sudo -h                        Display help text
@@ -447,7 +446,7 @@ sudo -h                        Display help text
 
 ---
 
-### `rtgen`
+### `rtgen` (deprecated)
 
 Generates additional rainbow table entries using a Markov chain password generator.
 
@@ -456,7 +455,7 @@ rtgen      Generate rainbow table entries
 rtgen -h   Display help text
 ```
 
-HEX also ships with a pre-loaded rainbow table (in `src/hex/passwords/`) covering common passwords at startup.
+HEX also ships with a pre-loaded rainbow table (in `src/hex/passwords/`) covering common passwords at startup.  The `rtgen` command has been removed, since it is no longer needed.
 
 ---
 
@@ -475,7 +474,7 @@ htop -h   Display help text
 
 ### `restore`
 
-Restores original binaries on NPC systems (e.g., hackshop default binaries).
+Restores original binaries on NPC systems (e.g., shop default binaries).
 
 ```
 restore -s/shop    Restore original NPC shop binaries
@@ -543,7 +542,7 @@ cd -h          Display help text
 
 ### `rm`
 
-Removes files without leaving a log trail (uses a file-swap technique to avoid triggering the standard `rm` logging). Supports wildcards and recursive deletion.
+Removes files without leaving a log (uses a file-swap technique to avoid triggering the standard `rm` logging). Supports wildcards and recursive deletion.
 
 ```
 rm [file/pattern]    Delete matching file(s)
@@ -686,13 +685,12 @@ The `poison` command uploads files from `~/InsecureLibs/` on your home computer.
 
 ## Tips
 
-- **Scan before hacking.** `scan` populates the vulnerability database; `hack` reads from it. Running `hack` on an unscanned target will find nothing.
-- **Use the stack.** HEX can hold many simultaneous connections. Use `stack`, `swap`, and `swap` (toggle) to move between them quickly.
-- **Route through proxies.** Set proxies with `proxy {index}` and activate the chain with `proxy -s` before attacking sensitive targets. Use `proxy -c` to corrupt proxy logs afterward.
-- **Jump libraries first.** If you need to scan or exploit from inside a target, use `jump` to copy metaxploit and crypto to the target before proceeding.
+- **Scan before hacking.** `scan` populates the vulnerability database; `hack` reads from it. Running `hack` on an unscanned target will scan first
+- **Use the stack.** HEX can hold many simultaneous connections. Use `stack`, `swap #`, and `swap` (toggle) to move between them quickly.
+- **Route through proxies.** Set proxies with `proxy {index}` or activate a chain (either hardcoded or from Map.conf) with `proxy -s` before attacking sensitive targets. Use `proxy -c` to corrupt proxy logs afterward.
+- **Jump libraries first.** If you need to scan or exploit from inside a target, use `jump` to copy metaxploit to the target before proceeding.
 - **Cover your tracks.** Run `log -a` to corrupt logs across all contexts after a session. The `rm` command also uses a log-safe swap technique to avoid leaving traces.
 - **net from the router.** For network-wide operations (`net -n`, `net -l`, `net -z`, etc.) connect to the network's router first — `net` automatically detects router context and targets all LAN devices.
-- **Pre-load your rainbow table.** HEX ships with password wordlists that load at startup. Use `rtgen` to extend the table for harder-to-crack hashes.
 
 ---
 
