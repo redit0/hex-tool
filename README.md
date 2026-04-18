@@ -1,448 +1,582 @@
-# HEX - Grey Hack Automation Tool
+# HEX — Grey Hack Penetration Testing Framework
 
-> ⚠️ **DISCLAIMER**: This tool is designed exclusively for the video game **Grey Hack** and is intended for use within the game's simulated hacking environment. This is NOT a real hacking tool and should NEVER be used for any malicious or illegal purposes. Grey Hack is a sandbox hacking simulator game where players learn cybersecurity concepts in a safe, virtual environment.
-
-## Overview
-
-HEX is an automation and penetration testing toolkit built for the game [Grey Hack](https://store.steampowered.com/app/605230/Grey_Hack/). It streamlines common in-game hacking tasks, vulnerability scanning, exploitation, and network management by providing a command-line interface with various tools and utilities.
-
-### Key Features
-
-- **Automated vulnerability scanning** - Scan remote and local libraries for exploits
-- **One-command exploitation** - Automatically exploit discovered vulnerabilities
-- **Context stack management** - Manage multiple shells and computer connections
-- **Proxy chain support** - Route attacks through proxy chains for anonymity
-- **Remote shell (rshell) management** - Deploy and manage reverse shells on targets
-- **Network-wide operations** - Perform actions across entire networks
-- **Password cracking** - Rainbow table generation and password decryption
-- **File transfer** - Upload and download files between machines
-- **Process monitoring** - Built-in htop-style process viewer
+> **DISCLAIMER**: HEX is designed exclusively for the video game **Grey Hack** and operates entirely within its simulated hacking environment. This is not a real hacking tool and must never be used for any malicious or illegal purpose. Grey Hack is a sandbox hacking simulator where players learn cybersecurity concepts in a safe, virtual environment.
 
 ---
 
-## Installation
+## Overview
 
-### Prerequisites
+**HEX** (v0.0.826) is a comprehensive penetration testing and network exploitation framework written in Miniscript for [Grey Hack](https://store.steampowered.com/app/605230/Grey_Hack/). It provides a full command-line interface with tools for vulnerability scanning, exploit execution, credential recovery, reverse shell management, proxy chaining, and network-wide operations — all within the game's simulated environment.
 
-- [VS Code](https://code.visualstudio.com/) with the [Greybel VS extension](https://marketplace.visualstudio.com/items?itemName=ayecue.greybel-vs) [Greybel-VS Documentation](https://github.com/ayecue/greybel-vs)
+HEX replaces repetitive manual game interactions with a unified, scriptable workflow. Once compiled and running in-game, it acts as your primary hacking console.
 
-### Compiling with Greybel VS
+---
 
-1. Open this project folder in VS Code
-2. Open the main file: `src/hex.src`
-3. Use the Greybel VS extension to build:
-   - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
-   - Type and select: `Greybel: Build`
-   - The compiled output will be placed in the `build/` folder
-4. Import the compiled script into Grey Hack using the game's code editor
-5. Compile and run the script in-game
+## Compiling with Greybel-VS
 
-### Alternative: Manual Build
+HEX is written in Miniscript source files and must be compiled before it can be run in Grey Hack. The recommended method is the **[greybel-vs](https://marketplace.visualstudio.com/items?itemName=ayecue.greybel-vs)** VS Code extension by ayecue.
 
-You can also use the [greybel-js CLI](https://github.com/ayecue/greybel-js) to compile:
+### 1. Install the Extension
 
-```bash
-npx greybel-js build src/hex.src --out build/
-```
+Open VS Code and install **Greybel VS** from the marketplace:
+- Search for `ayecue.greybel-vs` in the Extensions panel, or
+- Install from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=ayecue.greybel-vs)
+
+The extension activates automatically on `.src`, `.gs`, and `.ms` files.
+
+### 2. Open the Project
+
+Open the `hex-tool` folder in VS Code (`File > Open Folder`).
+
+### 3. Build
+
+Open `src/hex.src` in the editor, then run the build command:
+
+- Press `Ctrl+Shift+P` and select **Greybel: Build file from context**, or
+- Right-click in the editor and choose **Greybel: Build file from context**
+
+The compiled output is placed in the `build/` folder. HEX uses `import_code` for its module system, so the build produces a set of linked files rather than a single monolithic script.
+
+### Build Type Options
+
+You can set the build type in VS Code settings under `Greybel > Transpiler > Build Type`:
+
+| Mode | Description |
+|---|---|
+| **Default** | No transformation; best general-purpose output |
+| **Uglify** | Minifies code and optimizes namespaces; reduces file size |
+| **Beautify** | Formats code for readability |
+
+For in-game use, **Default** or **Uglify** is recommended.
+
+### Installer Mode (No Message Hook Required)
+
+If you don't have the Message Hook set up (see below), you can use Greybel's **Installer** mode:
+
+1. Enable `Greybel > Transpiler > Installer > Active` in VS Code settings
+2. Optionally enable `Installer > Auto Compile` to have the installer auto-compile and delete source files after running
+3. Build the project — Greybel generates one or more installer `.src` files
+4. Copy-paste the installer code into Grey Hack's code editor, compile it, and run it
+5. Your entire project is recreated in-game automatically
+
+If the installer exceeds Grey Hack's ~160,000 character limit, Greybel splits it across multiple files automatically (configurable via `Installer > Max Chars`).
+
+---
+
+## Auto-Compile and Auto-Import into the Game
+
+Greybel-VS supports pushing files directly into a running Grey Hack session using the **Message Hook** — a BepInEx plugin that bridges VS Code and the game client.
+
+### Setting Up the Message Hook
+
+**BepInEx 5.x (recommended):**
+
+1. Download [BepInEx v5.4.23.2](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.2) and extract it into the Grey Hack game folder (where `Grey Hack.exe` is located)
+2. Download `GreyHackMessageHook5.dll` and place it in the `BepInEx/plugins/` folder
+3. Launch Grey Hack via Steam — BepInEx initializes automatically on Windows
+
+**BepInEx 6.x (pre-release, less stable):**
+
+1. Download [BepInEx 6.0.0-pre.2 Unity.Mono](https://github.com/BepInEx/BepInEx/releases/tag/v6.0.0-pre.2) and extract into the game folder
+2. Download `GreyHackMessageHook.dll` and place it in `BepInEx/plugins/`
+3. Launch Grey Hack via Steam
+
+### Enabling Auto-Import in VS Code
+
+Once the Message Hook is installed and Grey Hack is running, configure Greybel-VS:
+
+| Setting | Description |
+|---|---|
+| `Create in-game > Active` | Enable automatic file creation in-game after each build |
+| `Create in-game > Auto Compile` | After creating files, auto-compile them and delete the `.src` sources |
+| `Create in-game > Allow Import` | Set the `allowImport` flag on the compiled binary |
+| `Transpiler > In-game Directory` | Destination folder inside the game (default: `/root/`) |
+| `Transpiler > Watch` | Auto-rebuild whenever you save a source file |
+
+With **Watch** + **Create in-game > Active** both enabled, every save triggers a rebuild and automatically pushes the updated files into the running game — a near-live development loop.
+
+### Manual Import
+
+You can also push files without building first:
+
+- Press `Ctrl+Shift+P` and select **Greybel: Import file into the game**
+
+This uploads the current file directly to the in-game directory defined in `Transpiler > In-game Directory`.
+
+---
+
+## Installation in Grey Hack
+
+After the files are in-game (via any method above):
+
+1. Open the game's code editor on the compiled `hex` binary
+2. If using the installer, run it once to set up all files, then compile `hex.src`
+3. Move the compiled `hex` binary to `/bin/` or another location on your `$PATH` for easy access
+4. Run `hex` from the terminal
 
 ---
 
 ## Getting Started
 
-After launching HEX in Grey Hack, you'll be presented with the HEX banner and command prompt. Type `help` to see all available commands.
+When HEX launches, it displays the banner and command prompt. Type `help` to see all available commands.
 
-### Basic Workflow
+### Recommended Workflow
 
-1. **NMAP a target**: `nmap <ip>` - Discover vulnerabilities on a target IP
-2. **Exploit vulnerabilities**: `hack <ip>` - Attempt to exploit discovered vulnerabilities
-3. **View connections**: `stack` - See all active shells/connections
-4. **Switch context**: `swap <index>` - Switch to a different connection
-5. **Explore files**: `tree` - View file system structure
-6. **Clean up**: `log` - Corrupt logs to cover tracks
+```
+1. nmap <target-ip>          — Discover open ports and network layout
+2. scan <target-ip>          — Find exploitable vulnerabilities on target
+3. hack <target-ip>          — Exploit vulnerabilities and add to context stack
+4. decipher                  — Extract and decrypt credentials from target
+5. log                       — Corrupt logs to cover your tracks
+6. stack                     — Review all active contexts
+```
+
+### The Context Stack
+
+HEX maintains a **context stack** — a list of all compromised shells, computers, and file objects. You can hold connections to many systems simultaneously and switch between them with `swap`. The active context is indicated by the prompt (which shows the current IP and user).
 
 ---
 
 ## Tools
 
-Tools are the primary hacking commands used for reconnaissance and exploitation.
+Tools are the primary exploitation and reconnaissance commands.
 
 ### `scan`
-Scans for vulnerabilities at a specified IP address and port.
+
+Scans for exploitable memory addresses in metaxploit libraries on a local or remote target. Results are cached in the vulnerability database for use by `hack`.
 
 ```
-scan [ip] {port}     - Scan for vulnerabilities at the specified IP/port
-scan [library.so]    - Scan a local library file for vulnerabilities
-scan -h              - Display help text
+scan [ip] {port}      Scan all open ports (or a specific port) on a remote target
+scan [library.so]     Scan a specific local library file
+scan -h               Display help text
 ```
 
 **Examples:**
-- `scan 192.168.1.1` - Scan all open ports on target
-- `scan 192.168.1.1 22` - Scan only port 22
-- `scan libssh.so` - Scan local library
+```
+scan 203.0.113.5
+scan 203.0.113.5 22
+scan libssh.so
+```
 
 ---
 
 ### `nmap`
-Displays comprehensive network information including ports, whois data, and firewall rules.
+
+Displays comprehensive network information for a target IP. If no IP is given, uses the current context.
 
 ```
-nmap {ip}    - Display network information for the specified IP
-nmap -h      - Display help text
+nmap {ip}    Display network information
+nmap -h      Display help text
 ```
 
-**Output includes:**
-- Public IP, kernel version, domain information
-- Admin contact, email, phone
-- ESSID/BSSID (WiFi info)
-- Firewall rules
-- All devices and open ports on the network
+**Output includes:** public IP, kernel version, domain, admin contact, email/phone, ESSID/BSSID, firewall rules, all LAN devices and their open/closed ports.
 
 ---
 
 ### `hack`
-Exploits vulnerabilities discovered by the `scan` tool.
+
+Exploits vulnerabilities discovered by `scan` using metaxploit buffer overflows. Successfully exploited targets are added to the context stack as shell, computer, or file objects.
 
 ```
-hack [-l/local] {libname.so}  - Exploit local library vulnerabilities
-hack [-l/local] {lan ip}      - Exploit local libs targeting specific LAN IP
-hack [ip] {port}              - Exploit remote vulnerabilities at IP/port
-hack [ip] {lan ip}            - Exploit remote vulnerabilities targeting LAN device
-hack -h                       - Display help text
+hack [-l/local] {libname.so}    Exploit local library vulnerabilities
+hack [-l/local] {lan-ip}        Exploit local libs targeting a specific LAN device
+hack [ip] {port}                Exploit remote target at specific port
+hack [ip] {lan-ip}              Exploit remote target, pivot to LAN device
+hack -h                         Display help text
 ```
 
 **Examples:**
-- `hack 192.168.1.1` - Exploit all open ports on target
-- `hack 192.168.1.1 22` - Exploit only port 22
-- `hack -l` - Exploit all libraries in /lib locally
+```
+hack 203.0.113.5
+hack 203.0.113.5 22
+hack -l
+hack -l 192.168.1.100
+```
 
 ---
 
 ### `decipher`
-Searches for and decrypts passwords files (mail, bank, passwd).
+
+Searches the current context for credential files (`passwd`, `Mail.txt`, `Bank.txt`) and decrypts them using the built-in rainbow table or the crypto library.
 
 ```
-decipher                      - Find and decrypt all passwd files
-decipher bank                 - Find and decrypt Bank.txt files
-decipher mail                 - Find and decrypt Mail.txt files  
-decipher all                  - Decrypt all credential files
-decipher [encrypted_password] - Decrypt a specific password hash
-decipher -h                   - Display help text
+decipher                        Search and decrypt all passwd files
+decipher bank                   Search and decrypt Bank.txt files
+decipher mail                   Search and decrypt Mail.txt files
+decipher all                    Search and decrypt all credential file types
+decipher [encrypted_password]   Decrypt a specific password hash
+decipher -h                     Display help text
 ```
 
 ---
 
 ### `rshell`
-Manages reverse shells for persistent access.
+
+Manages the full reverse shell lifecycle: server setup, client deployment on targets, and polling for new incoming connections.
 
 ```
-rshell                              - Collect new rshells and add to stack
-rshell infect {ip} {port} {name}    - Deploy rshell client on current target
-rshell init {port}                  - Set current context as rshell server
-rshell info                         - Display rshell server configuration
-rshell start                        - Start rshell server service
-rshell stop                         - Stop rshell server service
-rshell -r [#]                       - Remove/kill specific rshell by index
-rshell -c                           - Clear/kill all rshell processes
-rshell -h                           - Display help text
+rshell                               Poll the rshell server for new connections; add to stack
+rshell init {port}                   Configure the current context as the rshell server
+rshell infect {ip} {port} {name}     Deploy the rshell client on the current target
+rshell info                          Display current rshell server configuration
+rshell start                         Start the rshell server service
+rshell stop                          Stop the rshell server service
+rshell -r [#]                        Remove a specific rshell from the stack by index
+rshell -c                            Kill all rshell processes
+rshell -h                            Display help text
 ```
 
 ---
 
 ### `poison`
-Uploads vulnerable/insecure libraries to a target for exploitation.
+
+Uploads insecure/vulnerable library files from your local `InsecureLibs` folder to the target's `/lib` directory, enabling further exploitation via `scan` and `hack`.
 
 ```
-poison    - Upload insecure libraries from InsecureLibs folder to target /lib
-poison -h - Display help text
+poison       Upload insecure libraries to target /lib
+poison -h    Display help text
 ```
 
-**Setup:** Create a folder named `InsecureLibs` in your home directory and place vulnerable `.so` files there.
+**Setup:** Create `~/InsecureLibs/` on your in-game home computer and populate it with vulnerable `.so` files matching the versions configured in `constants.src`.
 
 ---
 
 ### `net`
-Performs network-wide operations when connected to a router. If run from a computer or any device that isn't a router, the operations apply only to the current device.
+
+Performs network-wide operations. When run from a shell on a router, operations apply to every device on the network. When run from a non-router device, operations apply only to that device.
 
 ```
-net           - Search for interesting files across the network
-net -a/all    - Print all interesting files (bank, mail, passwd)
-net -b/bank   - Print all bank credentials in the network
-net -l/log    - Clear logs on every device in the network
-net -m/mail   - Print all mail credentials in the network
-net -n/nuke   - Nuke all systems in the network (not implemented)
-net -p/pass   - Print all passwd file credentials in the network
-net -s/secure - Delete /home, /passwd, and chmod every system (not implemented)
-net -u/users  - List all users and credentials (not implemented)
-net -z/zday   - List mail accounts with inbox From/Subject details; highlights computers without Mail.txt
-net -h        - Display help text
+net                  Scan all systems for interesting files (bank, mail, passwd)
+net -a/all           Print all interesting files across the network
+net -b/bank          Decipher and print all bank credentials
+net -l/log           Corrupt logs on every device in the network
+net -m/mail          Decipher and print all mail credentials
+net -n/nuke          Hard nuke all systems in the network
+net -nm/nukemail     Clear contents of Mail.txt, Bank.txt, and passwd on all systems
+net -p/pass          Decipher and print all user/passwd credentials
+net -s/secure        Delete sensitive files and chmod every system in the network
+net -z/zday          List all mail accounts; print From/Subject of every inbox message; highlight systems missing Mail.txt
+net -h               Display help text
 ```
 
-**Note:** When run from a shell on a router, operations apply to all devices on the network. When run from a regular computer, operations apply only to that device.
+---
+
+### `sniffer`
+
+Launches a network traffic sniffer on the current context.
+
+```
+sniffer      Start sniffer on current context
+sniffer -h   Display help text
+```
 
 ---
 
 ## Utilities
 
-Utilities are helper commands for navigation, file management, and system operations.
+Utilities are helper commands for context management, system operations, and file handling.
 
 ### `stack`
-Displays and manages all active connections/contexts.
+
+Displays all entries in the context stack. The active context is highlighted.
 
 ```
-stack      - Print all contexts in the stack
-stack -c   - Clear all contexts except home computer
-stack -h   - Display help text
+stack       Print all contexts (index, public IP, local IP, type, source, user)
+stack -c    Clear all contexts except the home computer
+stack -h    Display help text
 ```
-
-The stack shows:
-- Index number
-- Public IP
-- Local IP  
-- Context type (shell, computer, file)
-- Source (how the connection was obtained)
-- Current user
 
 ---
 
 ### `swap`
-Switches between different contexts in the stack.
+
+Switches between contexts in the stack.
 
 ```
-swap {index}  - Switch to context at specified index
-swap          - Toggle to previously selected context
-swap -h       - Display help text
+swap {index}    Switch to the context at the given index
+swap            Toggle to the previously active context
+swap -h         Display help text
 ```
 
 ---
 
 ### `jump`
-Transfers essential libraries to the target for further exploitation.
+
+Attaches essential libraries (metaxploit, crypto, aptclient) from your home computer to the current context by copying them via SCP.
 
 ```
-jump          - Transfer metaxploit.so to target
-jump apt      - Transfer aptclient.so to target
-jump crypto   - Transfer crypto.so to target
-jump -h       - Display help text
+jump           Transfer metaxploit.so to the target
+jump apt       Transfer aptclient.so to the target
+jump crypto    Transfer crypto.so to the target
+jump -h        Display help text
 ```
 
 ---
 
 ### `proxy`
-Manages proxy chains for anonymous attacks.
+
+Manages proxy chains. When a proxy chain is set, all traffic routes through the configured chain for anonymity.
 
 ```
-proxy {#}       - Set proxy to context at specified index
-proxy -s/start  - Connect through proxy chain
-proxy -c/clean  - Corrupt logs on all proxies
-proxy -d        - Clean proxies and remove from stack
-proxy -h        - Display help text
+proxy {#}        Set the proxy to the context at the given stack index
+proxy -s/start   Connect through the proxy chain
+proxy -c/clean   Corrupt logs on all proxy nodes in the chain
+proxy -d         Clean proxy logs and remove them from the stack
+proxy -h         Display help text
+```
+
+Proxies can also be loaded automatically from a `Map.conf` file and from the `$proxies` environment variable (JSON-serialized list).
+
+---
+
+### `log`
+
+Corrupts system logs to erase evidence of activity.
+
+```
+log          Corrupt the log on the current context
+log -a/all   Corrupt logs on all contexts in the stack
+log -d       Download the log file from the current context
+log -h       Display help text
 ```
 
 ---
 
 ### `tree`
-Displays file system in a tree view with color-coded files.
+
+Displays the filesystem in a color-coded tree view.
 
 ```
-tree {path}  - Display tree from specified path (default: root)
-tree -h      - Display help text
+tree {path}    Display file tree from the given path (default: root)
+tree -h        Display help text
 ```
 
 **Color coding:**
-- Green: Important files (passwd, Mail.txt, Bank.txt) with read permission
-- Orange: Important files without read permission
-- Blue: Regular text files
-- Different shades for binaries, libraries, and executables
-
----
-
-### `log`
-Manages log files on target systems.
-
-```
-log          - Corrupt log on current context
-log -a/all   - Corrupt logs on all contexts in stack
-log -d       - Download log file from current context
-log -h       - Display help text
-```
+- Green — credential files (passwd, Mail.txt, Bank.txt) with read permission
+- Orange — credential files without read permission
+- Blue — regular text files
+- Varying shades for binaries, libraries, and executables
 
 ---
 
 ### `terminal`
-Opens a native terminal session on the current context.
+
+Opens a native interactive terminal session on the current context.
 
 ```
-terminal    - Start terminal on current context
-terminal -h - Display help text
+terminal      Start a terminal session
+terminal -h   Display help text
 ```
 
 ---
 
 ### `lockdown`
-Secures a system by changing permissions and deleting sensitive files.
+
+Secures the current system by removing all file permissions and deleting sensitive credential files. Detects home computers (via Xorg process) and preserves essential binaries accordingly.
 
 ```
-lockdown    - Remove permissions and delete sensitive files
-lockdown -h - Display help text
+lockdown      Apply lockdown to the current context
+lockdown -h   Display help text
 ```
 
-**Actions performed:**
-- Changes all file permissions to `u-rwx, g-rwx, o-rwx`
-- Preserves essential programs on home systems (Terminal, sudo, Mail, etc.)
-- Deletes Mail.txt, Bank.txt, and passwd files
+**Actions:**
+- Sets all file permissions to `u-rwx, g-rwx, o-rwx`
+- Deletes `Mail.txt`, `Bank.txt`, and `passwd` files
+- On home computers, preserves execute permissions on Terminal, sudo, Mail, and similar essential programs
 
 ---
 
 ### `apt-get`
-Manages package installation from in-game repositories.
+
+Manages package repositories and library installation via the in-game aptclient.
 
 ```
-apt-get -i [lib.so] {path}  - Install library at specified path
-apt-get -l                  - List all available packages
-apt-get -s                  - Show all configured repositories  
-apt-get -a {ip}             - Add repository (or random hackshop)
-apt-get -r [ip]             - Remove repository
-apt-get -h                  - Display help text
+apt-get -i [lib.so] {path}    Install a library to the specified path
+apt-get -l                    List all available packages across repos
+apt-get -s                    Show all configured repositories
+apt-get -a {ip}               Add a repository (or scan for a random hackshop)
+apt-get -r [ip]               Remove a repository
+apt-get -h                    Display help text
+```
+
+---
+
+### `hackshop`
+
+Discovers a random hackshop IP by scanning port 1542 on a random address.
+
+```
+hackshop      Print a random hackshop IP
+hackshop -h   Display help text
 ```
 
 ---
 
 ### `download`
-Downloads files from the target to your home computer.
+
+Downloads files from the current target to your home computer. Supports wildcard patterns.
 
 ```
-download [path or filename]  - Download specified file(s)
-download -h                  - Display help text
+download [path or filename]    Download matching file(s)
+download -h                    Display help text
 ```
-
-**Note:** Supports wildcards (`*`) for pattern matching.
 
 ---
 
 ### `upload`
-Uploads files from your home computer to the target.
+
+Uploads files from your home computer to the current target. Supports wildcard patterns.
 
 ```
-upload [path or filename]  - Upload specified file(s)
-upload -h                  - Display help text
+upload [path or filename]    Upload matching file(s)
+upload -h                    Display help text
 ```
 
 ---
 
 ### `sudo`
-Attempts to escalate privileges on the current context.
+
+Escalates privileges on the current context.
 
 ```
-sudo                         - Brute-force root password using rainbow tables
-sudo [password]              - Get root shell with specified password
-sudo [username] [password]   - Get shell with specified credentials
-sudo -h                      - Display help text
+sudo                           Brute-force root password using the rainbow table
+sudo [password]                Get root shell using the given password
+sudo [username] [password]     Get a shell as the specified user
+sudo -h                        Display help text
 ```
 
 ---
 
 ### `rtgen`
-Generates rainbow tables for password cracking.
+
+Generates additional rainbow table entries using a Markov chain password generator.
 
 ```
-rtgen    - Generate rainbow tables using Markov chain password generator
-rtgen -h - Display help text
+rtgen      Generate rainbow table entries
+rtgen -h   Display help text
 ```
+
+HEX also ships with a pre-loaded rainbow table (in `src/hex/passwords/`) covering common passwords at startup.
 
 ---
 
 ### `htop`
-Displays real-time process and resource monitoring.
+
+Displays a real-time process and resource monitor (exit with Ctrl+C).
 
 ```
-htop    - Start process monitor (exit with Ctrl+C)
-htop -h - Display help text
+htop      Start process monitor
+htop -h   Display help text
 ```
 
-Shows:
-- Running processes
-- Online users
-- CPU utilization bar
-- RAM utilization bar
-- Process details (user, PID, CPU%, memory%, command)
+**Shows:** running processes, online users, CPU utilization bar, RAM utilization bar, process details (user, PID, CPU%, memory%, command).
 
 ---
 
-### `hackshop`
-Gets a random hackshop IP address for package downloads.
+### `restore`
+
+Restores original binaries on NPC systems (e.g., hackshop default binaries).
 
 ```
-hackshop    - Print a random hackshop IP
-hackshop -h - Display help text
+restore -s/shop    Restore original NPC shop binaries
+restore -h         Display help text
 ```
 
 ---
 
 ### `ip`
-Generates a random IP address for target discovery.
+
+Generates a random IP address.
 
 ```
-ip    - Generate random IP address
-ip -h - Display help text
+ip      Generate and print a random IP
+ip -h   Display help text
 ```
 
 ---
 
-### `restore`
-Restores original binaries on NPC systems.
+### `userdel`
+
+Deletes a user account from the current context.
 
 ```
-restore -s/shop  - Restore original binaries in NPC shop
-restore -b/bin   - Restore /bin directory (not implemented)
-restore -h       - Display help text
+userdel [username]    Delete the specified user
+userdel -h            Display help text
 ```
 
 ---
 
 ### `clear`
-Clears the screen and displays the HEX banner.
+
+Clears the screen and re-displays the HEX banner.
 
 ```
-clear    - Clear screen and show banner
-clear -h - Display help text
+clear      Clear screen and display banner
+clear -h   Display help text
 ```
 
 ---
 
 ### `quit`
-Exits the HEX program.
+
+Exits HEX.
 
 ```
-quit    - Exit HEX
-quit -h - Display help text
+quit      Exit the program
+quit -h   Display help text
 ```
 
 ---
 
-## File System Commands
+## Filesystem Commands
+
+These commands operate on the current context's filesystem.
 
 ### `cd`
-Changes the current working directory.
 
 ```
-cd [folder]  - Change to specified directory
-cd ..        - Go up one directory
-cd /         - Go to root directory
-cd -h        - Display help text
+cd [folder]    Change to the specified directory
+cd ..          Go up one level
+cd /           Go to root
+cd -h          Display help text
 ```
-
----
 
 ### `rm`
-Removes files and directories without leaving logs.
+
+Removes files without leaving a log trail (uses a file-swap technique to avoid triggering the standard `rm` logging). Supports wildcards and recursive deletion.
 
 ```
-rm [file/pattern]      - Delete file(s) matching pattern
-rm -r [folder]         - Recursively delete folder and contents
-rm -h                  - Display help text
+rm [file/pattern]    Delete matching file(s)
+rm -r [folder]       Recursively delete a folder and its contents
+rm -h                Display help text
 ```
 
-**Note:** Supports wildcards (`*`) for pattern matching.
+### `ps`
+
+Lists running processes on the current context.
+
+```
+ps      Show running processes
+ps -h   Display help text
+```
+
+### `kill`
+
+Kills a running process on the current context.
+
+```
+kill [pid]    Kill the process with the given PID
+kill -h       Display help text
+```
+
+### `reboot`
+
+Reboots the current context system.
+
+```
+reboot      Reboot current system
+reboot -h   Display help text
+```
 
 ---
 
@@ -450,42 +584,46 @@ rm -h                  - Display help text
 
 ```
 hex-tool/
-├── build/                    # Compiled output
-│   ├── hex.src               # Main compiled script
-│   └── hex/                  # Compiled modules
-├── src/                      # Source code
-│   ├── hex.src               # Main entry point
+├── build/                        Compiled output (generated by Greybel)
+├── src/
+│   ├── hex.src                   Main entry point and command loop
 │   └── hex/
-│       ├── banner.src        # ASCII art banner
-│       ├── colors.src        # Color definitions
-│       ├── constants.src     # Global constants
-│       ├── context.src       # Context management
-│       ├── extensions.src    # Type extensions
-│       ├── functions.src     # Core utility functions
-│       ├── json.src          # JSON parsing
-│       ├── logs.src          # Log management
-│       ├── mail.src          # Mail handling
-│       ├── menu.src          # Menu system
-│       ├── nuke.src          # System destruction
-│       ├── prompt.src        # Command prompt
-│       ├── proxies.src       # Proxy chain management
-│       ├── rshell.src        # Reverse shell server
-│       ├── tools.src         # Tool imports
-│       ├── utilities.src     # Utility imports
-│       ├── fs/               # File system commands
+│       ├── banner.src            ASCII art banner
+│       ├── colors.src            Color definitions and formatting functions
+│       ├── constants.src         Version, global constants, config values
+│       ├── default-binaries.src  Default hackshop binary definitions
+│       ├── extensions.src        Extension methods on built-in types
+│       ├── functions.src         Core utility and API functions (~1800 lines)
+│       ├── json.src              JSON serialization/deserialization
+│       ├── logs.src              Log corruption and file recovery
+│       ├── mail.src              Email account management
+│       ├── menu.src              Menu generation helpers
+│       ├── meta.src              Metaxploit library linking and scanning
+│       ├── nuke.src              Hard/soft/mail nuke operations
+│       ├── prompt.src            Dynamic prompt generation
+│       ├── proxies.src           Proxy chain setup and management
+│       ├── rshell.src            Reverse shell server management
+│       ├── classes/
+│       │   ├── exploit.src       Exploit result object
+│       │   └── result.src        Generic function result object
+│       ├── fs/                   Filesystem commands
 │       │   ├── cd.src
+│       │   ├── kill.src
+│       │   ├── ps.src
+│       │   ├── reboot.src
 │       │   └── rm.src
-│       ├── tools/            # Hacking tools
+│       ├── passwords/            Pre-loaded rainbow table wordlists
+│       │   └── 1-7.src           (comma-separated hash:plaintext entries)
+│       ├── tools/                Exploitation tools
 │       │   ├── decipher.src
 │       │   ├── hack.src
-│       │   ├── missions.src
 │       │   ├── net.src
 │       │   ├── nmap.src
-│       │   ├── nuke.src
 │       │   ├── poison.src
 │       │   ├── rshell.src
-│       │   └── scan.src
-│       └── utilities/        # Helper utilities
+│       │   ├── scan.src
+│       │   └── sniffer.src
+│       └── utilities/            Helper utilities
 │           ├── apt-get.src
 │           ├── clear.src
 │           ├── download.src
@@ -501,37 +639,60 @@ hex-tool/
 │           ├── restore.src
 │           ├── rtgen.src
 │           ├── stack.src
-│           ├── su.src
 │           ├── sudo.src
 │           ├── swap.src
 │           ├── terminal.src
 │           ├── tree.src
-│           └── upload.src
-└── reference/                # Reference scripts and examples
+│           ├── upload.src
+│           └── userdel.src
+└── reference/                    Reference scripts and examples
 ```
 
 ---
 
-## Tips for New Users
+## Configuration
 
-1. **Start with reconnaissance**: Use `nmap` and `scan` before attempting exploitation
-2. **Build rainbow tables early**: Run `rtgen` to generate password tables for faster cracking
-3. **Use the stack**: The context stack is powerful - use `stack`, `swap`, and multiple connections
-4. **Cover your tracks**: Always run `log` after exploitation to corrupt logs
-5. **Set up proxies**: Use `proxy -s` to route attacks through compromised machines
-6. **Transfer tools**: Use `jump` to transfer metaxploit to targets for further exploitation
+### `constants.src`
+
+Edit `src/hex/constants.src` to configure HEX for your game mode:
+
+```python
+# Multiplayer (default)
+g.const.insecureComp = ["/root/InsecureLibs/init.so", "1.0.0", "0x32E65B93", "indopositionx"]
+
+# Nightly build servers
+# g.const.insecureComp = ["/root/InsecureLibs/init.so", "1.0.2", "0x7D6EE022", "stconobjecttransf"]
+
+# Singleplayer
+# g.const.insecureComp = ["/root/InsecureLibs/net.so", "1.0.0", "0x18EBA092", "redit0"]
+```
+
+Uncomment the block matching your game mode before building.
+
+### Environment Variables
+
+HEX reads two optional environment variables at startup:
+
+| Variable | Format | Description |
+|---|---|---|
+| `$proxies` | JSON list of `[ip, port, user, pass]` | Pre-configure proxy chains |
+| `$rshell` | JSON object | Pre-configure the rshell server connection |
+
+### InsecureLibs Folder
+
+The `poison` command uploads files from `~/InsecureLibs/` on your home computer. Populate this folder with vulnerable `.so` files to use as poison payloads.
 
 ---
 
-## Contributing
+## Tips
 
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
-
----
-
-## License
-
-See [LICENSE](LICENSE) for details.
+- **Scan before hacking.** `scan` populates the vulnerability database; `hack` reads from it. Running `hack` on an unscanned target will find nothing.
+- **Use the stack.** HEX can hold many simultaneous connections. Use `stack`, `swap`, and `swap` (toggle) to move between them quickly.
+- **Route through proxies.** Set proxies with `proxy {index}` and activate the chain with `proxy -s` before attacking sensitive targets. Use `proxy -c` to corrupt proxy logs afterward.
+- **Jump libraries first.** If you need to scan or exploit from inside a target, use `jump` to copy metaxploit and crypto to the target before proceeding.
+- **Cover your tracks.** Run `log -a` to corrupt logs across all contexts after a session. The `rm` command also uses a log-safe swap technique to avoid leaving traces.
+- **net from the router.** For network-wide operations (`net -n`, `net -l`, `net -z`, etc.) connect to the network's router first — `net` automatically detects router context and targets all LAN devices.
+- **Pre-load your rainbow table.** HEX ships with password wordlists that load at startup. Use `rtgen` to extend the table for harder-to-crack hashes.
 
 ---
 
@@ -541,4 +702,4 @@ Created by **redit0**
 
 ---
 
-> 🎮 **Remember**: This tool is for educational and entertainment purposes within the Grey Hack game only. Happy (virtual) hacking!
+> This tool is for educational and entertainment purposes within the Grey Hack game only.

@@ -1,10 +1,10 @@
-g.const.version = "0.0.821"
+g.const.version = "0.0.826"
 g.const.vhex = "v" + g.const.version
 g.const.indent = "    "
 // Nightly
-g.const.insecureComp = ["/root/InsecureLibs/init.so", "1.0.2", "0x7D6EE022", "stconobjecttransf"]
+//g.const.insecureComp = ["/root/InsecureLibs/init.so", "1.0.2", "0x7D6EE022", "stconobjecttransf"]
 // Multiplayer
-//g.const.insecureComp = ["/root/InsecureLibs/init.so", "1.0.0", "0x32E65B93", "indopositionx"]
+g.const.insecureComp = ["/root/InsecureLibs/init.so", "1.0.0", "0x32E65B93", "indopositionx"]
 // Singleplayer
 //g.const.insecureComp = ["/root/InsecureLibs/net.so", "1.0.0", "0x18EBA092", "redit0"]
 g.const.insecureShell = ["/root/InsecureLibs/init.so", "0x32E65B93", "indopositionx"]

@@ -791,6 +791,8 @@ g.func.put = function(srcPath, destPath)
     home = g.stack["0"]
     context = g.stack[g.context.index]
 
+    excludes = ["sudo","Terminal","Terminal.exe","Mail","Mail.exe","Map","Map.exe","Chat","Chat.exe","Settings.exe","Manual","Manual.exe","autoexec"]
+
     if context.type != "shell" then
         print g.error("Context is not a shell.")
         return 0
@@ -806,6 +808,10 @@ g.func.put = function(srcPath, destPath)
     f.chmod("u-rwx")
     f.chmod("g-rwx")
     f.chmod("o-rwx")
+
+    if excludes.indexOf(f.name) != null then
+        f.chmod("g+x")
+    end if
 
     return result
 end function

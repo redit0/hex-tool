@@ -44,7 +44,7 @@ end function
 // @return {number} - 1 on success.
 g.func.lockdown = function(file, comp, silent = 0)
     setHomePerms = function(obj)
-        result = obj.chmod("g+rx")
+        result = obj.chmod("g+x")
         if result != "" then print(g.error(result))
     end function
 
