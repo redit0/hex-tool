@@ -3,21 +3,136 @@
 ipHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Generates a random IP address.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [<partial_ip>] [<email_credentials>] [<username>]") + g.l2(" Takes a partial IP address") + g.const.ni
+    text = text + g.l2(" (e.g. 123.123.XXX.123), a set of email credentials (in the format email:password), and a username,") + g.const.ni 
+    text = text + g.l2(" and sends emails to all of the neurobox networks in the block of addresses until it finds the network that has the username provided.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
 end function
 
-// Prints a random valid public IP address obtained from g.func.getRandomIp.
-// @param {list<string>|null} args - Pass ["-h"] or ["help"] to show usage, or null to run.
+// Generates a random IP address, or scans a /24 block for neurobox networks
+// and finds which one has a user account for the given username.
+// @param {list<string>|null} args - Pass ["-h"] or ["help"] to show usage, null for random IP,
+//   or [partial_ip, email:password, username] to scan a block.
 // @return {none}
 doIp = function(args = null)
     if not args or args == [] then
         print g.const.indent + g.o1(g.func.getRandomIp)
-    else
-        if args[0] == "-h" or args[0] == "help" then
-            self.help
+        return
+    end if
+
+    if args[0] == "-h" or args[0] == "help" then
+        self.help
+        return
+    end if
+
+    if args.len < 3 then
+        self.help
+        return
+    end if
+
+    partialIp = args[0]
+    credentials = args[1]
+    username = args[2]
+
+    colonIdx = credentials.indexOf(":")
+    if colonIdx == null then
+        print g.error("Invalid credentials format. Expected email:password")
+        return
+    end if
+
+    emailAddress = credentials[:colonIdx]
+    emailPassword = credentials[colonIdx + 1:]
+    print g.const.indent + g.b3("Connecting to mail account with credentials: " + g.g1(emailAddress + ":" + emailPassword)) + g.const.nl
+    mail = mail_login(emailAddress, emailPassword)
+
+    if not mail then
+        print g.error("Could not connect to mail account.")
+        return
+    end if
+
+    if typeof(mail) == "string" then
+        print g.error(mail)
+        return
+    end if
+
+    parts = partialIp.split("\.")
+    missingIdx = null
+
+    if parts.len == 4 then
+        for i in range(0, 3)
+            if not parts[i].is_match("^[0-9]+$") then
+                missingIdx = i
+                break
+            end if
+        end for
+    else if parts.len == 3 then
+        parts.push("0")
+        missingIdx = 3
+    end if
+
+    if missingIdx == null then
+        print g.error("Could not determine missing octet in: " + partialIp)
+        return
+    end if
+
+    foundIp = null
+    lastSendTime = null
+
+    for octet in range(0, 255)
+        parts[missingIdx] = "" + octet
+        ip = parts.join(".")
+
+        if not is_valid_ip(ip) or is_lan_ip(ip) then continue
+
+        info = whois(ip)
+        if not info or typeof(info) != "string" then continue
+
+        lines = info.split(char(10))
+        lineCount = 0
+        for line in lines
+            if line.trim != "" then lineCount = lineCount + 1
+        end for
+
+        if lineCount < 5 then continue
+        print g.const.indent + g.s3("Found a neurobox network at IP: " + ip)
+
+        adminLine = lines[2]
+        colonPos = adminLine.indexOf(":")
+        if colonPos == null then
+            print g.error("Unexpected whois format for IP: " + ip + ".  adminLine: " + adminLine)
+            continue
         end if
+
+        adminEmail = adminLine[colonPos + 1:].trim
+        atPos = adminEmail.indexOf("@")
+        if atPos == null then
+            print g.error("Unexpected admin email format for IP: " + ip + ".  adminEmail: " + adminEmail)
+            continue
+        end if
+
+        domain = adminEmail[atPos + 1:]
+        if lastSendTime != null then
+            elapsed = time - lastSendTime
+            if elapsed < 2 then wait 2 - elapsed
+        end if
+
+        print g.const.indent + g.s3("Sending email to: " + username + "@" + domain)
+        result = mail.send(username + "@" + domain, "Hello", "Hello")
+        lastSendTime = time
+        print g.const.indent + g.s3("Email send result: (" + typeof(result) + ") " + result) + g.const.nl
+
+        if typeof(result) != "string" then
+            foundIp = ip
+            break
+        end if
+    end for
+
+    if foundIp != null then
+        print g.const.indent + g.s3("Found IP: ") + g.g1(foundIp)
+    else
+        print g.error("No matching neurobox network found for user: " + username)
     end if
 end function
 
