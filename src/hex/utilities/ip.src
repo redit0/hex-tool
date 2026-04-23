@@ -3,9 +3,7 @@
 ipHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
     text = text + g.g2(self.name) + g.l2(" Generates a random IP address.") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" [<partial_ip>] [<email_credentials>] [<username>]") + g.l2(" Takes a partial IP address") + g.const.ni
-    text = text + g.l2(" (e.g. 123.123.XXX.123), a set of email credentials (in the format email:password), and a username,") + g.const.ni 
-    text = text + g.l2(" and sends emails to all of the neurobox networks in the block of addresses until it finds the network that has the username provided.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [<partial_ip>] [<username>]") + g.l2(" Takes a partial IP address (e.g. 123.123.XXX.123) and a username and sends emails to all of the neurobox networks in the block of addresses until it finds the network that has the username provided.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
@@ -27,33 +25,16 @@ doIp = function(args = null)
         return
     end if
 
-    if args.len < 3 then
+    if args.len < 2 or args.len > 2 then
         self.help
         return
     end if
 
     partialIp = args[0]
-    credentials = args[1]
-    username = args[2]
+    username = args[1]
 
-    colonIdx = credentials.indexOf(":")
-    if colonIdx == null then
-        print g.error("Invalid credentials format. Expected email:password")
-        return
-    end if
-
-    emailAddress = credentials[:colonIdx]
-    emailPassword = credentials[colonIdx + 1:]
-    print g.const.indent + g.b3("Connecting to mail account with credentials: " + g.g1(emailAddress + ":" + emailPassword)) + g.const.nl
-    mail = mail_login(emailAddress, emailPassword)
-
-    if not mail then
-        print g.error("Could not connect to mail account.")
-        return
-    end if
-
-    if typeof(mail) == "string" then
-        print g.error(mail)
+    if not g.hasIndex("mail") then
+        print g.error("No mail account loaded!")
         return
     end if
 
@@ -119,7 +100,7 @@ doIp = function(args = null)
         end if
 
         print g.const.indent + g.s3("Sending email to: " + username + "@" + domain)
-        result = mail.send(username + "@" + domain, "Hello", "Hello")
+        result = g.mail.send(username + "@" + domain, "Hello", "Hello")
         lastSendTime = time
         print g.const.indent + g.s3("Email send result: (" + typeof(result) + ") " + result) + g.const.nl
 
