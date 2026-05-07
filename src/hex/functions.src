@@ -161,7 +161,7 @@ g.func.getRandomIp = function
         addr = ""
         
         while addr.split("\.").len < 4
-            seg = floor(rnd * 256)
+            seg = floor(rnd(hash(current_date) % (2 ^ 31)) * 256)
             if addr != "" then addr = addr + "."
             addr = addr + seg
         end while
@@ -1608,6 +1608,8 @@ g.func.zday_mail = function(computer, credentials, zday)
     mails = g.func.find(computer.File("/"), "Mail.txt", "t")
     first = 1
     output = []
+    excludes = ["about the admin", "coffee during the break\?", "I have a break later", "I will be in the break room", "Don't miss this opportunity!",
+    "a discount for you!", "You can't miss these offers!", "^about [a-zA-Z]+$"]
 
     for mail in mails
         content = mail.get_content
@@ -1641,6 +1643,17 @@ g.func.zday_mail = function(computer, credentials, zday)
 
         for msg in messages
             lines = msg.split(char(10))
+
+            skip = 0
+            for exc in excludes
+                if lines[4][9:].is_match(exc) then
+                    skip = 1
+                    break
+                end if
+            end for
+
+            if skip then continue
+
             id = lines[2][8:]
             text = meta.read(id).split(char(10))[3]
             if lines[4][9:] == "About the company" then
@@ -1686,7 +1699,13 @@ g.func.interesting_files = function(computer, type)
     "Mail.exe", "Browser.exe", "Notepad.exe", "Settings.exe", "LogViewer.exe", "CodeEditor.exe", "ImageViewer.exe", "PDFReader.exe", "System.map", "initrd.img", "kernel.img",
     "sshd", "sshd.conf", "ftpd", "ftpd.conf", "httpd", "httpd.conf", "smtpd", "smtpd.conf", "criminals.db", "criminald", "employees.db", "employeesd", "students.db", "studentsd",
     "account.db", "accountsd", "camd.conf", "camd", "rshelld.conf", "rshelld", "repod.conf", "repod", "sappl.conf", "sappl", "adbd.conf", "adbd", "website.html", "kernel_router.so",
-    "libhttp.so", "libsql.so", "libssh.so", "encode.src", "decode.bin", "libsmartappliance.so", "libftp.so", "libcam.so", "Clock.exe", "libsmtp.so", "hex.src", "hex", "libtrafficnet.so"]
+    "libhttp.so", "libsql.so", "libssh.so", "encode.src", "decode.bin", "libsmartappliance.so", "libftp.so", "libcam.so", "Clock.exe", "libsmtp.so", "hex.src", "hex", "libtrafficnet.so",
+    "EmployeesViewer.exe", "HireViewer.exe", "PoliceRecord.exe", "town.jpg", "meditating.jpg", "spring_break.jpg", "summer_venice.jpg", "hiking.jpg", "rainy_lighthouse.jpg", "new_car.jpg",
+    "lake_house.jpg", "sunset_beach.jpg", "summer_trip.jpg", "ready_to_sail.jpg", "lunch_outside.jpg", "together.jpg", "sunday_walk.jpg", "trip_to_college.jpg", "museum.jpg", "traffic_network",
+    "cold_night.jpg", "opening.jpg", "trip_town.jpg", "outside.jpg", "backpack_trip.jpg", "cactus.jpg", "neon.jpg", "breakfast.jpg", "skate_break.jpg", "waiting.jpg", "boat_sunset.jpg"]
+
+    ignorePaths = ["/Public/htdocs/downloads/nmap","/Public/htdocs/downloads/smtp-user-list","/Public/htdocs/downloads/ssh-server","/Public/htdocs/downloads/http-server","/Public/htdocs/downloads/ftp-server",
+    "/Public/htdocs/downloads/chat-server","/Public/htdocs/downloads/repository-server","/Public/htdocs/downloads/wallet","/Public/htdocs/downloads/Stocks.exe","/Public/htdocs/downloads/ExploitReport.exe",]
 
     first = 1
     output = []
@@ -1698,6 +1717,7 @@ g.func.interesting_files = function(computer, type)
         for file in files
             if not file.is_folder then
                 if ignore.indexOf(file.name) != null then continue
+                if ignorePaths.indexOf(file.path) != null then continue
                 if file.name == "passwd" and file.is_binary then continue
                 if file.name == "sources.txt" and file.get_content isa string and file.get_content.matches(g.const.ipPattern).len == 0 then continue
                 if type != "all" then
@@ -1742,10 +1762,12 @@ g.func.interesting_files = function(computer, type)
                     end if
                 end if
 
-                if (file.name == "sources.txt" or file.name == "Browser.txt") and file.get_content isa string and file.has_permission("r") then
-                    ipMatches = file.get_content.matches(g.const.ipPattern)
-                    for index in ipMatches.indexes
-                        outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1(ipMatches[index], "i") + "</size>")
+                if not file.is_binary and file.name != "Map.conf" and file.get_content isa string and file.has_permission("r") then
+                    lines = file.get_content.split(char(10))
+                    for line in lines
+                        if line.is_match(g.const.ipPattern) then
+                            outer.output.push("<pos=250>" + " "*4 + g.g1(line.trim))
+                        end if
                     end for
                 end if
 
@@ -1755,7 +1777,7 @@ g.func.interesting_files = function(computer, type)
                         obj = g.func.deserialize(content)
 
                         for account in obj.accounts
-                            outer.output.push("<pos=250>" + " "*4 + "<size=80%>" + g.g1("IP: " + account.ip + ", User: " + account.user + ", Pass: " + account.password, "i") + "</size>")
+                            outer.output.push("<pos=250>" + " "*4 + g.g1("IP: " + account.ip + ", User: " + account.user + ", Pass: " + account.password, "i"))
                         end for
                     end if
                 end if

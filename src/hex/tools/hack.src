@@ -62,6 +62,12 @@ hack = function(args)
         for obj in metalibs
             metalib = obj.metalib
             address = obj.address
+            
+            if not g.database.hasIndex(metalib.lib_name) or not g.database[metalib.lib_name].hasIndex(metalib.version) then
+                print g.const.indent + g.error("No entries found in database for " + metalib.lib_name + " at version " + metalib.version)
+                continue
+            end if
+
             mems = g.database[metalib.lib_name][metalib.version].indexes
 
             if not mems or mems == [] then
@@ -111,7 +117,6 @@ hack = function(args)
                             else
                                 result.type = "null"
                                 result.user = g.d1("N/A")
-                                result.address = ""
                             end if
                         else if extra != "" then
                             result.type = "password or firewall"
@@ -121,6 +126,8 @@ hack = function(args)
                                 m = input.matches(pattern)
                                 user = m[m.indexes[0]].split(" ")[1]
                                 result.user = user.getUser
+                            else
+                                result.user = g.d1("N/A")
                             end if
                         end if
                         result.address = address
@@ -149,7 +156,6 @@ hack = function(args)
                     if result.type != "null" then
                         print
                         cont = g.const.indent + "<size=110%><voffset=0.5em>" + result.type
-
                         if result.user != g.d1("N/A") then
                             cont = cont + " (User: " + result.user + ")"
                         end if
@@ -583,7 +589,46 @@ hack = function(args)
                 end if
             end if
         else if args[0] == "random" then
-            ran = g.func.getRandomIp
+            getRandomIp = function
+                router = null
+
+                while not router
+                    addr = ""
+                    
+                    while addr.split("\.").len < 4
+                        seg = floor(rnd(hash(current_date) % (2 ^ 31)) * 256)
+                        if addr != "" then addr = addr + "."
+                        addr = addr + seg
+                    end while
+                
+                    if not is_valid_ip(addr) or is_lan_ip(addr) then continue
+                
+                    router = get_router(addr)
+                end while
+
+                return router.public_ip
+            end function
+
+            ran = getRandomIp
+
+            file = get_shell.host_computer.File("/root/ips.txt")
+
+            if not file then
+                get_shell.host_computer.touch("/root", "ips.txt")
+                file = get_shell.host_computer.File("/root/ips.txt")
+            end if
+
+            content = file.get_content
+            if content == null then content = ""
+
+            ips = content.split(",")
+
+            if ips.indexOf(ran) != null then
+                print(g.error("Randomly generated IP has already been used: " + ran))
+            else
+                ips.push(ran)
+                file.set_content(ips.join(","))
+            end if
 
             g.command = "hack " + ran + " 0"
             return

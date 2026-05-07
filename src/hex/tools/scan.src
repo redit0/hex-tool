@@ -90,20 +90,26 @@ doScan = function(args)
 
             if not mems or mems.len == 0 then rescan = 1
 
-            for mem in mems
-                if rescan == 1 then break
-                values = g.database[metaLib.lib_name][metaLib.version][mem].indexes
+            if not rescan then
+                for mem in mems
+                    values = g.database[metaLib.lib_name][metaLib.version][mem].indexes
 
-                if not values or values.len == 0 then rescan = 1
-
-                for value in values
-                    if rescan == 1 then break
-                    if g.database[metaLib.lib_name][metaLib.version][mem][value] == "" then
+                    if not values or values.len == 0 then
                         rescan = 1
                         break
                     end if
+
+                    for value in values
+                        res = g.database[metaLib.lib_name][metaLib.version][mem][value]
+                        if typeof(res) != "string" or res == "" then
+                            rescan = 1
+                            break
+                        end if
+                    end for
+                    
+                    if rescan == 1 then break
                 end for
-            end for
+            end if
 
             if rescan then
                 mems = g.stack["0"].metax.scan(metaLib)
@@ -217,7 +223,7 @@ doScan = function(args)
         for port in ports
             if is_lan_ip(ip) and port.get_lan_ip != ip then continue
             if port.port_number == 8080 then isRouter = 1
-            if port.is_closed then continue
+            if port.is_closed and not is_lan_ip(ip) then continue
 
             netSession = g.stack[idx].metax.net_use(ip, port.port_number)
 
