@@ -1,0 +1,101 @@
+CONFIG_PATH = "/etc/hex.conf"
+STATIC_KEY = "H3x!C0nf#S3cur3"
+
+g.func.initConfig = function
+	g.config = {"proxies": [], "rshell": null, "mail": null}
+
+	computer = get_shell.host_computer
+	file = computer.File(CONFIG_PATH)
+
+	if not file then
+		g.func.remove("initConfig")
+		return
+	end if
+
+	content = file.get_content
+	if not content or content == "" then
+		g.func.remove("initConfig")
+		return
+	end if
+
+	deviceKey = g.func.deriveKey
+
+	decrypted = g.func.decrypt(content, deviceKey)
+	if not decrypted then
+		g.func.remove("initConfig")
+		return
+	end if
+
+	decrypted = g.func.decrypt(decrypted, STATIC_KEY)
+	if not decrypted then
+		g.func.remove("initConfig")
+		return
+	end if
+
+	config = g.func.deserialize(decrypted)
+	if not config or typeof(config) != "map" then
+		g.func.remove("initConfig")
+		return
+	end if
+
+	if config.hasIndex("proxies") then g.config.proxies = config.proxies
+	if config.hasIndex("rshell") then g.config.rshell = config.rshell
+	if config.hasIndex("mail") then g.config.mail = config.mail
+
+	g.func.remove("initConfig")
+end function
+
+g.func.saveConfig = function
+	serialized = g.func.serialize(g.config, 1)
+
+	encrypted = g.func.encrypt(serialized, STATIC_KEY)
+	if not encrypted then
+		print g.error("Failed to encrypt configuration.")
+		return 0
+	end if
+
+	deviceKey = g.func.deriveKey
+
+	encrypted = g.func.encrypt(encrypted, deviceKey)
+	if not encrypted then
+		print g.error("Failed to encrypt configuration.")
+		return 0
+	end if
+
+	computer = get_shell.host_computer
+
+	folder = computer.File("/etc")
+	if not folder then
+		print g.error("/etc directory not found.")
+		return 0
+	end if
+
+	file = computer.File(CONFIG_PATH)
+	if not file then
+		result = computer.touch("/etc", "hex.conf")
+		if typeof(result) == "string" then
+			print g.error(result)
+			return 0
+		end if
+		file = computer.File(CONFIG_PATH)
+	end if
+
+	if not file then
+		print g.error("Could not create config file.")
+		return 0
+	end if
+
+	file.set_content(encrypted)
+	return 1
+end function
+
+g.func.maskPassword = function(pass)
+	if typeof(pass) != "string" or pass.len == 0 then return ""
+	if pass.len <= 2 then return pass
+
+	masked = ""
+	for i in range(1, pass.len - 2)
+		masked = masked + "*"
+	end for
+	return pass[0] + g.d1(masked) + pass[-1]
+end function

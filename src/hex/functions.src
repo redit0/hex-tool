@@ -161,7 +161,7 @@ g.func.getRandomIp = function
         addr = ""
         
         while addr.split("\.").len < 4
-            seg = floor(rnd(hash(current_date) % (2 ^ 31)) * 256)
+            seg = floor(rnd * 256)
             if addr != "" then addr = addr + "."
             addr = addr + seg
         end while
@@ -539,9 +539,9 @@ end function
 // Loads the library at the specified path and returns it via get_custom_object
 // @param {string} path - The path to the library.
 // @return {library} - The loaded library.
-g.func.include_lib = function(path)
+g.func.include_lib = function(path, idx = null)
     src = "g = get_custom_object" + char(10) + "g.lib = include_lib(""" + path + """)"
-    g.func.run(src)
+    g.func.run(src, 0, idx)
     if not g.hasIndex("lib") then return null
 
     lib = g.lib
@@ -706,10 +706,11 @@ end function
 // Runs the given source code in the current context.
 // @param {string} src - The source code to run.
 // @return {none}
-g.func.run = function(src, newTerminal = 0)
+g.func.run = function(src, newTerminal = 0, idx = null)
     if not g.func.checkShell(g.context.index) then return 0
 
-    context = g.stack[g.context.index]
+    if idx == null then idx = g.context.index
+    context = g.stack[idx]
 
     if typeof(@src) != "string" then
         print g.error("Invalid parameter: " + typeof(@src))
@@ -1131,7 +1132,7 @@ g.func.attach_metax = function(idx, silent = 0)
 
     if not silent then print g.const.indent + g.s3("Attaching metaxploit lib to context...")
 
-    metax = g.func.include_lib(lib.path)
+    metax = g.func.include_lib(lib.path, idx)
 
     if not metax then
         print g.error("Could not retrieve library via include_lib")
@@ -1694,10 +1695,10 @@ end function
 // @return {list<string>} - Formatted output lines describing each interesting file found.
 g.func.interesting_files = function(computer, type)
     ignore = ["xorg.conf", "fstab", "init.so", "kernel_module.so", "net.so", "aptclient.so", "xorg.sys", "config.sys", "network.cfg", "system.log", "cd", "ls", "ps", "pwd",
-    "ifconfig", "iwconfig", "iwlist", "cat", "rm", "mv", "cp", "ssh", "ftp", "mkdir", "rmdir", "chmod", "reboot", "whois", "sudo", "useradd", "userdel", "nslookup",
+    "ifconfig", "iwconfig", "iwlist", "cat", "rm", "mv", "cp", "ssh", "ftp", "mkdir", "rmdir", "chmod", "reboot", "whois", "sudo", "useradd", "userdel", "nslookup", "studentsd",
     "build", "touch", "chown", "chgrp", "groupadd", "groupdel", "groups", "kill", "ping", "apt-get", "man", "whoami", "ln", "scp", "bash", "FileExplorer.exe", "Terminal.exe",
     "Mail.exe", "Browser.exe", "Notepad.exe", "Settings.exe", "LogViewer.exe", "CodeEditor.exe", "ImageViewer.exe", "PDFReader.exe", "System.map", "initrd.img", "kernel.img",
-    "sshd", "sshd.conf", "ftpd", "ftpd.conf", "httpd", "httpd.conf", "smtpd", "smtpd.conf", "criminals.db", "criminald", "employees.db", "employeesd", "students.db", "studentsd",
+    "sshd", "sshd.conf", "ftpd", "ftpd.conf", "httpd", "httpd.conf", "smtpd", "smtpd.conf", "criminals.db", "criminald", "employees.db", "employeesd", "students.db", "StudentsViewer.exe",
     "account.db", "accountsd", "camd.conf", "camd", "rshelld.conf", "rshelld", "repod.conf", "repod", "sappl.conf", "sappl", "adbd.conf", "adbd", "website.html", "kernel_router.so",
     "libhttp.so", "libsql.so", "libssh.so", "encode.src", "decode.bin", "libsmartappliance.so", "libftp.so", "libcam.so", "Clock.exe", "libsmtp.so", "hex.src", "hex", "libtrafficnet.so",
     "EmployeesViewer.exe", "HireViewer.exe", "PoliceRecord.exe", "town.jpg", "meditating.jpg", "spring_break.jpg", "summer_venice.jpg", "hiking.jpg", "rainy_lighthouse.jpg", "new_car.jpg",
@@ -1720,6 +1721,7 @@ g.func.interesting_files = function(computer, type)
                 if ignorePaths.indexOf(file.path) != null then continue
                 if file.name == "passwd" and file.is_binary then continue
                 if file.name == "sources.txt" and file.get_content isa string and file.get_content.matches(g.const.ipPattern).len == 0 then continue
+                if file.name == "UserConfig.sys" and not file.is_binary and (not file.has_permission("r") or file.get_content.trim == "") then continue
                 if type != "all" then
                     if type != "mail" and file.name == "Mail.txt" then continue
                     if type == "mail" and file.name != "Mail.txt" then continue
@@ -1762,12 +1764,20 @@ g.func.interesting_files = function(computer, type)
                     end if
                 end if
 
-                if not file.is_binary and file.name != "Map.conf" and file.get_content isa string and file.has_permission("r") then
+                if not file.is_binary and file.name != "Map.conf" and file.name != "UserConfig.sys" and file.get_content isa string and file.has_permission("r") then
                     lines = file.get_content.split(char(10))
                     for line in lines
                         if line.is_match(g.const.ipPattern) then
                             outer.output.push("<pos=250>" + " "*4 + g.g1(line.trim))
                         end if
+                    end for
+                end if
+
+                if not file.is_binary and file.name == "UserConfig.sys" and file.has_permission("r") then
+                    lines = file.get_content.split(char(10))
+                    for line in lines
+                        if line.trim == "" then continue
+                        outer.output.push("<pos=250>" + " "*4 + g.g1(line.trim))
                     end for
                 end if
 

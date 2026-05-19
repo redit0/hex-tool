@@ -122,7 +122,10 @@ hack = function(args)
                             result.type = "password or firewall"
 
                             input = user_input("")
-                            if input.is_match(pattern) then
+                            if input.is_match("Unable to find non root user in computer") then
+                                result.type = "computer"
+                                result.user = "non-root user"
+                            else if input.is_match(pattern) then
                                 m = input.matches(pattern)
                                 user = m[m.indexes[0]].split(" ")[1]
                                 result.user = user.getUser
@@ -592,11 +595,13 @@ hack = function(args)
             getRandomIp = function
                 router = null
 
+                count = 17
                 while not router
                     addr = ""
                     
                     while addr.split("\.").len < 4
-                        seg = floor(rnd(hash(current_date) % (2 ^ 31)) * 256)
+                        count = count + 1
+                        seg = floor(rnd(hash(current_date) % (2 ^ 31) + (time / (time % count))) * 256)
                         if addr != "" then addr = addr + "."
                         addr = addr + seg
                     end while
@@ -610,25 +615,6 @@ hack = function(args)
             end function
 
             ran = getRandomIp
-
-            file = get_shell.host_computer.File("/root/ips.txt")
-
-            if not file then
-                get_shell.host_computer.touch("/root", "ips.txt")
-                file = get_shell.host_computer.File("/root/ips.txt")
-            end if
-
-            content = file.get_content
-            if content == null then content = ""
-
-            ips = content.split(",")
-
-            if ips.indexOf(ran) != null then
-                print(g.error("Randomly generated IP has already been used: " + ran))
-            else
-                ips.push(ran)
-                file.set_content(ips.join(","))
-            end if
 
             g.command = "hack " + ran + " 0"
             return

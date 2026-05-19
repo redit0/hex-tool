@@ -1,0 +1,84 @@
+catHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [file name or path]") + g.l2(" Print the contents of a text file.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+doCat = function(args = null)
+    if args == null or args == [] or args.len > 1 or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 1
+    end if
+
+    context = g.stack[g.context.index]
+
+    fileName = args[0]
+
+    if fileName.indexOf("/") != null then
+        if fileName[0] != "/" then
+            fileName = context.currentPath + "/" + fileName
+        end if
+        fileName = fileName.replace("//", "/")
+    end if
+
+    root = context.file.getRootFolder
+    files = g.func.find(root, fileName)
+
+    if files == null then
+        print g.error("Something went horribly wrong!!")
+        return 0
+    end if
+
+    if files.len > 1 then
+        num = 1
+        options = ""
+        for f in files
+            options = options +  "[" + num + "]" + g.const.tab*2 + f.path + g.const.nl
+            num = num + 1
+        end for
+
+        selection = user_input("Multiple files found:" + g.const.nl*2 + options + g.const.nl + "Select a file: ", 0, 0, 0)
+
+        if typeof(selection.to_int) == "number" and selection.to_int > 0 and selection.to_int < num then
+            file = files[selection.to_int - 1]
+        else
+            print(g.error("Invalid selection."))
+
+            return 0
+        end if
+    else if files.len == 1 then
+        file = files[0]
+    else
+        print g.error("File not found: " + args[0])
+        return 0
+    end if
+
+    if file.is_folder then
+        print g.error("Cannot cat a directory: " + file.path)
+        return 0
+    end if
+
+    if file.is_binary then
+        print g.error("Cannot cat a binary file: " + file.path)
+        return 0
+    end if
+
+    if not file.has_permission("r") then
+        print g.error("Permission denied: " + file.path)
+        return 0
+    end if
+
+    print g.const.ni + g.s2("Contents of " + file.path + ":")
+    print g.const.indent + g.const.llb + g.const.nl
+    print file.get_content
+    return 1
+end function
+
+g.fs.cat = {
+    "name": "cat",
+    "shortDescription": "Print the contents of a text file.",
+    "exec": @doCat,
+    "help": @catHelp,
+}

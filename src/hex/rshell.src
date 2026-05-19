@@ -7,13 +7,9 @@
 // @return {number} - 1 if the server was set, 0 otherwise.
 g.func.init_rshell = function(idx = null, port = 1222)
     if idx == null then
-        temp = #envar rshell
-
-        if temp == null or temp == "" then
+        if not g.hasIndex("config") or not g.config.hasIndex("rshell") or g.config.rshell == null then
             return 0
         end if
-
-        rshell = g.func.deserialize(temp)
 
         if g.hasIndex("proxy") then
             context = g.stack[g.proxy]
@@ -26,10 +22,10 @@ g.func.init_rshell = function(idx = null, port = 1222)
             return 0
         end if
 
-        ip = rshell[0]
-        port = rshell[1]
-        user = rshell[2]
-        pass = rshell[3]
+        ip = g.config.rshell.ip
+        port = g.config.rshell.port
+        user = g.config.rshell.user
+        pass = g.config.rshell.pass
 
         rshell = context.shell.connect_service(ip, 22, user, pass)
 

@@ -3,32 +3,28 @@
 // Removes itself from g after running.
 // @return {none}
 g.func.initProxies = function
-    // g.proxies = [["ip address",22,"username","password"],["ip address",22,"username","password"], ..., ["ip address",22,"username","password"]]
     g.proxies = []
 
-    temp = #envar proxies
-
-    if temp == null or temp == "" then
+    if not g.hasIndex("config") or not g.config.hasIndex("proxies") then
+        g.func.remove("initProxies")
         return
     end if
 
-    items = g.func.deserialize(temp)
+    for item in g.config.proxies
+        ip = item.ip
 
-    for item in items
-        ip = item[0]
-
-        if item[1] isa number then
-            port = item[1]
-        else if typeof(item[1]) == "string" and item[1].to_int isa number then
-            port = item[1].to_int
+        if item.hasIndex("port") and item.port isa number then
+            port = item.port
+        else if item.hasIndex("port") and typeof(item.port) == "string" and item.port.to_int isa number then
+            port = item.port.to_int
         else
             port = 22
         end if
 
-        user = item[2]
-        pass = item[3]
+        user = item.user
+        pass = item.pass
 
-        g.proxies.push([ip,port,user,pass])
+        g.proxies.push([ip, port, user, pass])
     end for
 
     g.func.remove("initProxies")
@@ -71,7 +67,7 @@ end function
 // @return {none}
 g.func.connect_proxies = function
     if g.proxies.len == 0 then
-        print g.error("No proxies found.  Add proxies using Map.exe.")
+        print g.error("No proxies found.  Add proxies using Map.exe or the config command.")
         return
     end if
     for i in range(0, g.proxies.len-1)

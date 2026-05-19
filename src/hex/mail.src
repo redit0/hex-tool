@@ -3,8 +3,13 @@
 // Removes itself from g after running.
 // @return {none}
 g.func.initMail = function
-    emailAddress = #envar emailAddress
-    emailPassword = #envar emailPassword
+    if not g.hasIndex("config") or not g.config.hasIndex("mail") or g.config.mail == null then
+        g.func.remove("initMail")
+        return
+    end if
+
+    emailAddress = g.config.mail.address
+    emailPassword = g.config.mail.pass
 
     if emailAddress and emailPassword then
         mail = mail_login(emailAddress, emailPassword)

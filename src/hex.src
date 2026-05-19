@@ -1,11 +1,12 @@
 g = get_custom_object
 
 if not g.hasIndex("colors") then g.colors = {}
+if not g.hasIndex("command") then g.command = ""
 if not g.hasIndex("const") then g.const = {}
 if not g.hasIndex("context") then g.context = {}
-if not g.hasIndex("command") then g.command = ""
 if not g.hasIndex("database") then g.database = {}
 if not g.hasIndex("defaults") then g.defaults = {}
+if not g.hasIndex("enc") then g.enc = {}
 if not g.hasIndex("func") then g.func = {}
 if not g.hasIndex("fs") then g.fs = {}
 if not g.hasIndex("hackshop") then g.hackshop = {}
@@ -25,10 +26,13 @@ g.registerExtensions
 import_code("hex/banner.src")
 import_code("hex/prompt.src")
 import_code("hex/default-binaries.src")
+import_code("hex/encryption.src")
+import_code("hex/config.src")
 
 #include "hex/tools.src"
 
 import_code("hex/proxies.src")
+g.func.initConfig
 g.func.initProxies
 
 import_code("hex/rshell.src")
