@@ -10,6 +10,9 @@ configHelp = function()
 	text = text + g.g2(self.name) + g.b3(" mail") + g.l2(" Shows the saved mail credentials.") + g.const.ni
 	text = text + g.g2(self.name) + g.b3(" mail set [address] [password]") + g.l2(" Sets mail credentials.") + g.const.ni
 	text = text + g.g2(self.name) + g.b3(" mail remove") + g.l2(" Clears the saved mail credentials.") + g.const.ni
+	text = text + g.g2(self.name) + g.b3(" ssh") + g.l2(" Lists all saved SSH connections.") + g.const.ni
+	text = text + g.g2(self.name) + g.b3(" ssh add [name] [ip] [pass]") + g.l2(" {user} {port}") + g.l2(" Saves an SSH connection. User defaults to root, port to 22.") + g.const.ni
+	text = text + g.g2(self.name) + g.b3(" ssh remove [name]") + g.l2(" Removes a saved SSH connection by name.") + g.const.ni
 	text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text.") + g.const.nl
 
 	print(text)
@@ -21,24 +24,26 @@ doConfig = function(args = null)
 
 	// Summary view
 	if args == null or args == [] then
-		proxyCount = 0
-		if g.config.hasIndex("proxies") and g.config.proxies isa list then
-			proxyCount = g.config.proxies.len
-		end if
+		config = g.func.loadConfig
+
+		proxyCount = config.proxies.len
 
 		rshellStr = g.d1("not set")
-		if g.config.hasIndex("rshell") and g.config.rshell != null then
-			r = g.config.rshell
+		if config.rshell != null then
+			r = config.rshell
 			rshellStr = g.l2(r.user + "@" + r.ip + ":" + r.port)
 		end if
 
 		mailStr = g.d1("not set")
-		if g.config.hasIndex("mail") and g.config.mail != null then
-			mailStr = g.l2(g.config.mail.address)
+		if config.mail != null then
+			mailStr = g.l2(config.mail.address)
 		end if
+
+		sshCount = config.ssh.len
 
 		text = ni + indent + g.l3("Configuration Summary", "u") + ni
 		text = text + indent + g.s3("Proxies: ") + g.l2(str(proxyCount) + " saved") + ni
+		text = text + indent + g.s3("SSH:     ") + g.l2(str(sshCount) + " saved") + ni
 		text = text + indent + g.s3("Rshell:  ") + rshellStr + ni
 		text = text + indent + g.s3("Mail:    ") + mailStr + g.const.nl
 		print(text)
@@ -53,18 +58,19 @@ doConfig = function(args = null)
 	// ── proxy ──────────────────────────────────────────────────
 	if args[0] == "proxy" then
 		if args.len == 1 then
-			if not g.config.hasIndex("proxies") or g.config.proxies.len == 0 then
+			config = g.func.loadConfig
+			if config.proxies.len == 0 then
 				print indent + g.d1("No proxies saved.")
 				return 1
 			end if
 
 			text = ni
 			num = 1
-			for proxy in g.config.proxies
+			for proxy in config.proxies
 				masked = g.func.maskPassword(proxy.pass)
 				port = 22
 				if proxy.hasIndex("port") then port = proxy.port
-				text = text + indent + g.o1(str(num) + ".") + " " + g.l2(proxy.user + "@" + proxy.ip + ":" + port) + g.s3("  pass: ") + masked + ni
+				text = text + indent + g.o1(str(num) + ".") + "<pos=120>" + g.l2(proxy.user + "@" + proxy.ip + ":" + port) + g.s3("<pos=450>pass: ") + masked + ni
 				num = num + 1
 			end for
 			print(text)
@@ -93,10 +99,10 @@ doConfig = function(args = null)
 				return 0
 			end if
 
-			if not g.config.hasIndex("proxies") then g.config.proxies = []
-			g.config.proxies.push({"ip": ip, "port": port, "user": user, "pass": pass})
+			config = g.func.loadConfig
+			config.proxies.push({"ip": ip, "port": port, "user": user, "pass": pass})
 
-			if g.func.saveConfig then
+			if g.func.saveConfig(config) then
 				if not g.hasIndex("proxies") then g.proxies = []
 				g.proxies.push([ip, port, user, pass])
 				print indent + g.g1("Proxy saved: " + user + "@" + ip + ":" + port)
@@ -113,18 +119,19 @@ doConfig = function(args = null)
 				return 0
 			end if
 
+			config = g.func.loadConfig
 			idx = args[2].to_int - 1
-			if idx < 0 or not g.config.hasIndex("proxies") or not g.config.proxies.hasIndex(idx) then
+			if idx < 0 or not config.proxies.hasIndex(idx) then
 				print g.error("Invalid proxy number.")
 				return 0
 			end if
 
-			removed = g.config.proxies[idx]
-			g.config.proxies.remove(idx)
+			removed = config.proxies[idx]
+			config.proxies.remove(idx)
 
-			if g.func.saveConfig then
+			if g.func.saveConfig(config) then
 				g.proxies = []
-				for p in g.config.proxies
+				for p in config.proxies
 					prt = 22
 					if p.hasIndex("port") then prt = p.port
 					g.proxies.push([p.ip, prt, p.user, p.pass])
@@ -141,12 +148,13 @@ doConfig = function(args = null)
 	// ── rshell ─────────────────────────────────────────────────
 	else if args[0] == "rshell" then
 		if args.len == 1 then
-			if not g.config.hasIndex("rshell") or g.config.rshell == null then
+			config = g.func.loadConfig
+			if config.rshell == null then
 				print indent + g.d1("No rshell server saved.")
 				return 1
 			end if
 
-			r = g.config.rshell
+			r = config.rshell
 			masked = g.func.maskPassword(r.pass)
 			text = ni
 			text = text + indent + g.s3("IP:   ") + g.l2(r.ip) + ni
@@ -179,11 +187,14 @@ doConfig = function(args = null)
 				return 0
 			end if
 
-			g.config.rshell = {"ip": ip, "port": port, "user": user, "pass": pass}
+			config = g.func.loadConfig
+			config.rshell = {"ip": ip, "port": port, "user": user, "pass": pass}
 
-			if g.func.saveConfig then
+			if g.func.saveConfig(config) then
 				print indent + g.g1("Rshell server saved: " + user + "@" + ip + ":" + port)
-				if not g.func.init_rshell(null, port) or not g.func.start_rshell(g.rshell.key) then
+				if g.func.init_rshell(null, port) then
+					g.func.start_rshell(g.rshell.key)
+				else
 					print indent + g.o1("Credentials saved but could not connect. Will retry on next startup.")
 				end if
 				return 1
@@ -191,10 +202,97 @@ doConfig = function(args = null)
 			return 0
 
 		else if args[1] == "remove" then
-			g.config.rshell = null
+			config = g.func.loadConfig
+			config.rshell = null
 
-			if g.func.saveConfig then
-				print indent + g.g1("Rshell server cleared from config.")
+			if g.func.saveConfig(config) then
+				print indent + g.g1("Rshell server cleared.")
+				return 1
+			end if
+			return 0
+		else
+			self.help
+			return 0
+		end if
+
+	// ── ssh ────────────────────────────────────────────────────
+	else if args[0] == "ssh" then
+		if args.len == 1 then
+			config = g.func.loadConfig
+			if config.ssh.len == 0 then
+				print indent + g.d1("No SSH connections saved.")
+				return 1
+			end if
+
+			text = ni
+			for name in config.ssh.indexes
+				entry = config.ssh[name]
+				masked = g.func.maskPassword(entry.pass)
+				port = 22
+				if entry.hasIndex("port") then port = entry.port
+				text = text + indent + g.o1(name) + "<pos=200>" + g.l2(entry.user + "@" + entry.ip + ":" + port) + g.s3("<pos=550>pass: ") + masked + ni
+			end for
+			print(text)
+			return 1
+
+		else if args[1] == "add" then
+			if args.len < 5 then
+				print g.error("Usage: config ssh add [name] [ip] [pass] {user} {port}")
+				return 0
+			end if
+
+			name = args[2]
+			ip = args[3]
+			pass = args[4]
+			user = "root"
+			port = 22
+
+			if args.len > 5 then user = args[5]
+			if args.len > 6 and typeof(args[6].to_int) == "number" then
+				port = args[6].to_int
+			end if
+
+			if not is_valid_ip(ip) then
+				print g.error("Invalid IP address: " + ip)
+				return 0
+			end if
+			if port < 0 or port > 65535 then
+				print g.error("Invalid port: " + str(port))
+				return 0
+			end if
+
+			config = g.func.loadConfig
+			if config.ssh.hasIndex(name) then
+				print g.error("An SSH connection with that name already exists: " + name)
+				return 0
+			end if
+
+			config.ssh[name] = {"ip": ip, "port": port, "user": user, "pass": pass}
+
+			if g.func.saveConfig(config) then
+				print indent + g.g1("SSH connection saved: " + name + " (" + user + "@" + ip + ":" + port + ")")
+				return 1
+			end if
+			return 0
+
+		else if args[1] == "remove" then
+			if args.len < 3 then
+				print g.error("Usage: config ssh remove [name]")
+				return 0
+			end if
+
+			name = args[2]
+			config = g.func.loadConfig
+
+			if not config.ssh.hasIndex(name) then
+				print g.error("No SSH connection saved with name: " + name)
+				return 0
+			end if
+
+			config.ssh.remove(name)
+
+			if g.func.saveConfig(config) then
+				print indent + g.g1("Removed SSH connection: " + name)
 				return 1
 			end if
 			return 0
@@ -206,12 +304,13 @@ doConfig = function(args = null)
 	// ── mail ───────────────────────────────────────────────────
 	else if args[0] == "mail" then
 		if args.len == 1 then
-			if not g.config.hasIndex("mail") or g.config.mail == null then
+			config = g.func.loadConfig
+			if config.mail == null then
 				print indent + g.d1("No mail credentials saved.")
 				return 1
 			end if
 
-			m = g.config.mail
+			m = config.mail
 			masked = g.func.maskPassword(m.pass)
 			text = ni
 			text = text + indent + g.s3("Address:  ") + g.l2(m.address) + ni
@@ -228,9 +327,10 @@ doConfig = function(args = null)
 			address = args[2]
 			pass = args[3]
 
-			g.config.mail = {"address": address, "pass": pass}
+			config = g.func.loadConfig
+			config.mail = {"address": address, "pass": pass}
 
-			if g.func.saveConfig then
+			if g.func.saveConfig(config) then
 				mail = mail_login(address, pass)
 				if mail and typeof(mail) != "string" then
 					g.mail = mail
@@ -245,9 +345,10 @@ doConfig = function(args = null)
 			return 0
 
 		else if args[1] == "remove" then
-			g.config.mail = null
+			config = g.func.loadConfig
+			config.mail = null
 
-			if g.func.saveConfig then
+			if g.func.saveConfig(config) then
 				g.mail = null
 				print indent + g.g1("Mail credentials cleared.")
 				return 1
@@ -265,7 +366,7 @@ end function
 
 g.util.config = {
 	"name": "config",
-	"shortDescription": "Manages saved configuration for persistent settings.",
+	"shortDescription": "Manages saved configuration.",
 	"exec": @doConfig,
 	"help": @configHelp,
 	"data": {}

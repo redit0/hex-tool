@@ -2,8 +2,9 @@
 // @return {none}
 sshHelp = function()
     text = g.const.ni + g.l3("Usage:","u") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" {user@password} {ip}") + g.l2(" Connects to the target via SSH on port 22, adds the shell to the stack, and swaps to it.") + g.const.ni
-    text = text + g.g2(self.name) + g.b3(" {user@password} {ip} {port}") + g.l2(" Connects to the target via SSH on the specified port, adds the shell to the stack, and swaps to it.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [name]") + g.l2(" Connects using a saved SSH connection from config.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [user@password] [ip]") + g.l2(" Connects to the target via SSH on port 22, adds the shell to the stack, and swaps to it.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [user@password] [ip] [port]") + g.l2(" Connects to the target via SSH on the specified port, adds the shell to the stack, and swaps to it.") + g.const.ni
     text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
 
     print(text)
@@ -26,35 +27,48 @@ doSsh = function(args = null)
         return
     end if
 
-    if args.len == 2 then
+    if args.len == 1 then
+        // Saved connection lookup
+        name = args[0]
+        config = g.func.loadConfig
+
+        if not config.ssh.hasIndex(name) then
+            print g.error("No saved SSH connection named: " + name)
+            return
+        end if
+
+        entry = config.ssh[name]
+        ip = entry.ip
+        user = entry.user
+        password = entry.pass
+        port = 22
+        if entry.hasIndex("port") then port = entry.port
+    else if args.len == 2 or args.len == 3 then
         credentials = args[0]
         ip = args[1]
         port = 22
-    else if args.len == 3 then
-        credentials = args[0]
-        ip = args[1]
-        port = args[2].to_int
+        if args.len == 3 then port = args[2].to_int
+
+        atIndex = credentials.indexOf("@")
+        if atIndex == null then
+            print g.error("Invalid credentials format. Expected user@password.")
+            return
+        end if
+
+        user = credentials[:atIndex]
+        password = credentials[atIndex+1:]
+
+        if typeof(port) != "number" then
+            print g.error("Invalid port: " + args[2])
+            return
+        end if
     else
         self.help
         return
     end if
 
-    atIndex = credentials.indexOf("@")
-    if atIndex == null then
-        print g.error("Invalid credentials format. Expected user@password.")
-        return
-    end if
-
-    user = credentials[:atIndex]
-    password = credentials[atIndex+1:]
-
     if not is_valid_ip(ip) then
         print g.error("Invalid IP address: " + ip)
-        return
-    end if
-
-    if typeof(port) != "number" then
-        print g.error("Invalid port: " + args[2])
         return
     end if
 

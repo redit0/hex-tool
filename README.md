@@ -487,13 +487,61 @@ restore -h         Display help text
 
 ---
 
-### `ip`
+### `ssh`
 
-Generates a random IP address.
+Connects to a remote host via SSH, adds the resulting shell to the context stack, and swaps to it. Routes through the active proxy chain when one is configured.
 
 ```
-ip      Generate and print a random IP
-ip -h   Display help text
+ssh [user@password] [ip]          Connect via SSH on port 22
+ssh [user@password] [ip] [port]   Connect via SSH on a custom port
+ssh -h                            Display help text
+```
+
+**Examples:**
+```
+ssh root@toor 203.0.113.5
+ssh admin@secret 10.0.0.1 2222
+```
+
+---
+
+### `config`
+
+Manages persistent configuration stored in an encrypted file at `/etc/hex.conf`. Settings survive restarts and are protected with AES-128 CBC encryption using a device-derived key. Supports proxy lists, rshell server credentials, and mail credentials.
+
+```
+config                                    Display a summary of all saved configuration
+config proxy                              List all saved proxies
+config proxy add [ip] [user] [pass] {port}   Add a proxy (port defaults to 22)
+config proxy remove [#]                   Remove a proxy by its list number
+config rshell                             Show the saved rshell server
+config rshell set [ip] [user] [pass] {port}  Set the rshell server (port defaults to 1222)
+config rshell remove                      Clear the saved rshell server
+config mail                               Show the saved mail credentials
+config mail set [address] [password]      Set mail credentials
+config mail remove                        Clear the saved mail credentials
+config -h                                 Display help text
+```
+
+---
+
+### `ip`
+
+Generates a random IP address, or scans a /24 network block to locate a specific user's neurobox network by sending probe emails.
+
+```
+ip                                Generate and print a random IP
+ip [partial_ip] [username]        Scan a block for a user's neurobox network
+ip -h                             Display help text
+```
+
+**IP completion:** Supply a partial IP with one unknown octet (e.g. `123.123.XXX.123` or omit the last octet entirely) and a username. HEX iterates through all 256 addresses in that block, checks each via `whois` for neurobox networks, and sends a probe email to `username@domain`. A successful send indicates the target network. Requires a mail account to be configured (via `config mail set`).
+
+**Examples:**
+```
+ip
+ip 203.0.113.X admin
+ip 10.20.30 jsmith
 ```
 
 ---
@@ -534,6 +582,17 @@ quit -h   Display help text
 ## Filesystem Commands
 
 These commands operate on the current context's filesystem.
+
+### `cat`
+
+Prints the contents of a text file on the current context. Searches by filename across the filesystem; if multiple matches are found, presents a selection prompt. Refuses binary files and directories.
+
+```
+cat [file name or path]    Print the contents of a text file
+cat -h                     Display help text
+```
+
+---
 
 ### `cd`
 
@@ -593,8 +652,10 @@ hex-tool/
 │   └── hex/
 │       ├── banner.src            ASCII art banner
 │       ├── colors.src            Color definitions and formatting functions
+│       ├── config.src             Encrypted config persistence (load/save/mask)
 │       ├── constants.src         Version, global constants, config values
 │       ├── default-binaries.src  Default hackshop binary definitions
+│       ├── encryption.src        AES-128 CBC encryption/decryption module
 │       ├── extensions.src        Extension methods on built-in types
 │       ├── functions.src         Core utility and API functions (~1800 lines)
 │       ├── json.src              JSON serialization/deserialization
@@ -610,6 +671,7 @@ hex-tool/
 │       │   ├── exploit.src       Exploit result object
 │       │   └── result.src        Generic function result object
 │       ├── fs/                   Filesystem commands
+│       │   ├── cat.src
 │       │   ├── cd.src
 │       │   ├── kill.src
 │       │   ├── ps.src
@@ -639,8 +701,10 @@ hex-tool/
 │           ├── log.src
 │           ├── proxy.src
 │           ├── quit.src
+│           ├── config.src
 │           ├── restore.src
 │           ├── rtgen.src
+│           ├── ssh.src
 │           ├── stack.src
 │           ├── sudo.src
 │           ├── swap.src
@@ -680,6 +744,16 @@ HEX reads two optional environment variables during compilation.  Note that this
 |---|---|---|---|
 | `#envar proxies` | JSON list of `[ip, port, user, pass]` | Pre-configure proxy chains | In hex/proxies.src |
 | `#envar rshell` | JSON object | Pre-configure the rshell server connection | In hex/rshell.src |
+
+### Persistent Configuration
+
+HEX stores persistent settings in `/etc/hex.conf` on your home computer, encrypted with AES-128 CBC using a key derived from the machine's hostname. This file is created automatically when you first save a setting via `config`. Stored settings include:
+
+- **Proxy list** — proxies are loaded on startup and connected automatically
+- **Rshell server** — the rshell server is initialized on startup if configured
+- **Mail credentials** — mail is logged in on startup if configured
+
+This replaces the need to configure environment variables for proxies and rshell in the Greybel transpiler settings, though those environment variables are still supported as a fallback.
 
 ### InsecureLibs Folder
 

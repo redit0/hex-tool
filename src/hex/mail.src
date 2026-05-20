@@ -1,15 +1,16 @@
-// Reads mail credentials from the "emailAddress" and "emailPassword" environment variables
-// and calls mail_login to establish a session, storing the result in g.mail.
+// Reads mail credentials from the encrypted config file and calls mail_login to
+// establish a session, storing the result in g.mail.
 // Removes itself from g after running.
 // @return {none}
 g.func.initMail = function
-    if not g.hasIndex("config") or not g.config.hasIndex("mail") or g.config.mail == null then
+    config = g.func.loadConfig
+    if config.mail == null then
         g.func.remove("initMail")
         return
     end if
 
-    emailAddress = g.config.mail.address
-    emailPassword = g.config.mail.pass
+    emailAddress = config.mail.address
+    emailPassword = config.mail.pass
 
     if emailAddress and emailPassword then
         mail = mail_login(emailAddress, emailPassword)

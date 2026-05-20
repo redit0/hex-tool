@@ -1,16 +1,16 @@
-// Reads the proxy list from the "proxies" environment variable, deserializes it, and
-// stores the entries in g.proxies.  Each entry is expected to be [ip, port, user, pass].
-// Removes itself from g after running.
+// Reads the proxy list from the encrypted config file and stores the entries in g.proxies.
+// Each entry is [ip, port, user, pass].  Removes itself from g after running.
 // @return {none}
 g.func.initProxies = function
     g.proxies = []
 
-    if not g.hasIndex("config") or not g.config.hasIndex("proxies") then
+    config = g.func.loadConfig
+    if not config.hasIndex("proxies") or config.proxies.len == 0 then
         g.func.remove("initProxies")
         return
     end if
 
-    for item in g.config.proxies
+    for item in config.proxies
         ip = item.ip
 
         if item.hasIndex("port") and item.port isa number then

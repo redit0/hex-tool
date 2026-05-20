@@ -1,52 +1,54 @@
 CONFIG_PATH = "/etc/hex.conf"
 STATIC_KEY = "H3x!C0nf#S3cur3"
 
-g.func.initConfig = function
-	g.config = {"proxies": [], "rshell": null, "mail": null}
+// Reads, decrypts, and deserializes the config file.
+// Returns the config map, or an empty default if the file is missing or corrupt.
+// Nothing is stored in g — the caller uses the result and lets it fall out of scope.
+// @return {map} - The config map with proxies, rshell, mail keys.
+g.func.loadConfig = function
+	defaults = {"proxies": [], "rshell": null, "mail": null, "ssh": {}}
 
 	computer = get_shell.host_computer
 	file = computer.File(CONFIG_PATH)
 
-	if not file then
-		g.func.remove("initConfig")
-		return
-	end if
+	if not file then return defaults
 
 	content = file.get_content
-	if not content or content == "" then
-		g.func.remove("initConfig")
-		return
-	end if
+	if not content or content == "" then return defaults
 
 	deviceKey = g.func.deriveKey
 
 	decrypted = g.func.decrypt(content, deviceKey)
 	if not decrypted then
-		g.func.remove("initConfig")
-		return
+		print g.error("Failed to decrypt configuration. It may be corrupted or the device key may have changed.")
+		return defaults
 	end if
 
 	decrypted = g.func.decrypt(decrypted, STATIC_KEY)
 	if not decrypted then
-		g.func.remove("initConfig")
-		return
+		print g.error("Failed to decrypt configuration with static key. It may be corrupted.")
+		return defaults
 	end if
 
 	config = g.func.deserialize(decrypted)
 	if not config or typeof(config) != "map" then
-		g.func.remove("initConfig")
-		return
+		print g.error("Failed to deserialize configuration. It may be corrupted.")
+		return defaults
 	end if
 
-	if config.hasIndex("proxies") then g.config.proxies = config.proxies
-	if config.hasIndex("rshell") then g.config.rshell = config.rshell
-	if config.hasIndex("mail") then g.config.mail = config.mail
+	if not config.hasIndex("proxies") then config.proxies = []
+	if not config.hasIndex("rshell") then config.rshell = null
+	if not config.hasIndex("mail") then config.mail = null
+	if not config.hasIndex("ssh") then config.ssh = {}
 
-	g.func.remove("initConfig")
+	return config
 end function
 
-g.func.saveConfig = function
-	serialized = g.func.serialize(g.config, 1)
+// Serializes, encrypts, and writes the given config map to disk.
+// @param {map} config - The full config map to save.
+// @return {number} - 1 if successful, 0 otherwise.
+g.func.saveConfig = function(config)
+	serialized = g.func.serialize(config, 1)
 
 	encrypted = g.func.encrypt(serialized, STATIC_KEY)
 	if not encrypted then
@@ -89,6 +91,9 @@ g.func.saveConfig = function
 	return 1
 end function
 
+// Masks a password for display: shows first and last character, masks the middle.
+// @param {string} pass - The password to mask.
+// @return {string} - The masked password string.
 g.func.maskPassword = function(pass)
 	if typeof(pass) != "string" or pass.len == 0 then return ""
 	if pass.len <= 2 then return pass
