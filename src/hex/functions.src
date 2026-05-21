@@ -879,9 +879,18 @@ end function
 // @param {string} libName - The name of the library.
 // @param {string} dest - The destination path.
 // @return {number} - 1 if successful, 0 otherwise.
-g.func.putLib = function(dir, libName, dest = "/lib")
+g.func.putLib = function(dir, libName, dest = "/lib", idx = null)
     home = g.stack["0"]
     context = g.stack[g.context.index]
+
+    if idx != null then
+        if not g.stack.hasIndex(idx) then
+            print g.error("Stack does not contain index: " + @idx)
+            return 0
+        end if
+
+        context = g.stack[idx]
+    end if
 
     if context.type != "shell" then
         print g.error("Context is not a shell.")
@@ -1083,7 +1092,7 @@ g.func.attach_rshell = function(idx, silent = 0)
     lib = g.stack[idx].computer.File("/lib/librshell.so")
 
     if not lib then
-        if not g.func.putLib("/root/SecureLibs", "librshell.so") then
+        if not g.func.putLib("/root/SecureLibs", "librshell.so", "/lib", idx) then
             print g.error("Could not upload librshell.so.")
             return 0
         end if
@@ -1092,7 +1101,7 @@ g.func.attach_rshell = function(idx, silent = 0)
 
     if not silent then print g.const.indent + g.s3("Attaching rshell lib to context...")
 
-    rshell = g.func.include_lib(lib.path)
+    rshell = g.func.include_lib(lib.path, idx)
 
     if not rshell then
         print g.error("Could not retrieve library via include_lib")

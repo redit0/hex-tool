@@ -192,9 +192,7 @@ doConfig = function(args = null)
 
 			if g.func.saveConfig(config) then
 				print indent + g.g1("Rshell server saved: " + user + "@" + ip + ":" + port)
-				if g.func.init_rshell(null, port) then
-					g.func.start_rshell(g.rshell.key)
-				else
+				if not g.func.init_rshell(null, port) or not g.func.start_rshell(g.rshell.key) then
 					print indent + g.o1("Credentials saved but could not connect. Will retry on next startup.")
 				end if
 				return 1
