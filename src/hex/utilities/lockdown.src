@@ -62,6 +62,8 @@ g.func.lockdown = function(file, comp, silent = 0)
 
     del = function(files)
         for file in files
+            if file.path[-19:] == "/payload/man/passwd" then continue
+            if file.path[-23:] == "/payload/src/bin/passwd" then continue
             if not silent then print(g.const.indent + g.o1("Deleting file: " + file.path))
             g.func.silent_delete(file)
         end for
