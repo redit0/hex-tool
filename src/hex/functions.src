@@ -1132,7 +1132,7 @@ g.func.attach_metax = function(idx, silent = 0)
     end if
 
     if not lib then
-        if not g.func.putLib("/lib", "metaxploit.so", g.stack[idx].currentPath) then
+        if not g.func.putLib("/lib", "metaxploit.so", g.stack[idx].currentPath, idx) then
             print g.error("Could not upload metaxploit.so.")
             return 0
         end if
@@ -1835,4 +1835,215 @@ g.func.rt_load = function
     g.remove("passwords")
 
     print g.const.indent + g.s3("Loaded " + len(g.rt) + " passwords.")
+end function
+
+g.func.net = function(computer, data)
+    if data.hasIndex(computer.local_ip) then return data
+    obj = {
+        "reachable": null,
+        "ports": null,
+        "procs": null,
+        "users": null,
+        "files": null,
+    }
+
+    ignore = ["xorg.conf", "fstab", "init.so", "kernel_module.so", "net.so", "aptclient.so", "xorg.sys", "config.sys", "network.cfg", "system.log", "cd", "ls", "ps", "pwd",
+    "ifconfig", "iwconfig", "iwlist", "cat", "rm", "mv", "cp", "ssh", "ftp", "mkdir", "rmdir", "chmod", "reboot", "whois", "sudo", "useradd", "userdel", "nslookup", "studentsd",
+    "build", "touch", "chown", "chgrp", "groupadd", "groupdel", "groups", "kill", "ping", "apt-get", "man", "whoami", "ln", "scp", "bash", "FileExplorer.exe", "Terminal.exe",
+    "Mail.exe", "Browser.exe", "Notepad.exe", "Settings.exe", "LogViewer.exe", "CodeEditor.exe", "ImageViewer.exe", "PDFReader.exe", "System.map", "initrd.img", "kernel.img",
+    "sshd", "sshd.conf", "ftpd", "ftpd.conf", "httpd", "httpd.conf", "smtpd", "smtpd.conf", "criminals.db", "criminald", "employees.db", "employeesd", "students.db", "StudentsViewer.exe",
+    "account.db", "accountsd", "camd.conf", "camd", "rshelld.conf", "rshelld", "repod.conf", "repod", "sappl.conf", "sappl", "adbd.conf", "adbd", "website.html", "kernel_router.so",
+    "libhttp.so", "libsql.so", "libssh.so", "encode.src", "decode.bin", "libsmartappliance.so", "libftp.so", "libcam.so", "Clock.exe", "libsmtp.so", "hex.src", "hex", "libtrafficnet.so",
+    "EmployeesViewer.exe", "HireViewer.exe", "PoliceRecord.exe", "town.jpg", "meditating.jpg", "spring_break.jpg", "summer_venice.jpg", "hiking.jpg", "rainy_lighthouse.jpg", "new_car.jpg",
+    "lake_house.jpg", "sunset_beach.jpg", "summer_trip.jpg", "ready_to_sail.jpg", "lunch_outside.jpg", "together.jpg", "sunday_walk.jpg", "trip_to_college.jpg", "museum.jpg", "traffic_network",
+    "cold_night.jpg", "opening.jpg", "trip_town.jpg", "outside.jpg", "backpack_trip.jpg", "cactus.jpg", "neon.jpg", "breakfast.jpg", "skate_break.jpg", "waiting.jpg", "boat_sunset.jpg"]
+
+    ignorePaths = ["/Public/htdocs/downloads/nmap","/Public/htdocs/downloads/smtp-user-list","/Public/htdocs/downloads/ssh-server","/Public/htdocs/downloads/http-server","/Public/htdocs/downloads/ftp-server",
+    "/Public/htdocs/downloads/chat-server","/Public/htdocs/downloads/repository-server","/Public/htdocs/downloads/wallet","/Public/htdocs/downloads/Stocks.exe","/Public/htdocs/downloads/ExploitReport.exe",]
+
+    walk = function(dir)
+        files = dir.get_folders + dir.get_files
+        for file in files
+            if ignore.indexOf(file.name != null) and ignorePaths.indexOf(file.path) == null then
+                outer.files.push(file)
+            else if file.is_folder then
+                walk(file)
+            end if
+        end for
+    end function
+
+    // Ping
+    shell = g.stack[g.context.index].shell
+    if shell != null then
+        if shell.ping(computer.local_ip) then
+            obj.reachable = 1
+        else
+            obj.reachable = 0
+        end if
+    end if
+
+    // Ports
+    ports = computer.get_ports
+    if ports.len > 0 then obj.ports = []
+
+    for port in ports
+        if port.is_closed or obj.reachable == 0 then
+            obj.ports.push(g.r1("[" + port.port_number + "]"))
+        else
+            obj.ports.push(g.g1("[" + port.port_number + "]"))
+        end if
+    end for
+
+    // Procs
+    procs = computer.get_processes.split(char(10))[1:]
+    if procs.len > 0 then obj.procs = []
+
+    for proc in procs
+        parts = proc.split(" ")
+        usr = parts[0]
+        cmd = parts[4]
+        if usr == "root" or cmd == "kernel_task" or cmd == "Xorg" then
+            obj.procs.push(g.r1("[" + usr + "] " + cmd))
+        else
+            obj.procs.push(g.g1("[" + usr + "] " + cmd))
+        end if
+    end for
+
+    // Files
+    files = []
+
+    walk(computer.File("/"))
+
+    for file in files
+        if file.path == "/etc/passwd" and file.has_permission("r") then
+            content = file.get_content
+            if content == null or content == "" then continue
+            lines = content.split(char(10))
+            for line in lines
+                if line.indexOf(":") == null then continue
+                g.tools.decipher.data.silent = 1
+                parts = g.tools.decipher.exec([line])
+                g.tools.decipher.data.silent = 0
+
+                u = parts[0]
+                p = parts[1]
+
+                if not obj.users.hasIndex(u) then obj.users[u] == {}
+                obj.users[u].password = p
+            end for
+        else if file.path[-16:] == "/Config/Mail.txt" then
+            if file.path[:6] == "/home/" then
+                user = file.path.split("/")[2]
+            else if file.path[:6] == "/root/" then
+                user = "root"
+            else
+                continue
+            end if
+            if not obj.users.hasIndex(user) then obj.users[user] == {}
+
+            if file.has_permission("r") then
+                content = file.get_content
+                if content == null or content == "" then continue
+                lines = content.split(char(10))
+
+                for line in lines
+                    if line.indexOf(":") == null then continue
+                    g.tools.decipher.data.silent = 1
+                    parts = g.tools.decipher.exec([line])
+                    g.tools.decipher.data.silent = 0
+
+                    u = parts[0]
+                    p = parts[1]
+
+                    obj.users[user].mail = "[Email] " + u + " : " + p
+                end for
+            else
+                obj.users[user].mail = g.r1("[Email] Could not read Mail.txt")
+            end if
+        else if file.path[-16:] == "/Config/Bank.txt" then
+            if file.path[:6] == "/home/" then
+                user = file.path.split("/")[2]
+            else if file.path[:6] == "/root/" then
+                user = "root"
+            else
+                continue
+            end if
+            if not obj.users.hasIndex(user) then obj.users[user] == {}
+
+            if file.has_permission("r") then
+                content = file.get_content
+                if content == null or content == "" then continue
+                lines = content.split(char(10))
+
+                for line in lines
+                    if line.indexOf(":") == null then continue
+                    g.tools.decipher.data.silent = 1
+                    parts = g.tools.decipher.exec([line])
+                    g.tools.decipher.data.silent = 0
+
+                    u = parts[0]
+                    p = parts[1]
+
+                    obj.users[user].bank = "[Bank] " + u + " : " + p
+                end for
+            else
+                obj.users[user].bank = g.r1("[Bank] Could not read Bank.txt")
+            end if
+        else if file.path[-16:] == "/Config/Map.conf" then
+            if file.path[:6] == "/home/" then
+                user = file.path.split("/")[2]
+            else if file.path[:6] == "/root/" then
+                user = "root"
+            else
+                continue
+            end if
+            if not obj.users.hasIndex(user) then obj.users[user] == {}
+
+            if file.has_permission("r") then
+                content = file.get_content
+                if content == null or content == "" or content.indexOf("accounts") == null then continue
+
+                obj.users[user].maps = []
+
+                m = g.func.deserialize(content)
+
+                for account in m.accounts
+                    obj.users[user].maps.push(account.user + "@" + account.ip + ":" + account.password)
+                end for
+            else
+                obj.users[user].maps = g.r1("[Maps] Could not read Map.conf")
+            end if
+        else if file.path[-19:] == "/Config/Browser.txt" then
+            if file.path[:6] == "/home/" then
+                user = file.path.split("/")[2]
+            else if file.path[:6] == "/root/" then
+                user = "root"
+            else
+                continue
+            end if
+            if not obj.users.hasIndex(user) then obj.users[user] == {}
+
+            if file.has_permission("r") then
+                content = file.get_content
+                if content == null or content == "" then continue
+                lines = content.split(char(10))
+
+                obj.users[user].browser = []
+
+                for line in lines
+                    if line.is_match(g.const.ipPattern) then
+                        obj.users[user].browser.push(line.trim)
+                    end if
+                end for
+            else
+                obj.users[user].browser = g.r1("[Browser] Could not read Browser.txt")
+            end if
+        end if
+    end for
+
+
+
+
+    data[computer.local_ip] = obj
+    return data
 end function
