@@ -1619,7 +1619,7 @@ g.func.zday_mail = function(computer, credentials, zday)
     first = 1
     output = []
     excludes = ["about the admin", "coffee during the break\?", "I have a break later", "I will be in the break room", "Don't miss this opportunity!",
-    "a discount for you!", "You can't miss these offers!", "^about [a-zA-Z]+$"]
+    "a discount for you!", "You can't miss these offers!", "something suspicious", "^about [a-zA-Z]+$"]
 
     for mail in mails
         content = mail.get_content
@@ -1687,6 +1687,33 @@ g.func.zday_mail = function(computer, credentials, zday)
                     end if
                     zday["subject"] = subject
                 end if
+            else if lines[4][9:] == "RE: stuff" then
+                output.push(g.g2("<pos=75>  From: " + lines[3][6:] + "<pos=500:>Subject: " + lines[4][9:]))
+                contents = meta.read(id).split(char(10))[3:]
+                temp = []
+                for l in contents
+                    if l.trim.len > 60 then
+                        sp = l.indexOf(" ", 60)
+                        if sp != null then
+                            temp.push(l[:sp].trim)
+                            if l[0] == ">" then
+                                temp.push("> " + l[sp:].trim)
+                            else
+                                temp.push(l[sp:].trim)
+                            end if
+                            continue
+                        end if
+                    end if
+                    temp.push(l.trim)
+                end for
+                for l in temp
+                    if l.trim == "" then continue
+                    if l[0] == ">" then
+                        output.push(g.l3("<pos=100><size=80%>    " + l + "</size>"))
+                    else
+                        output.push(g.s4("<pos=100><size=80%>    " + l + "</size>"))
+                    end if
+                end for
             else
                 output.push(g.g2("<pos=75>  From: " + lines[3][6:] + "<pos=500:>Subject: " + lines[4][9:]))
             end if
@@ -1715,7 +1742,9 @@ g.func.interesting_files = function(computer, type)
     "cold_night.jpg", "opening.jpg", "trip_town.jpg", "outside.jpg", "backpack_trip.jpg", "cactus.jpg", "neon.jpg", "breakfast.jpg", "skate_break.jpg", "waiting.jpg", "boat_sunset.jpg"]
 
     ignorePaths = ["/Public/htdocs/downloads/nmap","/Public/htdocs/downloads/smtp-user-list","/Public/htdocs/downloads/ssh-server","/Public/htdocs/downloads/http-server","/Public/htdocs/downloads/ftp-server",
-    "/Public/htdocs/downloads/chat-server","/Public/htdocs/downloads/repository-server","/Public/htdocs/downloads/wallet","/Public/htdocs/downloads/Stocks.exe","/Public/htdocs/downloads/ExploitReport.exe",]
+    "/Public/htdocs/downloads/chat-server","/Public/htdocs/downloads/repository-server","/Public/htdocs/downloads/wallet","/Public/htdocs/downloads/Stocks.exe","/Public/htdocs/downloads/ExploitReport.exe",
+    "/Public/htdocs/downloads/AdminMonitor.exe","/Public/htdocs/downloads/decipher","/Public/htdocs/downloads/scanlib","/Public/htdocs/downloads/scanrouter","/Public/htdocs/downloads/sniffer",
+    "/Public/htdocs/downloads/rshell-server","/Public/htdocs/downloads/rshell-interface","/Public/htdocs/downloads/metaxploit.so","/Public/htdocs/downloads/crypto.so","/Public/htdocs/downloads/librshell.so"]
 
     first = 1
     output = []
@@ -1859,7 +1888,9 @@ g.func.net = function(computer, data)
     "cold_night.jpg", "opening.jpg", "trip_town.jpg", "outside.jpg", "backpack_trip.jpg", "cactus.jpg", "neon.jpg", "breakfast.jpg", "skate_break.jpg", "waiting.jpg", "boat_sunset.jpg"]
 
     ignorePaths = ["/Public/htdocs/downloads/nmap","/Public/htdocs/downloads/smtp-user-list","/Public/htdocs/downloads/ssh-server","/Public/htdocs/downloads/http-server","/Public/htdocs/downloads/ftp-server",
-    "/Public/htdocs/downloads/chat-server","/Public/htdocs/downloads/repository-server","/Public/htdocs/downloads/wallet","/Public/htdocs/downloads/Stocks.exe","/Public/htdocs/downloads/ExploitReport.exe",]
+    "/Public/htdocs/downloads/chat-server","/Public/htdocs/downloads/repository-server","/Public/htdocs/downloads/wallet","/Public/htdocs/downloads/Stocks.exe","/Public/htdocs/downloads/ExploitReport.exe",
+    "/Public/htdocs/downloads/AdminMonitor.exe","/Public/htdocs/downloads/decipher","/Public/htdocs/downloads/scanlib","/Public/htdocs/downloads/scanrouter","/Public/htdocs/downloads/sniffer",
+    "/Public/htdocs/downloads/rshell-server","/Public/htdocs/downloads/rshell-interface","/Public/htdocs/downloads/metaxploit.so","/Public/htdocs/downloads/crypto.so","/Public/htdocs/downloads/librshell.so"]
 
     walk = function(dir)
         files = dir.get_folders + dir.get_files

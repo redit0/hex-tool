@@ -1,79 +1,71 @@
-// Reads the proxy list from the encrypted config file and stores the entries in g.proxies.
-// Each entry is [ip, port, user, pass].  Removes itself from g after running.
-// @return {none}
-g.func.initProxies = function
-    g.proxies = []
-
-    config = g.func.loadConfig
-    if not config.hasIndex("proxies") or config.proxies.len == 0 then
-        g.func.remove("initProxies")
-        return
-    end if
-
-    for item in config.proxies
-        ip = item.ip
-
-        if item.hasIndex("port") and item.port isa number then
-            port = item.port
-        else if item.hasIndex("port") and typeof(item.port) == "string" and item.port.to_int isa number then
-            port = item.port.to_int
-        else
-            port = 22
-        end if
-
-        user = item.user
-        pass = item.pass
-
-        g.proxies.push([ip, port, user, pass])
-    end for
-
-    g.func.remove("initProxies")
-end function
-
-// Searches for Map.conf files in the current context's filesystem and appends any proxy
-// accounts found within them to g.proxies, skipping duplicates.
-// @return {none}
-g.func.getMap = function
-    context = g.stack[g.context.index]
-
-    mapFiles = g.func.findFiles(context.file.getRootFolder, "Map.conf")
-
-    for mapFile in mapFiles
-        content = mapFile.get_content
-
-        if content == null or content == "" then continue
-
-        obj = g.func.deserialize(content)
-
-        for account in obj.accounts
-            prox = [account.ip, 22, account.user, account.password]
-
-            alreadyAdded = 0
-
-            for proxy in g.proxies
-                if proxy[0] == prox[0] and proxy[1] == prox[1] and proxy[2] == prox[2] then
-                    alreadyAdded = 1
-                    break
-                end if
-            end for
-
-            if not alreadyAdded then g.proxies.push(prox)
-        end for
-    end for
-end function
-
 // Connects to every entry in g.proxies in order, chaining each SSH connection through the
 // previous one.  The last proxy in the chain becomes the active proxy context.
 // @return {none}
 g.func.connect_proxies = function
-    if g.proxies.len == 0 then
+    initProxies = function
+        config = g.func.loadConfig
+        if not config.hasIndex("proxies") or config.proxies.len == 0 then return
+
+        for item in config.proxies
+            ip = item.ip
+
+            if item.hasIndex("port") and item.port isa number then
+                port = item.port
+            else if item.hasIndex("port") and typeof(item.port) == "string" and item.port.to_int isa number then
+                port = item.port.to_int
+            else
+                port = 22
+            end if
+
+            user = item.user
+            pass = item.pass
+
+            proxies.push([ip, port, user, pass])
+        end for
+    end function
+
+    getMap = function
+        context = g.stack[g.context.index]
+
+        mapFiles = g.func.find(context.file.getRootFolder, "Map.conf", "tr")
+
+        for mapFile in mapFiles
+            content = mapFile.get_content
+
+            if content == null or content == "" then continue
+
+            obj = g.func.deserialize(content)
+
+            for account in obj.accounts
+                prox = [account.ip, 22, account.user, account.password]
+
+                alreadyAdded = 0
+
+                for proxy in g.proxies
+                    if proxy[0] == prox[0] and proxy[1] == prox[1] and proxy[2] == prox[2] then
+                        alreadyAdded = 1
+                        break
+                    end if
+                end for
+
+                if not alreadyAdded then proxies.push(prox)
+            end for
+        end for
+    end function
+
+    proxies = []
+
+    initProxies
+    getMap
+
+    if proxies.len == 0 then
         print g.error("No proxies found.  Add proxies using Map.exe or the config command.")
         return
     end if
-    for i in range(0, g.proxies.len-1)
-        proxy = g.proxies[i]
+    for i in range(0, proxies.len-1)
+        proxy = proxies[i]
 
-        g.func.add_proxy(proxy[0], proxy[1], proxy[2], proxy[3], i == g.proxies.len-1)
+        g.func.add_proxy(proxy[0], proxy[1], proxy[2], proxy[3], i == proxies.len-1)
     end for
 end function
 

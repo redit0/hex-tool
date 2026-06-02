@@ -32,7 +32,6 @@ import_code("hex/config.src")
 #include "hex/tools.src"
 
 import_code("hex/proxies.src")
-g.func.initProxies
 
 import_code("hex/rshell.src")
 import_code("hex/mail.src")
