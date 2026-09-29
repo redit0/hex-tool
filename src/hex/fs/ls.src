@@ -1,0 +1,221 @@
+// Prints usage and flag descriptions for the ls fs command.
+// @return {none}
+lsHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Displays a detail view of the current directory's contents, including permissions, owner, group, and size.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" {path}") + g.l2(" Displays the contents of the specified directory instead.  The path is treated as relative unless it begins with '/'.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+// Displays a non-recursive detail view of a directory's contents on the current
+// context's file system, with permissions, owner, group, and size columns and the
+// same type coloring as the tree utility.  Defaults to the current directory;
+// accepts an optional path relative to the current directory unless it begins
+// with '/'.
+// @param {list<string>|null} args - Optional: [path] of the directory to list.
+// @return {number} - 1 on success, 0 on failure.
+doLs = function(args = null)
+    // Wraps a permissions string in a color-coded bracket.  Fully locked-down strings
+    // are dimmed; all others are styled with s2.
+    // @return {string} - The formatted permissions label.
+    string.formatPermissions = function
+        if not self isa string then
+            print(g.error("Invalid type: " + typeof(self)))
+            return null
+        end if
+
+        if self == "d---------" or self == "----------" then
+            return g.l2("[" + self + "]")
+        else
+            return g.s2("[" + self + "]")
+        end if
+    end function
+
+    // Wraps a username string in a color-coded bracket.  "root" is dimmed; others use s2.
+    // @return {string} - The formatted username label.
+    string.formatUsername = function
+        if not self isa string then
+            return self
+        end if
+
+        if self == "root" then return g.l2("[" + self + "]") else return g.s2("[" + self + "]")
+    end function
+
+    // Returns a color-formatted version of a file's name based on its type and sensitivity.
+    // Folders use s2, executables use l2, libraries use l3, sensitive text files use g1/o1,
+    // and other source files use b1.
+    // @return {string} - The color-formatted filename.
+    map.getFileColor = function
+        if typeof(self) != "file" then
+            print(g.error("Invalid type: " + typeof(self)))
+            return null
+        end if
+
+        names = ["Mail.txt","Bank.txt","Map.conf","sources.txt"]
+
+        file = self
+
+        if file.is_folder then return g.s2(file.name)
+
+        if file.is_binary and not file.is_folder then
+            if file.name[-3:] == ".so" then
+                return g.l3(file.name)
+            else
+                return g.l2(file.name)
+            end if
+        end if
+
+        if not file.is_binary then
+            if file.name == "passwd" and file.path != "/bin/passwd" then
+                if file.has_permission("r") then
+                    return g.g1(file.name)
+                else
+                    return g.o1(file.name)
+                end if
+            else if names.indexOf(file.name) != null then
+                if file.has_permission("r") then
+                    return g.g1(file.name)
+                else
+                    return g.o1(file.name)
+                end if
+            else
+                return g.b1(file.name)
+            end if
+
+        end if
+    end function
+
+    // Converts a byte count into a human-readable size string.
+    // @param {string|number} size - The size in bytes.
+    // @return {string} - The formatted size (e.g. "512 B", "1.5 KB").
+    formatSize = function(size)
+        bytes = size
+        if bytes isa string then bytes = bytes.to_int
+
+        if not bytes isa number then return str(size)
+
+        if bytes < 1024 then return bytes + " B"
+        if bytes < 1048576 then return (floor(bytes / 1024 * 10) / 10) + " KB"
+        if bytes < 1073741824 then return (floor(bytes / 1048576 * 10) / 10) + " MB"
+        return (floor(bytes / 1073741824 * 10) / 10) + " GB"
+    end function
+
+    if args != null and args.len > 0 then
+        if args[0] == "-h" or args[0] == "help" or args.len > 1 then
+            self.help
+            return 0
+        end if
+    end if
+
+    context = g.stack[g.context.index]
+
+    path = context.currentPath
+
+    if args != null and args.len == 1 then
+        path = args[0]
+        if path[0] != "/" then path = context.currentPath + "/" + path
+        path = path.replace("//", "/")
+        if path.len > 1 and path[-1] == "/" then path = path[:-1]
+    end if
+
+    dir = g.func.resolveFile(context.file, path)
+
+    if dir == null then
+        print g.error("No such file or directory: " + path)
+        return 0
+    end if
+
+    if not dir.is_folder then
+        print g.error("Not a directory: " + dir.path)
+        return 0
+    end if
+
+    files = dir.get_folders + dir.get_files
+
+    temp = {}
+
+    for file in files
+        temp[file.name] = file
+    end for
+
+    indices = temp.indexes
+    indices.sort
+
+    output = g.const.nl + g.const.indent + g.s2("Contents of " + dir.path + ":") + g.const.nl*2
+
+    output = output + g.const.indent + g.s3("<size=115%><voffset=0.5em>Permissions<pos=250>Owner<pos=380>Group<pos=510>Size<pos=630>Name</voffset></size>") + g.const.nl
+
+    parent = dir
+    if dir.path != "/" then parent = dir.parent
+
+    for entry in [[dir, "."], [parent, ".."]]
+        line = g.const.indent
+        line = line + entry[0].permissions.formatPermissions
+        line = line + "<pos=250>" + entry[0].owner.formatUsername
+        line = line + "<pos=380>" + entry[0].group.formatUsername
+        line = line + "<pos=510>" + g.l2("-")
+        line = line + "<pos=630>" + g.s2(entry[1])
+
+        output = output + line + g.const.nl
+    end for
+
+    count = {"dirs": 0, "files": 0}
+    totalBytes = 0
+
+    for index in indices
+        file = temp[index]
+
+        line = g.const.indent
+        line = line + file.permissions.formatPermissions
+        line = line + "<pos=250>" + file.owner.formatUsername
+        line = line + "<pos=380>" + file.group.formatUsername
+
+        if file.is_folder then
+            count.dirs = count.dirs + 1
+            line = line + "<pos=510>" + g.l2("-")
+        else
+            count.files = count.files + 1
+
+            sizeBytes = file.size
+            if sizeBytes isa string then sizeBytes = sizeBytes.to_int
+            if not sizeBytes isa number then sizeBytes = 0
+
+            totalBytes = totalBytes + sizeBytes
+            line = line + "<pos=510>" + g.l2(formatSize(sizeBytes))
+        end if
+
+        line = line + "<pos=630>" + file.getFileColor
+
+        output = output + line + g.const.nl
+    end for
+
+    if count.dirs == 1 then
+        totals = "1 directory, "
+    else
+        totals = count.dirs + " directories, "
+    end if
+
+    if count.files == 1 then
+        totals = totals + "1 file"
+    else
+        totals = totals + count.files + " files"
+    end if
+
+    if count.files > 0 then totals = totals + ", " + formatSize(totalBytes) + " total"
+
+    output = output + g.const.ni + g.l2(totals)
+
+    print(output)
+    return 1
+end function
+
+g.fs.ls = {
+    "name": "ls",
+    "shortDescription": "Displays a detail view of a directory's contents.",
+    "exec": @doLs,
+    "help": @lsHelp,
+}

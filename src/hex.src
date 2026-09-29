@@ -82,6 +82,14 @@ while true
 		g.command = ""
 	end if
 
+	// Guard: a partial-object context (pcomputer/pfile) only supports a small set of
+	// commands.  Everything else would try to use a shell/computer/file method the
+	// partial object does not have, so block it here with a clear message.
+	if g.func.isPartial(g.stack[g.context.index]) and g.const.partialCommands.indexOf(key) == null then
+		print(g.error("'" + key + "' is not available on a partial-object context (" + g.stack[g.context.index].type + ").  Use 'partial' to see supported functions, or 'swap' to a full context."))
+		continue
+	end if
+
 	if g.tools.hasIndex(key) then
 		g.tools[key].exec(args)
 	else if g.util.hasIndex(key) then

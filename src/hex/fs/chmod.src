@@ -1,0 +1,216 @@
+// Prints usage and flag descriptions for the chmod fs command.
+// @return {none}
+chmodHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-r] [permissions] [file name or path]") + g.l2(" Change the permissions of the specified file or directory.  Use -r to apply the changes recursively.  The path is treated as relative unless it begins with '/'.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [750] [path]") + g.l2(" Octal format: three digits 0-7 setting owner, group, and other permissions exactly (r=4, w=2, x=1).") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [ugo+rwx] [path]") + g.l2(" Symbolic format: one or more principals (u/g/o), then + to grant or - to remove, then one or more permissions (r/w/x).") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+// Converts a permissions argument into a list of single-principal chmod strings
+// the game's file.chmod accepts (e.g. "ugo+rwx" -> ["u+rwx", "g+rwx", "o+rwx"]).
+// Octal digits set permissions exactly, so each digit may produce both a grant and a removal.
+// @param {string} permissions - Octal ("750") or symbolic ("ugo+rwx", "g-w") permissions.
+// @return {list<string>|null} - The chmod strings to apply, or null if the argument is invalid.
+parsePermissions = function(permissions)
+    ops = []
+
+    isOctal = permissions.len == 3
+    if isOctal then
+        for c in permissions
+            if "01234567".indexOf(c) == null then
+                isOctal = 0
+                break
+            end if
+        end for
+    end if
+
+    if isOctal then
+        principals = "ugo"
+
+        for i in range(0, 2)
+            digit = permissions[i].to_int
+
+            grant = ""
+            deny = ""
+
+            if digit >= 4 then grant = grant + "r" else deny = deny + "r"
+            if digit % 4 >= 2 then grant = grant + "w" else deny = deny + "w"
+            if digit % 2 == 1 then grant = grant + "x" else deny = deny + "x"
+
+            if grant != "" then ops.push(principals[i] + "+" + grant)
+            if deny != "" then ops.push(principals[i] + "-" + deny)
+        end for
+
+        return ops
+    end if
+
+    opIndex = permissions.indexOf("+")
+    opChar = "+"
+    if opIndex == null then
+        opIndex = permissions.indexOf("-")
+        opChar = "-"
+    end if
+
+    if opIndex == null then return null
+
+    who = permissions[:opIndex]
+    perms = permissions[opIndex + 1:]
+
+    if who == "" or perms == "" then return null
+
+    principals = ""
+    for c in who
+        if "ugo".indexOf(c) == null then return null
+        if principals.indexOf(c) == null then principals = principals + c
+    end for
+
+    letters = ""
+    for c in perms
+        if "rwx".indexOf(c) == null then return null
+        if letters.indexOf(c) == null then letters = letters + c
+    end for
+
+    for p in principals
+        ops.push(p + opChar + letters)
+    end for
+
+    return ops
+end function
+
+
+
+// Changes the permissions of a file or directory on the current context's file system.
+// Accepts octal ("750") or symbolic ("ugo+rwx", "g-w") permissions, and [-r] to apply
+// the changes recursively.  Paths are relative to the current directory unless they
+// begin with '/'.  Permissions can only be changed if the current context's user owns
+// the file, or is root.
+// @param {list<string>|null} args - Two or three elements: optional ["-r"], the permissions, and a file name or path.
+// @return {number} - 1 on success, 0 on failure.
+doChmod = function(args = null)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 0
+    end if
+
+    // Partial-object context: operate directly on the single partial file object.
+    if g.func.isPartial(g.stack[g.context.index]) then
+        context = g.stack[g.context.index]
+
+        recurse = 0
+        permIdx = 0
+        if args[0] == "-r" then
+            recurse = 1
+            permIdx = 1
+        end if
+
+        if args.len <= permIdx then
+            print g.error("Usage on a partial object: chmod {-r} [permissions]")
+            return 0
+        end if
+
+        permissions = args[permIdx]
+        ops = parsePermissions(permissions)
+        if ops == null then
+            print g.error("Invalid permissions: " + permissions + ".  Use octal (750) or symbolic (ugo+rwx) format.")
+            return 0
+        end if
+
+        if context.file == null then
+            print g.error("This partial object has no file component.")
+            return 0
+        end if
+        if not g.func.partialHas(context, "file", "chmod") then
+            print g.error("chmod is not available on this partial file object.  Use 'partial' to see available functions.")
+            return 0
+        end if
+
+        for op in ops
+            result = context.file.chmod(op, recurse)
+            err = g.func.partialOpError(result)
+            if err != "" then
+                print g.error(err)
+                return 0
+            end if
+        end for
+
+        print g.const.indent + g.s3("Applied chmod " + permissions + " to the partial file object.")
+        g.func.partialSync(context)
+        return 1
+    end if
+
+    if args.len < 2 or args.len > 3 then
+        self.help
+        return 0
+    end if
+
+    recurse = 0
+
+    if args.len == 3 then
+        if args[0] != "-r" then
+            print g.error("Invalid argument: " + args[0])
+            return 0
+        end if
+
+        recurse = 1
+        permissions = args[1]
+        fileName = args[2]
+    else
+        permissions = args[0]
+        fileName = args[1]
+    end if
+
+    ops = parsePermissions(permissions)
+
+    if ops == null then
+        print g.error("Invalid permissions: " + permissions + ".  Use octal (750) or symbolic (ugo+rwx) format.")
+        return 0
+    end if
+
+    context = g.stack[g.context.index]
+
+    if fileName[0] != "/" then
+        fileName = context.currentPath + "/" + fileName
+    end if
+    fileName = fileName.replace("//", "/")
+    if fileName.len > 1 and fileName[-1] == "/" then fileName = fileName[:-1]
+
+    file = g.func.resolveFile(context.file, fileName)
+
+    if file == null then
+        print g.error("No such file or directory: " + fileName)
+        return 0
+    end if
+
+    if context.user != "root" and file.owner != context.user and not file.has_permission("w") then
+        print g.error("Permission denied: " + file.path + " is owned by " + file.owner + ", not " + context.user + ", and " + context.user + " does not have write access.")
+        //return 0
+    end if
+
+    for op in ops
+        result = file.chmod(op, recurse)
+
+        if typeof(result) == "string" and result.len > 0 then
+            print g.error(g.func.stripError(result))
+            return 0
+        end if
+    end for
+
+    scope = " (this file only)"
+    if recurse then scope = " (applied recursively)"
+
+    print g.const.indent + g.s3("Permissions for " + file.path + " are now " + file.permissions + scope)
+    return 1
+end function
+
+g.fs.chmod = {
+    "name": "chmod",
+    "shortDescription": "Change the permissions of a file or directory.",
+    "exec": @doChmod,
+    "help": @chmodHelp,
+}

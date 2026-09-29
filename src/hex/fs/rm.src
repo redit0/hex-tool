@@ -17,6 +17,36 @@ end function
 // @param {list<string>|null} args - One or two elements: optional ["-r"] and a file name, path, or wildcard pattern.
 // @return {number} - 1 on success, 0 on failure.
 rem = function(args = null)
+    // Partial-object context: delete the single partial file object.
+    if g.func.isPartial(g.stack[g.context.index]) then
+        context = g.stack[g.context.index]
+
+        if args != null and args.len > 0 and (args[0] == "-h" or args[0] == "help") then
+            self.help
+            return 1
+        end if
+
+        if context.file == null then
+            print g.error("This partial object has no file component.")
+            return 0
+        end if
+        if not g.func.partialHas(context, "file", "delete") then
+            print g.error("delete (rm) is not available on this partial file object.  Use 'partial' to see available functions.")
+            return 0
+        end if
+
+        result = context.file.delete
+        err = g.func.partialOpError(result)
+        if err != "" then
+            print g.error(err)
+            return 0
+        end if
+
+        print g.const.indent + g.s3("Deleted the partial file object.") + g.o1("  (leaves a log; the partial object has no silent-delete method)")
+        g.func.partialSync(context)
+        return 1
+    end if
+
     if args == null or args == [] or args.len > 2 then
         self.help
         return 0

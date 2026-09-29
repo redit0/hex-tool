@@ -1,0 +1,143 @@
+// Prints usage and flag descriptions for the mv fs command.
+// @return {none}
+moveHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [source] [destination]") + g.l2(" Move a file or directory.  If the destination is an existing directory, the source is moved into it with the same name; otherwise the last segment of the destination is used as the new name, so mv can also rename.  Paths are treated as relative unless they begin with '/'.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+// Moves a file or directory on the current context's file system.  If the destination
+// resolves to an existing directory the source keeps its name; otherwise the destination
+// is split into a parent directory (which must exist) and a new name, allowing a move
+// and rename in one step.  Paths are relative to the current directory unless they
+// begin with '/'.
+// @param {list<string>|null} args - Two elements: the source and destination names or paths.
+// @return {number} - 1 on success, 0 on failure.
+doMove = function(args = null)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 0
+    end if
+
+    // Partial-object context: move the single partial file object to a destination path.
+    if g.func.isPartial(g.stack[g.context.index]) then
+        context = g.stack[g.context.index]
+
+        if args.len < 1 then
+            print g.error("Usage on a partial object: mv [destination path] {new name}")
+            return 0
+        end if
+
+        dest = args[0]
+        if dest[0] != "/" then dest = context.currentPath + "/" + dest
+        dest = dest.replace("//", "/")
+        if dest.len > 1 and dest[-1] == "/" then dest = dest[:-1]
+
+        if args.len >= 2 then
+            newName = args[1]
+            destFolder = dest
+        else
+            parts = dest.split("/")
+            newName = parts.pop
+            destFolder = parts.join("/")
+            if destFolder == "" then destFolder = "/"
+        end if
+
+        if context.file == null then
+            print g.error("This partial object has no file component.")
+            return 0
+        end if
+        if not g.func.partialHas(context, "file", "move") then
+            print g.error("move (mv) is not available on this partial file object.  Use 'partial' to see available functions.")
+            return 0
+        end if
+
+        result = context.file.move(destFolder, newName)
+        err = g.func.partialOpError(result)
+        if err != "" then
+            print g.error(err)
+            return 0
+        end if
+
+        print g.const.indent + g.s3("Moved the partial file object to " + (destFolder + "/" + newName).replace("//", "/"))
+        g.func.partialSync(context)
+        return 1
+    end if
+
+    if args.len != 2 then
+        self.help
+        return 0
+    end if
+
+    context = g.stack[g.context.index]
+
+    paths = []
+    for arg in args
+        path = arg
+        if path[0] != "/" then path = context.currentPath + "/" + path
+        path = path.replace("//", "/")
+        if path.len > 1 and path[-1] == "/" then path = path[:-1]
+        paths.push(path)
+    end for
+
+    source = g.func.resolveFile(context.file, paths[0])
+
+    if source == null then
+        print g.error("No such file or directory: " + paths[0])
+        return 0
+    end if
+
+    if source.path == "/" then
+        print g.error("Cannot move the root directory.")
+        return 0
+    end if
+
+    dest = g.func.resolveFile(context.file, paths[1])
+
+    if dest != null and dest.is_folder then
+        destFolder = dest
+        newName = source.name
+    else
+        parts = paths[1].split("/")
+        newName = parts.pop
+        parentPath = parts.join("/")
+        if parentPath == "" then parentPath = "/"
+
+        destFolder = g.func.resolveFile(context.file, parentPath)
+
+        if destFolder == null or not destFolder.is_folder then
+            print g.error("Destination directory not found: " + parentPath)
+            return 0
+        end if
+    end if
+
+    for f in destFolder.get_folders + destFolder.get_files
+        if f.name == newName and f.path != source.path then
+            print g.const.indent + g.l2("Overwriting " + f.path + "...")
+            break
+        end if
+    end for
+
+    oldPath = source.path
+
+    result = source.move(destFolder.path, newName)
+
+    if typeof(result) == "string" and result.len > 0 then
+        print g.error(g.func.stripError(result))
+        return 0
+    end if
+
+    print g.const.indent + g.s3("Moved " + oldPath + " to " + (destFolder.path + "/" + newName).replace("//", "/"))
+    return 1
+end function
+
+g.fs.mv = {
+    "name": "mv",
+    "shortDescription": "Move a file or directory.",
+    "exec": @doMove,
+    "help": @moveHelp,
+}

@@ -1,0 +1,54 @@
+// Prints usage and flag descriptions for the groupadd utility.
+// @return {none}
+groupaddHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [user] [group]") + g.l2(" Add the specified user to the specified group on the current context's computer.  Names must be alphanumeric.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+// Adds a user to a group on the current context's computer.  Works on a shell,
+// computer, or partial computer (pcomputer) context; on a pcomputer it requires
+// create_group to be one of the object's available functions.
+// @param {list<string>|null} args - Two elements: the username and the group name.
+// @return {number} - 1 on success, 0 on failure.
+doGroupadd = function(args = null)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 0
+    end if
+
+    if args.len != 2 then
+        self.help
+        return 0
+    end if
+
+    context = g.stack[g.context.index]
+    if not g.func.partialComputerReady(context, "create_group") then return 0
+
+    user = args[0]
+    group = args[1]
+
+    result = context.computer.create_group(user, group)
+    if result == null then
+        print g.error("Failed to create group.")
+        return 0
+    end if
+    if typeof(result) == "string" and result.len > 0 then
+        print g.error(g.func.stripError(result))
+        return 0
+    end if
+
+    print g.const.indent + g.s3("Added user " + user + " to group " + group)
+    g.func.partialSync(context)
+    return 1
+end function
+
+g.util.groupadd = {
+    "name": "groupadd",
+    "shortDescription": "Add a user to a group.",
+    "exec": @doGroupadd,
+    "help": @groupaddHelp,
+    "data": {}
+}

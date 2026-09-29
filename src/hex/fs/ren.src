@@ -1,0 +1,105 @@
+// Prints usage and flag descriptions for the ren fs command.
+// @return {none}
+renameHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [file name or path] [new name]") + g.l2(" Rename a file or directory in place.  The new name must not contain '/'; use mv to relocate a file.  The path is treated as relative unless it begins with '/'.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+// Renames a file or directory in place on the current context's file system.
+// The path is relative to the current directory unless it begins with '/'.
+// @param {list<string>|null} args - Two elements: a file name or path, and the new name.
+// @return {number} - 1 on success, 0 on failure.
+doRename = function(args = null)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 0
+    end if
+
+    // Partial-object context: rename the single partial file object in place.
+    if g.func.isPartial(g.stack[g.context.index]) then
+        context = g.stack[g.context.index]
+
+        newName = args[0]
+        if newName == "" or newName.indexOf("/") != null then
+            print g.error("Invalid name: " + newName + ".  The new name must not contain '/'.")
+            return 0
+        end if
+
+        if context.file == null then
+            print g.error("This partial object has no file component.")
+            return 0
+        end if
+        if not g.func.partialHas(context, "file", "rename") then
+            print g.error("rename (ren) is not available on this partial file object.  Use 'partial' to see available functions.")
+            return 0
+        end if
+
+        result = context.file.rename(newName)
+        err = g.func.partialOpError(result)
+        if err != "" then
+            print g.error(err)
+            return 0
+        end if
+
+        print g.const.indent + g.s3("Renamed the partial file object to " + newName)
+        g.func.partialSync(context)
+        return 1
+    end if
+
+    if args.len != 2 then
+        self.help
+        return 0
+    end if
+
+    fileName = args[0]
+    newName = args[1]
+
+    if newName == "" or newName.indexOf("/") != null then
+        print g.error("Invalid name: " + newName + ".  The new name must not contain '/'; use mv to relocate a file.")
+        return 0
+    end if
+
+    context = g.stack[g.context.index]
+
+    if fileName[0] != "/" then
+        fileName = context.currentPath + "/" + fileName
+    end if
+    fileName = fileName.replace("//", "/")
+    if fileName.len > 1 and fileName[-1] == "/" then fileName = fileName[:-1]
+
+    file = g.func.resolveFile(context.file, fileName)
+
+    if file == null then
+        print g.error("No such file or directory: " + fileName)
+        return 0
+    end if
+
+    if file.path == "/" then
+        print g.error("Cannot rename the root directory.")
+        return 0
+    end if
+
+    oldPath = file.path
+
+    result = file.rename(newName)
+
+    if typeof(result) == "string" and result.len > 0 then
+        print g.error(g.func.stripError(result))
+        return 0
+    end if
+
+    print g.const.indent + g.s3("Renamed " + oldPath + " to " + file.name)
+    return 1
+end function
+
+g.fs.ren = {
+    "name": "ren",
+    "shortDescription": "Rename a file or directory in place.",
+    "exec": @doRename,
+    "help": @renameHelp,
+}

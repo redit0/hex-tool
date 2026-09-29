@@ -1,0 +1,254 @@
+// ============================================================================
+//  ZCRED  —  Debug (zero-day) credential store
+//
+//  Simple CRUD over debug_tools credentials, keyed by a keyword identifier and
+//  persisted (encrypted) in the HEX config under the "zcreds" key.  A credential
+//  is { user, pass, added }, where 'added' is the in-game date it was stored.
+//
+//  On add, the credentials are immediately locked to your account by calling
+//  debug_tools once on a locally loaded library (net.so, falling back to the
+//  first available of init.so / kernel_module.so / crypto.so).  Merely calling
+//  debug_tools with first-use credentials stamps your player ID onto them.
+//
+//  Credentials are only valid inside the rumor window they were issued in: an
+//  even month, days 1-14.  The list view marks each set Active or Expired.
+// ============================================================================
+
+g.const.zcredLockLibs = ["net.so", "init.so", "kernel_module.so", "crypto.so"]
+g.const.monthAbbr = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+// Splits an in-game date string ("DD/Mon/YYYY", optionally with " - HH:MM") into parts.
+// @param {string} dateStr - A current_date-style string.
+// @return {map|null} - {y, m, d} with numeric month, or null if unparseable.
+g.func.zcredDateParts = function(dateStr)
+    if dateStr == null or dateStr == "" then return null
+
+    datePart = dateStr.split(" - ")[0].trim
+    seg = datePart.split("/")
+    if seg.len < 3 then return null
+
+    monthNum = g.const.monthAbbr.indexOf(seg[1])
+    if monthNum == null then return null
+
+    parts = {}
+    parts.d = seg[0].to_int
+    parts.m = monthNum + 1
+    parts.y = seg[2].to_int
+    return parts
+end function
+
+// Returns the date portion of the current in-game date ("DD/Mon/YYYY").
+// @return {string} - The current in-game date (date portion only).
+g.func.zcredToday = function()
+    return current_date.split(" - ")[0].trim
+end function
+
+// Determines whether a stored credential is still inside its rumor window.
+// Valid = issued in an even month on days 1-14, and the current in-game date is
+// still the same even-month window (day < 15).
+// @param {string} added - The stored 'added' date string.
+// @return {number} - 1 if active, 0 if expired/unknown.
+g.func.zcredIsActive = function(added)
+    a = g.func.zcredDateParts(added)
+    now = g.func.zcredDateParts(g.func.zcredToday)
+    if a == null or now == null then return 0
+
+    if a.m % 2 != 0 then return 0
+    if now.y != a.y or now.m != a.m then return 0
+    if now.d >= 15 then return 0
+    return 1
+end function
+
+// Retrieves a stored credential by its keyword key.
+// @param {string} key - The credential keyword.
+// @return {map|null} - {user, pass, added} or null if not found.
+g.func.zcredGet = function(key)
+    config = g.func.loadConfig
+    if not config.hasIndex("zcreds") then return null
+    if not config.zcreds.hasIndex(key) then return null
+    return config.zcreds[key]
+end function
+
+// Loads a locally present library and calls debug_tools once to lock the given
+// credentials to this account.  Tries net.so first, then other guaranteed libs.
+// @param {string} user - The debug username.
+// @param {string} pass - The debug password.
+// @return {map} - {ok, message}.
+g.func.zcredLock = function(user, pass)
+    result = {}
+    result.ok = 0
+    result.message = ""
+
+    if not g.func.checkShell("0") then
+        result.message = "No home shell context to lock credentials from."
+        return result
+    end if
+    if not g.func.checkMetax("0") and not g.func.attach_metax("0") then
+        result.message = "Could not attach metaxploit to lock credentials."
+        return result
+    end if
+
+    metax = g.stack["0"].metax
+    computer = g.stack["0"].computer
+
+    lib = null
+    used = ""
+    for name in g.const.zcredLockLibs
+        f = computer.File("/lib/" + name)
+        if f != null then
+            candidate = metax.load("/lib/" + name)
+            if candidate != null and not candidate isa string then
+                lib = candidate
+                used = name
+                break
+            end if
+        end if
+    end for
+
+    if lib == null then
+        result.message = "Could not load a local library to lock the credentials against."
+        return result
+    end if
+
+    res = lib.debug_tools(user, pass)
+    if res == null then
+        result.message = "debug_tools returned nothing while locking (via " + used + ")."
+        return result
+    end if
+    if res isa string then
+        result.message = g.func.stripError(res)
+        return result
+    end if
+
+    result.ok = 1
+    result.message = "Locked to this account via " + used + "."
+    return result
+end function
+
+// Displays help text for the zcred utility.
+// @return {none}
+zcredHelp = function()
+    text = g.const.ni + g.l3("Usage:", "u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Lists all saved debug credentials with their status.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" -a/add [key] [user] [pass]") + g.l2(" Saves and locks a debug credential under the given keyword.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" -r/remove [key]") + g.l2(" Removes a saved debug credential by its keyword.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text.") + g.const.nl
+
+    print(text)
+end function
+
+// Executes the zcred utility (list / add / remove).
+// @param {list<string>|null} args - The command arguments.
+// @return {number} - 1 on success, 0 on failure.
+doZcred = function(args = null)
+    ni = g.const.ni
+    indent = g.const.indent
+
+    // ---- list ----
+    if args == null or args == [] then
+        config = g.func.loadConfig
+        if not config.hasIndex("zcreds") or config.zcreds.len == 0 then
+            print indent + g.d1("No debug credentials saved.")
+            return 1
+        end if
+
+        text = ni + g.s3("<size=110%><voffset=0.5em>Key<pos=170>User<pos=380>Password<pos=560>Added<pos=720>Status</voffset></size>") + g.const.nl
+
+        for key in config.zcreds.indexes
+            entry = config.zcreds[key]
+            added = ""
+            if entry.hasIndex("added") then added = entry.added
+
+            if g.func.zcredIsActive(added) then
+                status = g.g1("Active")
+            else
+                status = g.r1("Expired")
+            end if
+
+            text = text + indent + g.o1(key) + "<pos=170>" + g.l2(entry.user) + "<pos=380>" + entry.pass + "<pos=560>" + g.l2(added) + "<pos=720>" + status + ni
+        end for
+
+        print(text)
+        return 1
+    end if
+
+    if args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 1
+    end if
+
+    // ---- add ----
+    if args[0] == "add" or args[0] == "-a" then
+        if args.len < 4 then
+            print g.error("Usage: zcred -a [key] [user] [pass]")
+            return 0
+        end if
+
+        key = args[1]
+        user = args[2]
+        pass = args[3]
+
+        config = g.func.loadConfig
+        if not config.hasIndex("zcreds") then config.zcreds = {}
+        if config.zcreds.hasIndex(key) then
+            print g.error("A credential with that key already exists: " + key)
+            return 0
+        end if
+
+        print indent + g.s3("Locking credentials to this account...")
+        lock = g.func.zcredLock(user, pass)
+        if not lock.ok then
+            print g.error("Could not lock credentials: " + lock.message)
+            return 0
+        end if
+        print indent + g.g1(lock.message)
+
+        entry = {}
+        entry.user = user
+        entry.pass = pass
+        entry.added = g.func.zcredToday
+
+        config.zcreds[key] = entry
+
+        if g.func.saveConfig(config) then
+            print indent + g.g1("Saved debug credential: " + key + " (" + user + ")")
+            return 1
+        end if
+        return 0
+    end if
+
+    // ---- remove ----
+    if args[0] == "remove" or args[0] == "-r" then
+        if args.len < 2 then
+            print g.error("Usage: zcred -r [key]")
+            return 0
+        end if
+
+        key = args[1]
+        config = g.func.loadConfig
+
+        if not config.hasIndex("zcreds") or not config.zcreds.hasIndex(key) then
+            print g.error("No credential saved with key: " + key)
+            return 0
+        end if
+
+        config.zcreds.remove(key)
+
+        if g.func.saveConfig(config) then
+            print indent + g.g1("Removed debug credential: " + key)
+            return 1
+        end if
+        return 0
+    end if
+
+    self.help
+    return 0
+end function
+
+g.util.zcred = {
+    "name": "zcred",
+    "shortDescription": "Manages saved debug (zero-day) credentials.",
+    "exec": @doZcred,
+    "help": @zcredHelp,
+    "data": {}
+}

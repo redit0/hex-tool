@@ -1,0 +1,1653 @@
+// ============================================================================
+//  ZDAY  —  Zero-day / debug_tools workflow (payload + patch)
+//
+//  Walks the full metalib.debug_tools -> debuglib.scan -> unit_testing ->
+//  payload (or apply_patch) chain, modelled on the acquisition/RCE style of
+//  the 'hack' tool.  The written description returned by scan() is a faithful,
+//  clause-by-clause transcript of the intended code, so the correct code can be
+//  reconstructed from it and diffed against the buggy snippet to auto-detect the
+//  error lines (and to build the file used by apply_patch).
+//
+//  Usage:
+//    zday payload [ip] [port] {creds|zcredKey}   Remote (net_use -> dump_lib)
+//    zday payload [/lib/x.so] {creds|zcredKey}   Local  (metax.load)
+//    zday payload {creds|zcredKey}               Re-run on a selected pobject
+//    zday patch   [/lib/x.so] {creds|zcredKey}   Reconstruct + apply_patch (load)
+//    zday patch   {creds|zcredKey}               Patch a selected pobject's lib
+//
+//  Credentials after the target: two params = user + password, one param = a
+//  saved zcred keyword.  If none are given, HEX prompts.
+// ============================================================================
+
+
+// ---------------------------------------------------------------------------
+//  Description-grammar helpers (reconstruction of the intended code)
+// ---------------------------------------------------------------------------
+
+// Maps an English operator phrase from a scan description to its symbol.
+// @param {string} w - "plus", "minus", "multiplied by", or "divided by".
+// @return {string} - The operator symbol, or "?" if unrecognised.
+g.func.zdayOpWord = function(w)
+    if w == "plus" then return "+"
+    if w == "minus" then return "-"
+    if w == "multiplied by" then return "*"
+    if w == "divided by" then return "/"
+    return "?"
+end function
+
+// Maps an English comparison phrase from a scan description to its operator.
+// Longer phrases are matched first so "less than or equal to" is not shadowed by "less than".
+// @param {string} w - The comparison phrase.
+// @return {string} - The comparison operator, or "?" if unrecognised.
+g.func.zdayCmpWord = function(w)
+    if w == "not equal to" then return "!="
+    if w == "equal to" then return "=="
+    if w == "less than or equal to" then return "<="
+    if w == "greater than or equal to" then return ">="
+    if w == "less than" then return "<"
+    if w == "greater than" then return ">"
+    return "?"
+end function
+
+// Converts a single description clause into the code line(s) it maps to.
+// Mirrors CodeGenerator's statement grammar exactly.
+// @param {string} clause - One trimmed clause from a function description.
+// @param {string} param - The function's parameter/working variable name.
+// @return {list<string>} - The reconstructed code line(s) for the clause.
+g.func.zdayClauseToCode = function(clause, param)
+    lines = []
+
+    if clause[:11] == "calculates " then
+        toks = clause[11:].split(" ")
+        v = toks[0]
+        n = toks[toks.len - 1]
+        op = g.func.zdayOpWord(toks[1:toks.len - 1].join(" "))
+        lines.push(v + " = " + v + " " + op + " " + n)
+
+    else if clause[:3] == "If " then
+        // If the value of {V} is {cmp} {N}, then updates {V2} by calculating {V3} {op} {N2}
+        body = clause[3:]
+        parts = body.split(", then updates ")
+        left = parts[0]
+        right = parts[1]
+
+        if left[:13] == "the value of " then left = left[13:]
+        ltoks = left.split(" is ")
+        v = ltoks[0]
+        ctoks = ltoks[1].split(" ")
+        n = ctoks[ctoks.len - 1]
+        cmp = g.func.zdayCmpWord(ctoks[0:ctoks.len - 1].join(" "))
+
+        rtoks = right.split(" by calculating ")[1].split(" ")
+        v3 = rtoks[0]
+        n2 = rtoks[rtoks.len - 1]
+        op = g.func.zdayOpWord(rtoks[1:rtoks.len - 1].join(" "))
+
+        lines.push("if " + v + " " + cmp + " " + n + " then")
+        lines.push("    " + v3 + " = " + v3 + " " + op + " " + n2)
+        lines.push("end if")
+
+    else if clause[:9] == "For each " then
+        // For each i from 0 to {N}, updates {V} by multiplying it by i
+        aft = clause[9:].split(" from 0 to ")[1]
+        n = aft.split(",")[0]
+        v = aft.split(", updates ")[1].split(" by multiplying")[0]
+        lines.push("for i in range(0, " + n + ")")
+        lines.push("    " + v + " = i * " + v)
+        lines.push("end for")
+
+    else if clause[:19] == "calls the function " then
+        // calls the function {F} with {V}
+        fp = clause[19:].split(" with ")
+        f = fp[0]
+        v = fp[1]
+        lines.push(v + " = " + f + "(" + v + ")")
+
+    else if clause[:15] == "creates a list " then
+        // creates a list {L}, adds {V} to {L}, and assigns {V} to the first element of {L}
+        rest = clause[15:]
+        l = rest.split(",")[0]
+        v = rest.split("adds ")[1].split(" to ")[0]
+        lines.push(l + " = []")
+        lines.push(l + ".push(" + v + ")")
+        lines.push(v + " = " + l + "[0]")
+    end if
+
+    return lines
+end function
+
+// Parses one "The function NAME ... Finally, it returns VAR." sentence.
+// @param {string} fd - The full function-description sentence (starting with "The function ").
+// @return {map} - {name, clauses (list), retVar}.
+g.func.zdayParseFuncDesc = function(fd)
+    s = fd
+    if s[:13] == "The function " then s = s[13:]
+
+    sp = s.indexOf(" ")
+    result = {}
+    if sp == null then
+        result.name = s
+        result.clauses = []
+        result.retVar = ""
+        return result
+    end if
+
+    result.name = s[:sp]
+    rest = s[sp + 1:]
+    if rest.len > 0 and rest[rest.len - 1] == "." then rest = rest[:rest.len - 1]
+
+    fparts = rest.split("Finally, it returns ")
+    retVar = ""
+    if fparts.len > 1 then retVar = fparts[1].trim
+
+    // NOTE: Grey Hack split() is regex-based, so the "." must be escaped to split
+    // on a literal ". " (clause separator) rather than "any char + space".
+    clauses = []
+    for c in fparts[0].split("\. ")
+        c = c.trim
+        if c != "" then clauses.push(c)
+    end for
+
+    result.clauses = clauses
+    result.retVar = retVar
+    return result
+end function
+
+// Reconstructs the intended (correct) code as a flat list of statement lines
+// from the scan description block and the (never-mutated) signature line.
+// @param {string} descBlock - The description text between the header and the numbered code.
+// @param {string} sigLine - The first code line ("func_X = function(var_Y)").
+// @return {list<string>} - The reconstructed statement sequence, or [] on failure.
+g.func.zdayReconstruct = function(descBlock, sigLine)
+    if sigLine.indexOf(" = function") == null or sigLine.indexOf("(") == null then return []
+
+    mfName = sigLine.split(" = function")[0].trim
+    param = sigLine[sigLine.indexOf("(") + 1 : sigLine.indexOf(")")]
+
+    flat = descBlock.replace(char(10), " ").replace(char(13), " ")
+
+    funcs = []
+    for p in flat.split("The function ")
+        if p.trim == "" then continue
+        funcs.push(g.func.zdayParseFuncDesc("The function " + p))
+    end for
+
+    if funcs.len == 0 then return []
+
+    main = null
+    helpers = []
+    for f in funcs
+        if f.name == mfName and main == null then
+            main = f
+        else
+            helpers.push(f)
+        end if
+    end for
+    if main == null then main = funcs[0]
+
+    emit = function(f, p)
+        out = []
+        out.push(f.name + " = function(" + p + ")")
+        for c in f.clauses
+            for line in g.func.zdayClauseToCode(c, p)
+                out.push(line)
+            end for
+        end for
+        out.push("return " + p)
+        out.push("end function")
+        return out
+    end function
+
+    lines = []
+    for l in emit(main, param)
+        lines.push(l)
+    end for
+    for h in helpers
+        for l in emit(h, param)
+            lines.push(l)
+        end for
+    end for
+
+    return lines
+end function
+
+
+// ---------------------------------------------------------------------------
+//  Scan-output parsing, error detection, and display
+// ---------------------------------------------------------------------------
+
+// Normalises a code line the way the game does (whitespace removed, lower-cased)
+// so mutated lines can be compared regardless of formatting.
+// @param {string} s - The line to normalise.
+// @return {string} - The normalised line.
+g.func.zdayNormalize = function(s)
+    out = ""
+    for c in s
+        if c != " " and c != char(9) and c != char(13) then out = out + c
+    end for
+    return out.lower
+end function
+
+// Parses the output of debuglib.scan() into its description block and numbered code lines.
+// @param {string} out - The raw scan() output.
+// @return {map|null} - {desc, codeLines: [{num, text}]}, null if clean, or a map with .clean=1.
+g.func.zdayParseScan = function(out)
+    result = {}
+    result.clean = 0
+
+    if out.indexOf("No potential issues") != null then
+        result.clean = 1
+        return result
+    end if
+
+    lines = out.split(char(10))
+
+    codeLines = []
+    firstCode = null
+    idx = 0
+    for line in lines
+        // Strip carriage returns so \r\n line endings don't leave a stray \r on the
+        // text (which would make a blank numbered line look non-blank).
+        line = line.replace(char(13), "")
+
+        // A numbered code line looks like "01: ...." (an all-digit prefix, then ": ").
+        colon = line.indexOf(": ")
+        isCode = 0
+        if colon != null and colon > 0 then
+            prefix = line[:colon]
+            isCode = 1
+            for c in prefix
+                if "0123456789".indexOf(c) == null then isCode = 0
+            end for
+        end if
+
+        if isCode then
+            if firstCode == null then firstCode = idx
+            entry = {}
+            entry.num = prefix.to_int
+            entry.text = line[colon + 2:]
+            codeLines.push(entry)
+        end if
+        idx = idx + 1
+    end for
+
+    if firstCode == null then return null
+
+    descLines = []
+    i = 1
+    while i < firstCode
+        descLines.push(lines[i])
+        i = i + 1
+    end while
+
+    result.desc = descLines.join(char(10)).trim
+    result.codeLines = codeLines
+    return result
+end function
+
+// Walks a candidate correct-line array against the full snippet, skipping blank
+// snippet lines (which are never matched by a code statement).  Blank lines are
+// kept in `full` so that a deletion whose follower is a blank line reports the
+// blank line's number, exactly as the game records it.
+// @param {list<string>} cArr - Candidate correct statement lines.
+// @param {list<map>} full - Full snippet entries [{num, text}], blanks included.
+// @return {map} - {ok, mism (error nums), matchF (F index matched per cArr entry)}.
+g.func.zdayWalk = function(cArr, full)
+    r = {}
+    r.mism = []
+    r.matchF = []
+    r.ok = 1
+    ci = 0
+
+    for fj in range(0, full.len - 1)
+        if full[fj].text.trim == "" then continue
+        if ci > cArr.len - 1 then
+            r.ok = 0
+            return r
+        end if
+        if g.func.zdayNormalize(cArr[ci]) != g.func.zdayNormalize(full[fj].text) then r.mism.push(full[fj].num)
+        r.matchF.push(fj)
+        ci = ci + 1
+    end for
+
+    if ci != cArr.len then r.ok = 0
+    return r
+end function
+
+// Detects the challenge's error line numbers by aligning the reconstructed
+// correct statements against the (mutated) snippet.  The snippet is passed in
+// full (blank lines included) so the single-line-deletion case, brute-forced by
+// deletion offset, reports the correct number even when the deleted line was a
+// function's closing line (whose follower is a blank).
+// @param {list<string>} correct - Reconstructed correct statement lines.
+// @param {list<map>} full - Full snippet entries [{num, text}], blanks included.
+// @return {map} - {lines (sorted, de-duplicated error nums), deletion (1 if a line was deleted)}.
+g.func.zdayDetect = function(correct, full)
+    result = {}
+    result.lines = []
+    result.deletion = 0
+
+    if correct.len == 0 or full.len == 0 then return result
+
+    // Count non-blank snippet lines.
+    nb = 0
+    for e in full
+        if e.text.trim != "" then nb = nb + 1
+    end for
+
+    errors = []
+
+    if correct.len == nb then
+        r = g.func.zdayWalk(correct, full)
+        errors = r.mism
+
+    else if correct.len == nb + 1 then
+        // One statement was deleted.  Try removing each correct[d] and keep the
+        // alignment that yields the fewest remaining mismatches.
+        result.deletion = 1
+        best = null
+
+        for d in range(0, correct.len - 1)
+            cp = []
+            for i in range(0, correct.len - 1)
+                if i != d then cp.push(correct[i])
+            end for
+
+            r = g.func.zdayWalk(cp, full)
+            if not r.ok then continue
+
+            if best == null or r.mism.len < best.score then
+                best = {}
+                best.score = r.mism.len
+                best.d = d
+                best.mism = r.mism
+                best.matchF = r.matchF
+            end if
+        end for
+
+        if best != null then
+            errors = best.mism
+
+            // Deletion number = the final number of the line now occupying the
+            // deleted slot: the snippet entry right after correct[d-1]'s match.
+            // That entry is the deleted line's follower, which is a blank line
+            // when a function's closing line was removed.
+            delFidx = -1
+            if best.d == 0 then
+                for fj in range(0, full.len - 1)
+                    if full[fj].text.trim != "" then
+                        delFidx = fj
+                        break
+                    end if
+                end for
+            else
+                delFidx = best.matchF[best.d - 1] + 1
+            end if
+
+            if delFidx >= 0 and delFidx <= full.len - 1 then
+                errors.push(full[delFidx].num)
+            else if full.len > 0 then
+                errors.push(full[full.len - 1].num)
+            end if
+        end if
+    else
+        // Unexpected line-count difference; best-effort positional compare over non-blank lines.
+        nbList = []
+        for e in full
+            if e.text.trim != "" then nbList.push(e)
+        end for
+        n = correct.len
+        if nbList.len < n then n = nbList.len
+        for i in range(0, n - 1)
+            if g.func.zdayNormalize(correct[i]) != g.func.zdayNormalize(nbList[i].text) then errors.push(nbList[i].num)
+        end for
+    end if
+
+    // De-duplicate and sort.
+    seen = {}
+    uniq = []
+    for e in errors
+        if not seen.hasIndex(str(e)) then
+            seen[str(e)] = 1
+            uniq.push(e)
+        end if
+    end for
+    uniq.sort
+    result.lines = uniq
+    return result
+end function
+
+// Word-wraps text into lines no wider than `width` printable characters, breaking
+// only at spaces so words are never split across lines.
+// @param {string} text - The text to wrap.
+// @param {number} width - The maximum line width in characters.
+// @return {list<string>} - The wrapped lines.
+g.func.zdayWrap = function(text, width)
+    lines = []
+    cur = ""
+
+    for w in text.split(" ")
+        if w == "" then continue
+
+        if cur == "" then
+            cur = w
+        else if (cur + " " + w).len <= width then
+            cur = cur + " " + w
+        else
+            lines.push(cur)
+            cur = w
+        end if
+    end for
+
+    if cur != "" then lines.push(cur)
+    return lines
+end function
+
+// Syntax-highlights a single whitespace-delimited token for miniscript/greyscript.
+// @param {string} tok - The token to colour.
+// @return {string} - The rich-text-coloured token.
+g.func.zdayHiToken = function(tok)
+    kw = ["if", "then", "else", "for", "in", "while", "end", "function", "return", "break", "continue", "and", "or", "not", "new", "isa", "range"]
+    ops = ["+", "-", "*", "/", "==", "!=", "<", "<=", ">", ">=", "="]
+
+    if kw.indexOf(tok) != null then return g.o1(tok)      // keywords: orange
+    if ops.indexOf(tok) != null then return g.b4(tok)     // operators: bright blue
+
+    isNum = tok.len > 0
+    for c in tok
+        if "0123456789".indexOf(c) == null then isNum = 0
+    end for
+    if isNum then return g.g2(tok)                        // numbers: green
+
+    if tok.len >= 5 and tok[:5] == "func_" then return g.y1(tok)   // functions: yellow
+    if tok.len >= 4 and tok[:4] == "var_" then return g.s3(tok)    // variables: blue
+
+    return g.l1(tok)                                      // everything else: light
+end function
+
+// Renders the numbered (buggy) code snippet with re-indentation and syntax
+// highlighting.  Line numbers are preserved from the scan output so they match
+// what unit_testing expects.
+// @param {list<map>} codeLines - The full numbered code lines [{num, text}].
+// @return {string} - The formatted, highlighted block.
+g.func.zdayHighlight = function(codeLines)
+    out = ""
+    depth = 0
+
+    for e in codeLines
+        t = e.text.trim
+
+        if t[:4] == "end " then
+            depth = depth - 1
+            if depth < 0 then depth = 0
+        end if
+
+        hi = ""
+        for tok in t.split(" ")
+            if hi != "" then hi = hi + " "
+            hi = hi + g.func.zdayHiToken(tok)
+        end for
+
+        numStr = str(e.num)
+        if numStr.len < 2 then numStr = "0" + numStr
+
+        out = out + g.const.indent + g.d1(numStr + ": ") + ("    " * depth) + hi + g.const.nl
+
+        if t[:3] == "if " or t[:4] == "for " or t[:6] == "while " or t.indexOf(" = function") != null then
+            depth = depth + 1
+        end if
+    end for
+
+    return out
+end function
+
+// Parses the output of debuglib.unit_testing() into the memory zone address (passed to
+// payload) and the available partial-object functions grouped by object with their
+// user level.
+// @param {string} out - The raw unit_testing() output.
+// @return {map} - {memZone, objects: {computer:{user,fns}, file:{user,fns}}}.
+g.func.zdayParseUnitTest = function(out)
+    result = {}
+    result.memZone = ""
+    result.objects = {}
+
+    for line in out.split(char(10))
+        lt = line.trim
+
+        if lt.indexOf("address 0x") != null then
+            seg = lt.split("address ")[1]
+            result.memZone = seg.split(" ")[0]
+        end if
+
+        if lt[:2] == "* " then
+            rest = lt[2:]
+            objType = rest.split(" ")[0]
+            user = rest[rest.indexOf("[") + 1 : rest.indexOf("]")]
+            methodsStr = rest[rest.indexOf(": ") + 2:]
+
+            fns = []
+            for m in methodsStr.split(",")
+                m = m.trim
+                if m != "" then fns.push(m)
+            end for
+
+            entry = {}
+            entry.user = user
+            entry.fns = fns
+            result.objects[objType.lower] = entry
+        end if
+    end for
+
+    return result
+end function
+
+
+// ---------------------------------------------------------------------------
+//  Partial-object context + recovered-metalib exploitation
+// ---------------------------------------------------------------------------
+
+// Scans and overflows a metalib recovered from payload, pushing every resulting
+// (normal) object onto the stack.  Uses the home context's metaxploit lib.  Returns
+// the first working {mem, value} overflow pair for THIS metalib, which is what a
+// later flush must use (the flush has to overflow the recovered metalib, since that
+// is the object on the partial computer; the unit-test memzone/value belong to the
+// original library and only match when it is the same library).
+// @param {metalib} metalib - The recovered (partial) metalib.
+// @param {string} public - Public IP to stamp onto recovered file objects.
+// @param {string} local - LAN IP to stamp onto recovered file objects.
+// @return {map|null} - {mem, value} of the first successful overflow, or null.
+g.func.zdayExploitMetalib = function(metalib, public, local)
+    if metalib == null then return null
+
+    if not g.func.checkMetax("0") and not g.func.attach_metax("0") then
+        print g.error("Could not attach metaxploit to scan the recovered library.")
+        return null
+    end if
+
+    metax = g.stack["0"].metax
+
+    print g.const.indent + g.s3("Scanning recovered library " + metalib.lib_name + " at version " + metalib.version + "...")
+
+    mems = metax.scan(metalib)
+    if mems == null then
+        print g.error("Scan failed on the recovered library.")
+        return null
+    end if
+
+    count = 0
+    flush = null
+    for mem in mems
+        details = metax.scan_address(metalib, mem)
+        if details == null then continue
+
+        sections = details.split("Unsafe check: ")[1:]
+        for section in sections
+            if section.indexOf("<b>") == null or section.indexOf("</b>") == null then continue
+            value = section[section.indexOf("<b>") + 3 : section.indexOf("</b>")]
+
+            print g.const.indent + g.s3("Trying " + mem + " / " + value + "...")
+            obj = metalib.overflow(mem, value)
+
+            if obj == null then continue
+            if obj isa string then
+                continue
+            end if
+
+            // First pair that overflowed cleanly is reusable to flush this metalib.
+            if flush == null then
+                flush = {}
+                flush.mem = mem
+                flush.value = value
+            end if
+
+            t = typeof(obj)
+            if t == "shell" or t == "computer" or t == "file" then
+                item = obj.createContext("zday-lib")
+                if item != null then
+                    if t == "file" then
+                        item.local = local
+                        item.public = public
+                    end if
+                    g.stack.add(item)
+                    count = count + 1
+                    print g.const.indent + g.g1("Recovered " + t + " (user: " + item.getUser + ") added to the stack.")
+                end if
+            end if
+        end for
+    end for
+
+    if count == 0 then print g.const.indent + g.l2("No additional objects recovered from the library.")
+    return flush
+end function
+
+// Ensures a partial metalib on the target is available to flush changes through.
+// Returns the context's cached metalib, or re-runs payload with an empty path to obtain
+// one for the original library (debug_tools' own library).  This is needed when the
+// payload path was not a library, so no metalib came back originally.
+// @param {map} context - The partial-object context.
+// @return {metalib|null} - A partial metalib pointing at the target, or null.
+g.func.zdayFlushMetalib = function(context)
+    if context.metalib != null then return context.metalib
+    if context.debuglib == null then return null
+    if context.memZone == null or context.memZone == "" then return null
+
+    // An empty path makes payload default to the debuglib's own library (the original
+    // library debug_tools ran on), which is always a library, so a metalib comes back.
+    objs = context.debuglib.payload(context.memZone, "")
+    if objs == null or objs isa string or not objs isa list then return null
+
+    m = null
+    if objs.len >= 3 then m = objs[2]
+    if m == null then
+        for o in objs
+            if typeof(o) == "metalib" then m = o
+        end for
+    end if
+
+    context.metalib = m
+    return m
+end function
+
+// Scans a metalib and returns the first {mem, value} overflow that succeeds, so it can
+// be reused to flush.  The test overflow itself triggers the sync, so a successful
+// return also means the pending change was flushed.  Uses the home metaxploit lib.
+// @param {metalib} metalib - The metalib to scan.
+// @return {map|null} - {mem, value}, or null if none worked.
+g.func.zdayFindFlushPair = function(metalib)
+    if metalib == null then return null
+    if not g.func.checkMetax("0") and not g.func.attach_metax("0") then return null
+    metax = g.stack["0"].metax
+
+    mems = metax.scan(metalib)
+    if mems == null then return null
+
+    for mem in mems
+        details = metax.scan_address(metalib, mem)
+        if details == null then continue
+        for section in details.split("Unsafe check: ")[1:]
+            if section.indexOf("<b>") == null or section.indexOf("</b>") == null then continue
+            value = section[section.indexOf("<b>") + 3 : section.indexOf("</b>")]
+            obj = metalib.overflow(mem, value)
+            if obj != null and not obj isa string then
+                pair = {}
+                pair.mem = mem
+                pair.value = value
+                return pair
+            end if
+        end for
+    end for
+
+    return null
+end function
+
+// Builds one "pobject" context entry for a single partial object.  Shared values
+// (metalib, public/local IP, source) are duplicated onto every entry, while the
+// object itself, its available functions, and its permission level are unique to
+// the entry.  objType is "computer" or "file".
+// @param {string} objType - "computer" or "file".
+// @param {map} obj - The partial object.
+// @param {map} metalib - The shared recovered metalib (or null).
+// @param {string} public - Public IP to preserve on the context.
+// @param {string} local - LAN IP to preserve on the context.
+// @param {string} filePath - The pfile's target path (file entries only), or "".
+// @param {map} unitInfo - Parsed unit_testing info ({objects}).
+// @return {g.Target} - The populated context entry (not yet added to the stack).
+g.func.zdayBuildPObject = function(objType, obj, metalib, public, local, filePath, unitInfo)
+    item = new g.Target
+    item.source = "zday"
+    item.public = public
+    item.local = local
+    item.metalib = metalib
+    item.computer = null
+    item.file = null
+    item.functions = {}
+    item.filePath = null
+    item.path = "/"
+    item.currentPath = "/"
+
+    // Overflow pair used to flush partial-object changes to the target's database.
+    // Filled in after the recovered metalib is scanned (a pair valid for THAT metalib),
+    // since the flush must overflow the recovered metalib, not the original library.
+    item.ofMem = null
+    item.ofValue = null
+
+    u = "unknown"
+    if unitInfo.objects.hasIndex(objType) then u = unitInfo.objects[objType].user
+    item.user = u
+
+    if objType == "computer" then
+        item.type = "pcomputer"
+        item.computer = obj
+        if unitInfo.objects.hasIndex("computer") then item.functions.computer = unitInfo.objects.computer
+    else
+        item.type = "pfile"
+        item.file = obj
+        if unitInfo.objects.hasIndex("file") then item.functions.file = unitInfo.objects.file
+        item.filePath = filePath
+        if filePath != null and filePath != "" then item.currentPath = filePath
+    end if
+
+    return item
+end function
+
+// Splits a payload result list into separate "pobject" stack entries (one for the
+// partial computer, one for the partial file) and force-adds each.  Keeping them
+// as separate entries lets each carry its own permission level.  objs order is
+// fixed: [0]=pcomputer, [1]=pfile, [2]=metalib (the metalib is duplicated onto both).
+// @param {list} objs - The list returned by payload().
+// @param {string} public - Public IP to preserve on the contexts.
+// @param {string} local - LAN IP to preserve on the contexts.
+// @param {map} unitInfo - Parsed unit_testing info ({objects}).
+// @param {string} filePath - The pfile's target path (for display), or "".
+// @return {map} - {computer, file} stack keys (null when that object is absent).
+g.func.zdayMakePObject = function(objs, public, local, unitInfo, filePath)
+    pcomputer = null
+    pfile = null
+    metalib = null
+    if objs.len >= 1 then pcomputer = objs[0]
+    if objs.len >= 2 then pfile = objs[1]
+    if objs.len >= 3 then metalib = objs[2]
+
+    keys = {}
+    keys.computer = null
+    keys.file = null
+
+    if pcomputer != null then
+        item = g.func.zdayBuildPObject("computer", pcomputer, metalib, public, local, filePath, unitInfo)
+        keys.computer = g.stack.add(item, 1)
+    end if
+
+    if pfile != null then
+        item = g.func.zdayBuildPObject("file", pfile, metalib, public, local, filePath, unitInfo)
+        keys.file = g.stack.add(item, 1)
+    end if
+
+    return keys
+end function
+
+
+// ---------------------------------------------------------------------------
+//  Patch-status check
+// ---------------------------------------------------------------------------
+
+// Prints the patch-status line for a single metalib.  Patched libraries show the
+// date they are patched until (the auto-patch date); unpatched ones say so.
+// @param {string} label - The library name/path (and port for remote targets).
+// @param {metalib} metalib - The metalib to query.
+// @return {none}
+g.func.zdayCheckStatus = function(label, metalib)
+    patched = metalib.is_patched
+    if patched isa string then
+        print g.const.indent + g.r1(label) + g.s3(" -> ") + g.r1(g.func.stripError(patched))
+        return
+    end if
+
+    if patched then
+        date = metalib.is_patched(1)
+        if typeof(date) == "string" and date != "" then
+            print g.const.indent + g.g1(label) + g.s3(" -> Patched until ") + g.o1(date)
+        else
+            print g.const.indent + g.g1(label) + g.s3(" -> Patched")
+        end if
+    else
+        print g.const.indent + g.o1(label) + g.s3(" -> ") + g.r1("Not patched")
+    end if
+end function
+
+// Prints a patch-result line in the same check-style layout, but stating whether the
+// patch was successful and, for a patched library, the date it is patched until.
+// @param {string} label - The library name/path.
+// @param {metalib} metalib - The metalib (queried for the patched-until date; may be null on failure).
+// @param {string} outcome - "success", "already", or "fail".
+// @param {string} detail - Failure reason (used only for "fail").
+// @return {none}
+g.func.zdayPatchStatus = function(label, metalib, outcome, detail)
+    if outcome == "fail" then
+        print g.const.indent + g.r1(label) + g.s3(" -> ") + g.r1("Not successful") + g.l2(" - " + detail)
+        return
+    end if
+
+    dateStr = ""
+    if metalib != null then
+        date = metalib.is_patched(1)
+        if typeof(date) == "string" and date != "" then dateStr = date
+    end if
+
+    if outcome == "already" then
+        word = g.g2("Already patched")
+    else
+        word = g.g1("Success")
+    end if
+
+    line = g.const.indent + g.g1(label) + g.s3(" -> ") + word
+    if dateStr != "" then line = line + g.s3(" - Patched until ") + g.o1(dateStr)
+    print line
+end function
+
+// Connects to one port of a target, dumps its library, and prints its patch status.
+// @param {metaxploit} metax - The metaxploit lib to connect with.
+// @param {string} target - The target IP.
+// @param {number} portNum - The port number (0 = kernel_router).
+// @return {number} - 1 if a library was checked, 0 otherwise.
+g.func.zdayCheckPort = function(metax, target, portNum)
+    label = target + ":" + portNum
+
+    session = metax.net_use(target, portNum)
+    if session == null then
+        print g.const.indent + g.r1(label) + g.s3(" -> ") + g.r1("could not connect")
+        return 0
+    end if
+    if session isa string then
+        print g.const.indent + g.r1(label) + g.s3(" -> ") + g.r1(g.func.stripError(session))
+        return 0
+    end if
+
+    metalib = session.dump_lib
+    if metalib == null or metalib isa string then
+        print g.const.indent + g.r1(label) + g.s3(" -> ") + g.r1("no library")
+        return 0
+    end if
+
+    g.func.zdayCheckStatus(metalib.lib_name + " [" + label + "]", metalib)
+    return 1
+end function
+
+// Checks the patch status of the library on every open port of a target, using the
+// router's port list.  Port 0 (kernel_router.so) is always checked when the target
+// is a router (a public IP/hostname, or a LAN address that is itself a router).
+// Proxy-aware; connects from the active (or proxy) context.
+// @param {string} target - The target public (or LAN) IP / hostname.
+// @return {none}
+g.func.zdayCheckAllPorts = function(target)
+    idx = g.context.index
+
+    if not is_valid_ip(target) then
+        resolved = nslookup(target)
+        if not is_valid_ip(resolved) then
+            print g.error("Invalid target: " + target)
+            return
+        end if
+        target = resolved
+    end if
+
+    useIdx = idx
+    if g.hasIndex("proxy") and not is_lan_ip(target) and g.func.checkProxy(1) then
+        useIdx = g.proxy
+        print g.g1(g.const.indent + "Using proxy: " + g.stack[useIdx].public)
+    end if
+
+    if not g.func.checkShell(useIdx) then return
+    if not g.func.checkMetax(useIdx) and not g.func.attach_metax(useIdx) then
+        print g.error("Could not attach metaxploit to the connecting context.")
+        return
+    end if
+    metax = g.stack[useIdx].metax
+
+    router = g.func.getRouter(target)
+    if router == null then
+        print g.error("Could not reach the router for " + target)
+        return
+    end if
+
+    // A public IP / hostname always targets the router's public interface, so it is
+    // a router; a LAN address is a router only if it exposes the 8080 admin port.
+    isRouter = 0
+    if is_lan_ip(target) then
+        ports = router.device_ports(target)
+    else
+        ports = router.used_ports
+        isRouter = 1
+    end if
+
+    if (ports == null or ports.len == 0) and not isRouter then
+        print g.const.indent + g.l2("No open ports found on " + target)
+        return
+    end if
+
+    print g.const.nl + g.func.heading("Patch Status")
+
+    any = 0
+    if ports != null then
+        for p in ports
+            if is_lan_ip(target) and p.get_lan_ip != target then continue
+            if p.port_number == 8080 then isRouter = 1
+            if p.is_closed then continue
+            if g.func.zdayCheckPort(metax, target, p.port_number) then any = 1
+        end for
+    end if
+
+    // Port 0 (kernel_router.so) does not appear in used_ports but is always present
+    // on a router.
+    if isRouter then
+        if g.func.zdayCheckPort(metax, target, 0) then any = 1
+    end if
+
+    if not any then print g.const.indent + g.l2("No checkable libraries found on " + target)
+end function
+
+
+// ---------------------------------------------------------------------------
+//  Bulk patching
+// ---------------------------------------------------------------------------
+
+// Auto-patches every `.so` library in a directory on the current context's
+// computer.  Runs the full debug_tools -> scan -> reconstruct -> apply_patch
+// chain for each, without prompting: libraries with no issue are skipped, and
+// any that cannot be reconstructed or patched automatically are reported and
+// skipped rather than stopping the run.  The caller must have attached metax.
+// @param {map} context - The current (shell) context.
+// @param {string} dirPath - The directory to sweep.
+// @param {string} user - The debug username.
+// @param {string} pass - The debug password.
+// @return {none}
+g.func.zdayPatchDir = function(context, dirPath, user, pass)
+    dirFile = context.computer.File(dirPath)
+    if dirFile == null or not dirFile.is_folder then
+        print g.error("Not a directory: " + dirPath)
+        return
+    end if
+
+    metax = context.metax
+    patchDir = context.currentPath
+
+    libs = []
+    for f in dirFile.get_files
+        if f.name.len >= 3 and f.name[-3:] == ".so" then libs.push(f)
+    end for
+
+    if libs.len == 0 then
+        print g.const.indent + g.l2("No .so libraries found in " + dirPath)
+        return
+    end if
+
+    print g.const.indent + g.s3("Auto-patching " + libs.len + " librarie(s) in " + dirPath + "...")
+    print g.const.nl + g.func.heading("Patch Status")
+
+    patched = 0
+    skipped = 0
+    failed = 0
+
+    for f in libs
+        metalib = metax.load(f.path)
+        if metalib == null or metalib isa string then
+            g.func.zdayPatchStatus(f.name, null, "fail", "could not load")
+            failed = failed + 1
+            continue
+        end if
+
+        debuglib = metalib.debug_tools(user, pass)
+        if debuglib == null then
+            g.func.zdayPatchStatus(f.name, null, "fail", "debug_tools returned nothing")
+            failed = failed + 1
+            continue
+        end if
+        if debuglib isa string then
+            g.func.zdayPatchStatus(f.name, null, "fail", g.func.stripError(debuglib))
+            failed = failed + 1
+            continue
+        end if
+
+        scanOut = debuglib.scan
+        if scanOut == null then
+            g.func.zdayPatchStatus(f.name, null, "fail", "scan returned nothing")
+            failed = failed + 1
+            continue
+        end if
+        if scanOut isa string and scanOut.indexOf("No potential issues") != null then
+            g.func.zdayPatchStatus(f.name, metalib, "already", "")
+            skipped = skipped + 1
+            continue
+        end if
+
+        parsed = g.func.zdayParseScan(scanOut)
+        if parsed == null or not parsed.hasIndex("codeLines") then
+            g.func.zdayPatchStatus(f.name, null, "fail", "could not parse scan output")
+            failed = failed + 1
+            continue
+        end if
+
+        sigLine = ""
+        if parsed.codeLines.len > 0 then sigLine = parsed.codeLines[0].text
+        correct = g.func.zdayReconstruct(parsed.desc, sigLine)
+        if correct.len == 0 then
+            g.func.zdayPatchStatus(f.name, null, "fail", "could not reconstruct correct code")
+            failed = failed + 1
+            continue
+        end if
+
+        context.computer.touch(patchDir, "zday_patch.src")
+        patchPath = (patchDir + "/zday_patch.src").replace("//", "/")
+        pf = context.computer.File(patchPath)
+        if pf == null then
+            g.func.zdayPatchStatus(f.name, null, "fail", "could not create patch file")
+            failed = failed + 1
+            continue
+        end if
+        pf.set_content(correct.join(char(10)))
+
+        res = debuglib.apply_patch(patchPath)
+        g.func.silent_delete(context.computer.File(patchPath))
+
+        if res == null then
+            g.func.zdayPatchStatus(f.name, null, "fail", "apply_patch returned nothing")
+            failed = failed + 1
+        else if res.indexOf("correctly") != null then
+            g.func.zdayPatchStatus(f.name, metalib, "success", "")
+            patched = patched + 1
+        else if res.indexOf("already") != null then
+            g.func.zdayPatchStatus(f.name, metalib, "already", "")
+            patched = patched + 1
+        else
+            g.func.zdayPatchStatus(f.name, null, "fail", g.func.stripError(res))
+            failed = failed + 1
+        end if
+    end for
+
+    print g.const.nl + g.const.indent + g.s3("Done.") + "<pos=160>" + g.g1("Patched: " + patched) + "<pos=320>" + g.l2("Skipped: " + skipped) + "<pos=480>" + g.r1("Failed: " + failed)
+end function
+
+
+// ---------------------------------------------------------------------------
+//  Metalib acquisition (mirrors hack.src)
+// ---------------------------------------------------------------------------
+
+// Resolves the LAN IP behind a given port on a target's router.  Looks up the
+// router, finds the port whose number matches, and returns its get_lan_ip.
+// Falls back to the router's local IP, then to the target itself.
+// @param {string} target - The target public (or LAN) IP.
+// @param {number} portNum - The port number to resolve.
+// @return {string} - The resolved LAN IP.
+g.func.zdayLanIpForPort = function(target, portNum)
+    router = g.func.getRouter(target)
+    if router == null then return target
+
+    localIp = router.local_ip
+
+    if is_lan_ip(target) then
+        ports = router.device_ports(target)
+    else
+        ports = router.used_ports
+    end if
+
+    if ports != null then
+        for p in ports
+            if p.port_number == portNum then localIp = p.get_lan_ip
+        end for
+    end if
+
+    return localIp
+end function
+
+// Acquires a metalib for the zday flow.  Returns a map {metalib, public, local}
+// or a string error message.
+// @param {string} variant - "payload" or "patch".
+// @param {string} target - The target token (ip or /path), or "" when using a selected pobject.
+// @param {string} port - The port string for remote payload targets.
+// @return {map|string} - {metalib, public, local} on success, or an error string.
+g.func.zdayAcquire = function(variant, target, port)
+    idx = g.context.index
+    context = g.stack[idx]
+
+    // Re-run on a selected pobject: operate on its stored metalib directly.
+    if g.func.isPartial(context) then
+        if context.metalib == null then
+            return "The selected partial object has no library to exploit.  Provide a target (ip/port or /lib path)."
+        end if
+        res = {}
+        res.metalib = context.metalib
+        res.public = context.public
+        res.local = context.local
+        return res
+    end if
+
+    // Local variant: a path argument.
+    if target != null and target.len > 0 and target[0] == "/" then
+        if not g.func.checkShell(idx) then return "No active shell context to load a local library."
+        if not g.func.checkMetax(idx) and not g.func.attach_metax(idx) then return "Could not attach metaxploit to the current context."
+
+        metalib = context.metax.load(target)
+        if metalib == null then return "Could not load library: " + target
+        if metalib isa string then return metalib
+
+        res = {}
+        res.metalib = metalib
+        res.public = context.public
+        res.local = context.local
+        return res
+    end if
+
+    // Remote variant (payload only): ip + port via net_use -> dump_lib, proxy-aware.
+    if variant == "patch" then
+        return "Patch requires a local library path (e.g. zday patch /lib/name.so)."
+    end if
+
+    if not is_valid_ip(target) then
+        resolved = nslookup(target)
+        if not is_valid_ip(resolved) then return "Invalid target: " + target
+        target = resolved
+    end if
+
+    if not g.func.checkPort(port) then return "Invalid port: " + port
+
+    useIdx = idx
+    if g.hasIndex("proxy") and not is_lan_ip(target) and g.func.checkProxy(1) then
+        useIdx = g.proxy
+        print g.g1(g.const.indent + "Using proxy: " + g.stack[useIdx].public)
+    end if
+
+    if not g.func.checkShell(useIdx) then return "No active shell context to connect from."
+    if not g.func.checkMetax(useIdx) and not g.func.attach_metax(useIdx) then return "Could not attach metaxploit to the connecting context."
+
+    session = g.stack[useIdx].metax.net_use(target, port.to_int)
+    if session == null then return "Could not connect to " + target + ":" + port
+    if session isa string then return session
+
+    metalib = session.dump_lib
+    if metalib == null then return "No service/library found at " + target + ":" + port
+    if metalib isa string then return metalib
+
+    // Resolve the target's LAN IP for this port from the router's port list.
+    res = {}
+    res.metalib = metalib
+    res.public = target
+    res.local = g.func.zdayLanIpForPort(target, port.to_int)
+    return res
+end function
+
+
+// ---------------------------------------------------------------------------
+//  Help + main dispatcher
+// ---------------------------------------------------------------------------
+
+// Displays help text for the zday tool.
+// @return {none}
+zdayHelp = function(self)
+    text = g.const.ni + g.l3("Usage:", "u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" payload [ip] [port] {creds}") + g.l2(" Runs the zero-day chain against a remote target (net_use), then adds the resulting partial object to the stack.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" payload [/lib/x.so] {creds}") + g.l2(" Same, but loads a local library instead of connecting remotely.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" patch [/lib/x.so] {creds}") + g.l2(" Reconstructs the correct code and applies the patch to a local library.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" patch [/lib] {creds}") + g.l2(" If a directory is given, auto-patches every .so library in it without prompting.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" check [ip] {port}") + g.l2(" Reports the patch status of a remote library (no credentials needed).  With no port, checks every open port.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" check [/lib/x.so | /lib]") + g.l2(" Reports the patch status of a local library, or every .so in a directory.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" autosync [on|off]") + g.l2(" Toggle auto-flushing partial-object changes to the target (overflows the metalib after each change).  On by default.") + g.const.ni
+    text = text + g.l2("   With a partial-object (pobject) context selected, omit the target to re-use its recovered library.") + g.const.ni
+    text = text + g.l2("   Credentials after the target: two params = user + password, one param = a saved zcred key, none = prompt.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text.") + g.const.nl
+
+    print(text)
+end function
+
+// Prompts for credentials when none were supplied on the command line.
+// @return {map|null} - {user, pass} or null if aborted.
+g.func.zdayPromptCreds = function()
+    key = user_input(g.const.indent + g.l1("Enter a saved zcred key (leave it blank to type debug credentials): "), 0, 0, 0)
+    key = key.trim
+
+    if key != "" then
+        creds = g.func.zcredGet(key)
+        if creds == null then
+            print g.error("No saved credentials for key: " + key)
+            return null
+        end if
+        return creds
+    end if
+
+    user = user_input(g.const.indent + g.l1("Debug username: "), 0, 0, 0).trim
+    pass = user_input(g.const.indent + g.l1("Debug password: "), 1, 0, 0).trim
+
+    if user == "" or pass == "" then
+        print g.error("Username and password are required.")
+        return null
+    end if
+
+    creds = {}
+    creds.user = user
+    creds.pass = pass
+    return creds
+end function
+
+// Resolves credentials from the command-line arguments after the target.
+// @param {list<string>} credArgs - The argument tokens following the target.
+// @return {map|null} - {user, pass} or null on error.
+g.func.zdayResolveCreds = function(credArgs)
+    if credArgs.len == 0 then
+        return g.func.zdayPromptCreds
+
+    else if credArgs.len == 1 then
+        creds = g.func.zcredGet(credArgs[0])
+        if creds == null then
+            print g.error("No saved credentials for key: " + credArgs[0])
+            return null
+        end if
+        return creds
+
+    else
+        creds = {}
+        creds.user = credArgs[0]
+        creds.pass = credArgs[1]
+        return creds
+    end if
+end function
+
+// Executes the zday tool.
+// @param {list<string>} args - The command arguments.
+// @return {none}
+doZday = function(args)
+    if args == null or args.len == 0 or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return
+    end if
+
+    variant = args[0]
+
+    // Toggle the auto-flush (overflow the metalib after each partial-object change to
+    // persist it).  On by default.
+    if variant == "autosync" then
+        if args.len > 1 and args[1] == "off" then
+            g.tools.zday.data.autosync = 0
+            print g.const.indent + g.s3("Auto-flush of partial-object changes is now OFF.")
+        else if args.len > 1 and args[1] == "on" then
+            g.tools.zday.data.autosync = 1
+            print g.const.indent + g.s3("Auto-flush of partial-object changes is now ON.")
+        else
+            state = "ON"
+            if g.tools.zday.data.hasIndex("autosync") and g.tools.zday.data.autosync == 0 then state = "OFF"
+            print g.const.indent + g.s3("Auto-flush of partial-object changes is " + state + ".  Use 'zday autosync on|off' to change.")
+        end if
+        return
+    end if
+
+    if variant != "payload" and variant != "patch" and variant != "check" then
+        self.help
+        return
+    end if
+
+    idx = g.context.index
+    context = g.stack[idx]
+
+    // ================= CHECK =================
+    // Read-only patch-status report; needs no credentials or debug_tools.
+    if variant == "check" then
+        // Bounced through a non-home shell: re-run on that machine (no creds needed).
+        if g.context.index != "0" and context.type == "shell" and not g.tools.zday.data.hasIndex("remoted") then
+            argsStr = g.func.serialize(args, 1).replace("char(10)", "").replace("char(13)", "").replace("\n", "")
+            src = "g = get_custom_object" + char(10) + "g.registerExtensions" + char(10) + "g.tools.zday.data.remoted = 1" + char(10) + "g.tools.zday.exec(" + argsStr + ")"
+            g.func.run(src)
+            return
+        end if
+        if g.tools.zday.data.hasIndex("remoted") then g.tools.zday.data.remove("remoted")
+
+        // Selected pobject: check its recovered library.
+        if g.func.isPartial(context) then
+            if context.metalib == null then
+                print g.error("The selected partial object has no library to check.")
+                return
+            end if
+            print g.const.nl + g.func.heading("Patch Status")
+            g.func.zdayCheckStatus(context.metalib.lib_name, context.metalib)
+            return
+        end if
+
+        if args.len < 2 then
+            print g.error("No target supplied.  Use 'zday check [ip] [port]', a /lib path, or a directory.")
+            return
+        end if
+        checkTarget = args[1]
+
+        // Local path: a specific library file, or every .so in a directory.
+        if checkTarget[0] == "/" then
+            if not g.func.checkShell(idx) then return
+            if not g.func.checkMetax(idx) and not g.func.attach_metax(idx) then
+                print g.error("Could not attach metaxploit to the current context.")
+                return
+            end if
+
+            f = context.computer.File(checkTarget)
+            if f == null then
+                print g.error("No such file or directory: " + checkTarget)
+                return
+            end if
+
+            print g.const.nl + g.func.heading("Patch Status")
+            if f.is_folder then
+                libs = []
+                for file in f.get_files
+                    if file.name.len >= 3 and file.name[-3:] == ".so" then libs.push(file)
+                end for
+                if libs.len == 0 then
+                    print g.const.indent + g.l2("No .so libraries found in " + checkTarget)
+                    return
+                end if
+                for file in libs
+                    metalib = context.metax.load(file.path)
+                    if metalib == null or metalib isa string then
+                        print g.const.indent + g.r1(file.path) + g.s3(" -> ") + g.r1("could not load")
+                        continue
+                    end if
+                    g.func.zdayCheckStatus(file.path, metalib)
+                end for
+            else
+                metalib = context.metax.load(checkTarget)
+                if metalib == null or metalib isa string then
+                    print g.error("Could not load library: " + checkTarget)
+                    return
+                end if
+                g.func.zdayCheckStatus(checkTarget, metalib)
+            end if
+            return
+        end if
+
+        // Remote ip/hostname: a specific port, or every open port when none is given.
+        if args.len < 3 then
+            g.func.zdayCheckAllPorts(checkTarget)
+            return
+        end if
+        acq = g.func.zdayAcquire("check", checkTarget, args[2])
+        if acq isa string then
+            print g.error(acq)
+            return
+        end if
+        print g.const.nl + g.func.heading("Patch Status")
+        g.func.zdayCheckStatus(acq.metalib.lib_name + " [" + acq.local + ":" + args[2] + "]", acq.metalib)
+        return
+    end if
+
+    // ---- Work out the target token, port, and where credentials start. ----
+    target = ""
+    port = "0"
+    credStart = 1
+
+    if g.func.isPartial(context) then
+        // Selected pobject: re-use its recovered library; all remaining args are credentials.
+        if args.len > 1 and (is_valid_ip(args[1]) or args[1][0] == "/") then
+            print g.error("A partial-object context is selected, so its recovered library would be re-used, but a target was also supplied.  Swap to a shell context to target something else, or drop the target to re-use the library.")
+            return
+        end if
+        credStart = 1
+    else if args.len > 1 and args[1][0] == "/" then
+        // Local library path.
+        target = args[1]
+        credStart = 2
+    else if args.len > 1 then
+        // Remote ip [port].
+        target = args[1]
+        if variant == "payload" then
+            if args.len < 3 then
+                print g.error("Remote payload requires a port: zday payload [ip] [port] {creds}")
+                return
+            end if
+            port = args[2]
+            credStart = 3
+        else
+            print g.error("Patch requires a local library path (e.g. zday patch /lib/name.so).")
+            return
+        end if
+    else
+        print g.error("No target supplied.  See 'zday -h'.")
+        return
+    end if
+
+    creds = g.func.zdayResolveCreds(args[credStart:])
+    if creds == null then return
+
+    // Bounced through a non-home shell: re-run on that machine so load()/net_use()
+    // originate there (write + build + run RCE).  Credentials were resolved just above
+    // in THIS (home) context, where the saved zcreds live, so hand them to the remote
+    // run explicitly -- the target machine's /etc/hex.conf has no zcreds of its own.
+    if g.context.index != "0" and context.type == "shell" and not g.tools.zday.data.hasIndex("remoted") then
+        newArgs = [variant]
+        for t in args[1:credStart]
+            newArgs.push(t)
+        end for
+        newArgs.push(creds.user)
+        newArgs.push(creds.pass)
+        argsStr = g.func.serialize(newArgs, 1).replace("char(10)", "").replace("char(13)", "").replace("\n", "")
+        src = "g = get_custom_object" + char(10) + "g.registerExtensions" + char(10) + "g.tools.zday.data.remoted = 1" + char(10) + "g.tools.zday.exec(" + argsStr + ")"
+        g.func.run(src)
+        return
+    end if
+    if g.tools.zday.data.hasIndex("remoted") then g.tools.zday.data.remove("remoted")
+
+    // ---- Bulk patch: a directory target patches every library it contains. ----
+    if variant == "patch" and target != "" and target[0] == "/" and context.type == "shell" then
+        dirFile = context.computer.File(target)
+        if dirFile != null and dirFile.is_folder then
+            if not g.func.checkMetax(idx) and not g.func.attach_metax(idx) then
+                print g.error("Could not attach metaxploit to the current context.")
+                return
+            end if
+            g.func.zdayPatchDir(context, target, creds.user, creds.pass)
+            return
+        end if
+    end if
+
+    // ---- Acquire the metalib. ----
+    acq = g.func.zdayAcquire(variant, target, port)
+    if acq isa string then
+        print g.error(acq)
+        return
+    end if
+    metalib = acq.metalib
+
+    print g.const.indent + g.s3("Requesting debug tools on " + metalib.lib_name + " at version " + metalib.version + "...")
+
+    debuglib = metalib.debug_tools(creds.user, creds.pass)
+    if debuglib == null then
+        print g.error("debug_tools returned nothing.  Check the target and credentials.")
+        return
+    end if
+    if debuglib isa string then
+        print g.error(g.func.stripError(debuglib))
+        return
+    end if
+
+    // ---- scan() ----
+    scanOut = debuglib.scan
+    if scanOut == null then
+        print g.error("scan returned nothing.")
+        return
+    end if
+    if scanOut isa string and scanOut.indexOf("No potential issues") != null then
+        print g.const.indent + g.g1("No potential issues found.  The library is not currently vulnerable (or already patched).")
+        return
+    end if
+
+    parsed = g.func.zdayParseScan(scanOut)
+    if parsed == null or not parsed.hasIndex("codeLines") then
+        print g.error("Could not parse the scan output.")
+        print scanOut
+        return
+    end if
+
+    print g.const.nl + g.func.heading("Zero-Day Challenge")
+    print g.const.indent + g.l3("Description:", "u") + g.const.nl
+    for descLine in g.func.zdayWrap(parsed.desc, 72)
+        print g.const.indent + g.l2(descLine)
+    end for
+    print g.const.nl + g.const.indent + g.l3("Code:", "u") + g.const.nl
+    print g.func.zdayHighlight(parsed.codeLines)
+
+    sigLine = ""
+    if parsed.codeLines.len > 0 then sigLine = parsed.codeLines[0].text
+    correct = g.func.zdayReconstruct(parsed.desc, sigLine)
+
+    // ================= PATCH =================
+    if variant == "patch" then
+        if correct.len == 0 then
+            print g.error("Could not reconstruct the correct code for this challenge; cannot build a patch.")
+            return
+        end if
+
+        patchText = correct.join(char(10))
+
+        // Write the corrected snippet to a file on the target computer, then patch.
+        patchComputer = null
+        patchDir = "/root"
+        if g.func.isPartial(context) then
+            // Fall back to home for a writable location.
+            patchComputer = g.stack["0"].computer
+            patchDir = g.stack["0"].currentPath
+        else
+            patchComputer = context.computer
+            patchDir = context.currentPath
+        end if
+
+        fileName = "zday_patch.src"
+        patchComputer.touch(patchDir, fileName)
+        patchPath = (patchDir + "/" + fileName).replace("//", "/")
+        pf = patchComputer.File(patchPath)
+        if pf == null then
+            print g.error("Could not create the patch file at " + patchPath)
+            return
+        end if
+        pf.set_content(patchText)
+
+        print g.const.indent + g.s3("Applying reconstructed patch...")
+        res = debuglib.apply_patch(patchPath)
+
+        g.func.silent_delete(patchComputer.File(patchPath))
+
+        print g.const.nl + g.func.heading("Patch Status")
+        if res == null then
+            g.func.zdayPatchStatus(metalib.lib_name, null, "fail", "apply_patch returned nothing")
+        else if res.indexOf("correctly") != null then
+            g.func.zdayPatchStatus(metalib.lib_name, metalib, "success", "")
+        else if res.indexOf("already") != null then
+            g.func.zdayPatchStatus(metalib.lib_name, metalib, "already", "")
+        else
+            g.func.zdayPatchStatus(metalib.lib_name, null, "fail", g.func.stripError(res))
+        end if
+        return
+    end if
+
+    // ================= PAYLOAD =================
+    // Ask for error line numbers, or auto-solve on empty input.
+    input = user_input(g.const.nl + g.const.indent + g.l1("Enter error line numbers (comma separated), or leave blank to auto-solve: "), 0, 0, 0)
+    input = input.replace(" ", "")
+
+    lines = []
+    if input == "" then
+        auto = g.func.zdayDetect(correct, parsed.codeLines)
+        if auto.lines.len == 0 then
+            print g.error("Auto-solver could not identify the error lines.  Please enter them manually.")
+            input = user_input(g.const.indent + g.l1("Error line numbers (comma separated): "), 0, 0, 0).replace(" ", "")
+            if input == "" then
+                print g.error("No line numbers provided.  Aborting.")
+                return
+            end if
+            for p in input.split(",")
+                if p.trim != "" then lines.push(p.trim.to_int)
+            end for
+        else
+            disp = []
+            for l in auto.lines
+                disp.push(str(l))
+            end for
+
+            if auto.deletion then
+                // A deleted line was detected: this is the least certain case, so
+                // confirm (or let the user correct) before submitting.
+                print g.const.indent + g.o1("A deleted line was detected, so auto-detection is less certain here.")
+                print g.const.indent + g.s3("Proposed error lines: ") + g.o1(disp.join(", "))
+                conf = user_input(g.const.indent + g.l1("Press Enter to submit these, or type a corrected comma-separated list: "), 0, 0, 0).replace(" ", "")
+                if conf == "" then
+                    lines = auto.lines
+                else
+                    for p in conf.split(",")
+                        if p.trim != "" then lines.push(p.trim.to_int)
+                    end for
+                end if
+            else
+                lines = auto.lines
+                print g.const.indent + g.s3("Auto-detected error lines: ") + g.o1(disp.join(", "))
+            end if
+        end if
+    else
+        for p in input.split(",")
+            if p.trim != "" then lines.push(p.trim.to_int)
+        end for
+    end if
+
+    print g.const.indent + g.s3("Submitting unit test...")
+    testOut = debuglib.unit_testing(lines)
+    if testOut == null then
+        print g.error("unit_testing returned nothing.")
+        return
+    end if
+    print g.const.nl + g.const.indent + g.l2(testOut) + g.const.nl
+
+    if testOut.indexOf("New vulnerability found") == null then
+        // Test failed or access blocked; nothing to exploit.
+        return
+    end if
+
+    unitInfo = g.func.zdayParseUnitTest(testOut)
+    if unitInfo.memZone == "" then
+        print g.error("Could not parse the memory zone from the unit test result.")
+        return
+    end if
+
+    pathInput = user_input(g.const.indent + g.l1("Optional file path for payload. Note that pfile functions operate only on the file at this path. (blank for default): "), 0, 0, 0).trim
+
+    print g.const.indent + g.s3("Launching payload against memory zone " + unitInfo.memZone + "...")
+    objs = debuglib.payload(unitInfo.memZone, pathInput)
+
+    if objs == null then
+        print g.error("payload returned nothing.")
+        return
+    end if
+    if objs isa string then
+        print g.error(g.func.stripError(objs))
+        return
+    end if
+    if not objs isa list or objs.len == 0 then
+        print g.error("payload returned no partial objects.")
+        return
+    end if
+
+    filePath = pathInput
+    if filePath == "" and unitInfo.objects.hasIndex("file") then filePath = acq.local
+
+    keys = g.func.zdayMakePObject(objs, acq.public, acq.local, unitInfo, filePath)
+
+    // Store what's needed to flush partial-object changes later: the debuglib and the
+    // memory zone.  Re-running payload with an empty path returns a metalib for the
+    // debuglib's own library, so we can flush even when the payload path was not a library.
+    for fkey in [keys.computer, keys.file]
+        if fkey != null then
+            g.stack[fkey].debuglib = debuglib
+            g.stack[fkey].memZone = unitInfo.memZone
+        end if
+    end for
+
+    parts = []
+    if keys.computer != null then parts.push("pcomputer=[" + keys.computer + "]")
+    if keys.file != null then parts.push("pfile=[" + keys.file + "]")
+    print g.const.indent + g.g1("Partial object contexts added to the stack: " + parts.join(", "))
+    print g.const.indent + g.l2("Select one with 'swap' and use 'partial' to list its functions.")
+
+    // If a metalib came back, scan + overflow it and stack the results.  The first
+    // working overflow pair for that recovered metalib is what a later flush must use,
+    // so record it on both partial-object contexts.
+    if objs.len >= 3 and objs[2] != null then
+        flush = g.func.zdayExploitMetalib(objs[2], acq.public, acq.local)
+        if flush != null then
+            if keys.computer != null then
+                g.stack[keys.computer].ofMem = flush.mem
+                g.stack[keys.computer].ofValue = flush.value
+            end if
+            if keys.file != null then
+                g.stack[keys.file].ofMem = flush.mem
+                g.stack[keys.file].ofValue = flush.value
+            end if
+        end if
+    end if
+end function
+
+g.tools.zday = {
+    "name": "zday",
+    "shortDescription": "Runs the zero-day debug_tools workflow (payload/patch).",
+    "exec": @doZday,
+    "help": @zdayHelp,
+    "data": {}
+}

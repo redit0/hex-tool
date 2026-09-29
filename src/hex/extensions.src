@@ -8,6 +8,12 @@ g.registerExtensions = function
     map.getUser = function(color = 0)
         type = typeof(self)
 
+        if self isa g.Target and g.func.isPartial(self) then
+            u = self.user
+            if u == null then u = "unknown"
+            if color then return u.getUser else return u
+        end if
+
         if type == "shell" then
             return g.func.getUser(self.host_computer.File("/"), color)
         end if
@@ -188,6 +194,10 @@ g.registerExtensions = function
             isTarget = 1
         else
             type = typeof(self)
+        end if
+
+        if type == "pcomputer" or type == "pfile" then
+            if color then return g.o1(type) else return type
         end if
 
         if type == "shell" then

@@ -1,0 +1,208 @@
+RSHELL_PATH = "/root/SecureLibs/librshell.so"
+METAX_PATH = "/lib/metaxploit.so"
+
+metax = include_lib(METAX_PATH)
+librshell = include_lib(RSHELL_PATH)
+sh = get_shell
+
+ranip = function
+    router = null
+
+    while not router
+        a = floor(rnd * 256)
+        b = floor(rnd * 256)
+        c = floor(rnd * 256)
+        d = floor(rnd * 256)
+
+        addr = a + "." + b + "." + c + "." + d
+
+        router = get_router(addr)
+    end while
+
+    return router.public_ip
+end function
+
+checkUser = function(obj)
+    if typeof(obj) != "shell" then return "unknown"
+
+    file = obj.host_computer.File("/")
+    home = obj.host_computer.File("/home")
+
+    if file.has_permission("w") then
+        return "root"
+    end if
+
+    for userDir in home.get_folders
+        if userDir.has_permission("w") and userDir.name != "guest" then
+            return userDir.name
+        end if
+    end for
+
+    return "guest (?)"
+end function
+
+getLib = function(name, target)
+    src = "get_custom_object." + name + " = include_lib(""/lib/" + name + ".so"")"
+
+    c = target.host_computer
+    c.touch("/", "temp.src")
+
+    f = c.File("/temp.src")
+    if not f then
+        print "<b><color=#c30000>Failed to create temporary file on target</color></b>"
+        return null
+    end if
+
+    f.set_content(src)
+
+    result = target.build(f.path, "/")
+
+    if result != "" then
+        print "<b><color=#c30000>Failed to build temporary file on target: " + result + "</color></b>"
+        return null
+    end if
+
+    b = c.File("/temp")
+
+    if not b then
+        print "<b><color=#c30000>Failed to find built file on target</color></b>"
+        return null
+    end if
+
+    result = target.launch(b.path)
+
+    if result == 1 then
+        print "<b><color=#33ee33>Successfully built and launched temporary file on target</color></b>"
+
+        if not get_custom_object.hasIndex(name) then
+            print "<b><color=#c30000>Property " + name + " does not exist in get_custom_object</color></b>"
+            return null
+        end if
+
+        lib = get_custom_object[name]
+
+        if lib == null then
+            print "<b><color=#c30000>Property " + name + " is null in get_custom_object</color></b>"
+            return null
+        end if
+
+        return lib
+    else
+        print "<b><color=#c30000>Failed to launch temporary file on target: " + result + "</color></b>"
+        return null
+    end if
+end function
+
+
+
+target = null
+
+while not target
+    ip = ranip
+
+    netSession = metax.net_use(ip, 0)
+    if not netSession then continue
+
+    metaLib = netSession.dump_lib
+
+    addresses = metax.scan(metaLib)
+
+    for address in addresses
+        vulns = metax.scan_address(metaLib, address).split("Unsafe check: ")[1:]
+
+        for vuln in vulns
+            start = vuln.indexOf("<b>") + 3
+            finish = vuln.indexOf("</b>")
+
+            value = vuln[start:finish]
+            print "<b><color=#eeeeee>Discovered vulnerability (Address: " + address + ", Value: " + value + ")</color></b>"
+
+            obj = metaLib.overflow(address, value)
+
+            if obj != null then
+                if typeof(obj) == "shell" then
+                    usr = checkUser(obj)
+                    if usr != "root" then continue
+
+                    print "<b><color=#33ee33>Got shell with permissions from user: " + usr + "</color></b>"
+                    target = obj
+                    break
+                end if
+            end if
+        end for
+
+        if target then break
+    end for
+end while
+
+
+result = sh.scp(RSHELL_PATH, "/lib", target)
+
+if result isa string then
+    exit "<b><color=#c30000>Failed to copy librshell.so to target: " + result + "</color></b>"
+else if result == null then
+    exit "<b><color=#c30000>Failed to copy librshell.so to target: Unknown error</color></b>"
+else
+    print "<b><color=#33ee33>Successfully copied librshell.so to target</color></b>"
+end if
+
+librshell = getLib("librshell", target)
+
+if librshell == null then
+    exit "<b><color=#c30000>Failed to retrieve librshell from target</color></b>"
+else
+    print "<b><color=#33ee33>Successfully retrieved librshell from target</color></b>"
+end if
+
+result = librshell.install_service
+if result isa string then
+    exit "<b><color=#c30000>Failed to install librshell service on target: " + result + "</color></b>"
+else
+    print "<b><color=#33ee33>Successfully installed librshell service on target</color></b>"
+end if
+
+result = librshell.start_service
+if result isa string then
+    exit "<b><color=#c30000>Failed to start librshell service on target: " + result + "</color></b>"
+else
+    print "<b><color=#33ee33>Successfully started librshell service on target</color></b>"
+end if
+
+result = sh.scp(METAX_PATH, "/lib", target)
+
+if result isa string then
+    exit "<b><color=#c30000>Failed to copy metaxploit.so to target: " + result + "</color></b>"
+else if result == null then
+    exit "<b><color=#c30000>Failed to copy metaxploit.so to target: Unknown error</color></b>"
+else
+    print "<b><color=#33ee33>Successfully copied metaxploit.so to target</color></b>"
+end if
+
+rmeta = getLib("metaxploit", target)
+
+if rmeta == null then
+    exit "<b><color=#c30000>Failed to retrieve metaxploit from target</color></b>"
+else
+    print "<b><color=#33ee33>Successfully retrieved metaxploit from target</color></b>"
+end if
+
+started = {}
+
+print "<b><color=#ffa500><size=115%>RSHELL SERVER IP: " + ip + "</size></color></b>", 1
+
+while true
+    shells = rmeta.rshell_server
+
+    if shells.len > 0 then
+        for rsh in shells
+            key = rsh.host_computer.public_ip + " : " + rsh.host_computer.local_ip
+            if not started.hasIndex(key) then
+                started[key] = true
+                print "<b><color=#33ee33>RSHELL CLIENT CONNECTED: " + key + "</color></b>"
+                rsh.launch("/usr/bin/Terminal.exe")
+            end if
+        end for
+    end if
+    
+    wait 1
+end while

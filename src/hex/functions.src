@@ -152,6 +152,58 @@ g.func.findFiles = function(file, name)
     return results
 end function
 
+// Resolves an absolute path to a file object by walking the filesystem, using only
+// functions available on a file object (parent, get_files, get_folders).  Climbs from
+// the starting file up to the root via parent, then descends one path segment at a
+// time.  "." segments are ignored and ".." segments move up to the parent directory.
+// @param {file} file - Any file object on the target filesystem to start from.
+// @param {string} path - The absolute path to resolve.
+// @return {file|null} - The matching file or folder, or null if not found.
+g.func.resolveFile = function(file, path)
+    root = file
+    while root.path != "/"
+        root = root.parent
+    end while
+
+    current = root
+
+    for segment in path.split("/")
+        if segment == "" or segment == "." then continue
+
+        if segment == ".." then
+            if current.path != "/" then current = current.parent
+            continue
+        end if
+
+        // A non-folder matched an intermediate segment; the remaining path can't resolve.
+        if not current.is_folder then return null
+
+        found = null
+
+        for f in current.get_folders + current.get_files
+            if f.name == segment then
+                found = f
+                break
+            end if
+        end for
+
+        if found == null then return null
+
+        current = found
+    end for
+
+    return current
+end function
+
+// Strips the game's leading "Error: " prefix from a returned error string, since
+// g.error adds its own prefix when printing.
+// @param {string} text - The error string returned by a game function.
+// @return {string} - The error text without the redundant prefix.
+g.func.stripError = function(text)
+    if text isa string and text.indexOf("Error: ") == 0 then return text[7:]
+    return text
+end function
+
 // Generates a random valid IP address that is not a LAN IP.
 // @return {string} - The generated IP address.
 g.func.getRandomIp = function
@@ -1081,6 +1133,89 @@ g.func.checkFile = function(idx)
     return 1
 end function
 
+// Checks whether a context is a partial object (a pcomputer or pfile produced by
+// zday payload).  These contexts carry only a subset of methods and IPs.
+// @param {map} context - The context to check.
+// @return {number} - 1 if the context is a partial object, 0 otherwise.
+g.func.isPartial = function(context)
+    if context == null then return 0
+    return context.type == "pcomputer" or context.type == "pfile"
+end function
+
+// Validates that a context can run a Computer-method command (create_folder, touch,
+// create_user, create_group, delete_group, delete_user).  Requires a computer object,
+// and on a partial (pcomputer) context requires the intrinsic to be in its function
+// subset.  Prints the relevant error and returns 0 on failure.
+// @param {map} context - The context to validate.
+// @param {string} intrinsic - The game intrinsic the command needs.
+// @return {number} - 1 if the command may proceed, 0 otherwise.
+// Flushes partial-object changes to the target's database by overflowing a partial
+// metalib on the target, which runs SetAllowSyncDB(true)+SyncFileSystemDB on the same
+// cached partial computer the partial ops mutate.  If the context has no metalib (the
+// payload path was not a library), it re-runs payload with a known library path to
+// obtain one.  No-op for non-partial contexts or when auto-sync is off.
+// Note: the overflow is a real exploit (it prints output and can leave a log).
+// @param {map} context - The partial-object context that was just mutated.
+// @return {none}
+g.func.partialSync = function(context)
+    if context == null or not g.func.isPartial(context) then return
+    if g.tools.hasIndex("zday") and g.tools.zday.data.hasIndex("autosync") and g.tools.zday.data.autosync == 0 then return
+
+    metalib = g.func.zdayFlushMetalib(context)
+    if metalib == null then
+        print g.const.indent + g.o1("Could not obtain a library on the target to flush changes (no metalib and re-payload failed).")
+        return
+    end if
+
+    print g.const.indent + g.s3("Flushing changes to the target (auto-overflow)...")
+
+    // Without a cached overflow pair, scan for one; that test overflow is itself the flush.
+    if context.ofMem == null or context.ofMem == "" or context.ofValue == null or context.ofValue == "" then
+        pair = g.func.zdayFindFlushPair(metalib)
+        if pair == null then
+            print g.const.indent + g.o1("Could not find a working overflow on " + metalib.lib_name + " to flush with.")
+            return
+        end if
+        context.ofMem = pair.mem
+        context.ofValue = pair.value
+        return
+    end if
+
+    result = metalib.overflow(context.ofMem, context.ofValue)
+    if result == null then
+        print g.const.indent + g.o1("Could not flush changes (the library may be unreadable, e.g. it was the file you just deleted/moved).")
+    else if result isa string then
+        print g.const.indent + g.l2(g.func.stripError(result))
+    end if
+end function
+
+// Interprets the return of a partial-object mutation (chmod/delete/create_user/...).
+// The game returns "" (or a truthy non-string) on success, an error string on failure,
+// or null when it could not resolve the partial object at all.
+// @param {any} result - The value returned by the partial-object method.
+// @return {string} - "" on success, otherwise an error message to print.
+g.func.partialOpError = function(result)
+    if result == null then
+        return "The target could not resolve this partial object (it may have been created through a bounce, or the object is no longer valid)."
+    end if
+    if typeof(result) == "string" and result.len > 0 then
+        return g.func.stripError(result)
+    end if
+    return ""
+end function
+
+g.func.partialComputerReady = function(context, intrinsic)
+    if context.computer == null then
+        print g.error("This command needs a shell, computer, or partial computer (pcomputer) context.")
+        return 0
+    end if
+    if g.func.isPartial(context) and not g.func.partialHas(context, "computer", intrinsic) then
+        print g.error(intrinsic + " is not available on this partial computer object.  Use 'partial' to see available functions.")
+        return 0
+    end if
+    return 1
+end function
+
 // Attaches the rshell library to the context at the given index.
 // Uploads librshell.so from SecureLibs if not already present on the target.
 // @param {string} idx - The index of the context.
@@ -1648,6 +1783,11 @@ g.func.zday_mail = function(computer, credentials, zday)
         output.push(line + "<pos=220>" + g.l2(address + ":" + password))
 
         meta = mail_login(address, password)
+
+        if meta isa string then
+            output.push(line + "<pos=220>" + g.r1(meta))
+            continue
+        end if
 
         messages = meta.fetch
 

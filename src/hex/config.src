@@ -6,7 +6,7 @@ STATIC_KEY = "H3x!C0nf#S3cur3"
 // Nothing is stored in g — the caller uses the result and lets it fall out of scope.
 // @return {map} - The config map with proxies, rshell, mail keys.
 g.func.loadConfig = function
-	defaults = {"proxies": [], "rshell": null, "mail": null, "ssh": {}}
+	defaults = {"proxies": [], "rshell": null, "mail": null, "ssh": {}, "zcreds": {}}
 
 	computer = get_shell.host_computer
 	file = computer.File(CONFIG_PATH)
@@ -40,6 +40,7 @@ g.func.loadConfig = function
 	if not config.hasIndex("rshell") then config.rshell = null
 	if not config.hasIndex("mail") then config.mail = null
 	if not config.hasIndex("ssh") then config.ssh = {}
+	if not config.hasIndex("zcreds") then config.zcreds = {}
 
 	return config
 end function

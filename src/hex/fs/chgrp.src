@@ -1,0 +1,124 @@
+// Prints usage and flag descriptions for the chgrp fs command.
+// @return {none}
+chgrpHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-r] [group] [file name or path]") + g.l2(" Change the group of the specified file or directory.  Use -r to apply the change recursively.  The path is treated as relative unless it begins with '/'.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+// Changes the group of a file or directory on the current context's file system.
+// Accepts [-r] to apply the change recursively.  Paths are relative to the current
+// directory unless they begin with '/'.  The group can only be changed if the current
+// context's user owns the file, or is root.
+// @param {list<string>|null} args - Two or three elements: optional ["-r"], the group, and a file name or path.
+// @return {number} - 1 on success, 0 on failure.
+doChgrp = function(args = null)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 0
+    end if
+
+    // Partial-object context: operate directly on the single partial file object.
+    if g.func.isPartial(g.stack[g.context.index]) then
+        context = g.stack[g.context.index]
+
+        recurse = 0
+        argIdx = 0
+        if args[0] == "-r" then
+            recurse = 1
+            argIdx = 1
+        end if
+
+        if args.len <= argIdx then
+            print g.error("Usage on a partial object: chgrp {-r} [group]")
+            return 0
+        end if
+
+        group = args[argIdx]
+
+        if context.file == null then
+            print g.error("This partial object has no file component.")
+            return 0
+        end if
+        if not g.func.partialHas(context, "file", "set_group") then
+            print g.error("set_group (chgrp) is not available on this partial file object.  Use 'partial' to see available functions.")
+            return 0
+        end if
+
+        result = context.file.set_group(group, recurse)
+        err = g.func.partialOpError(result)
+        if err != "" then
+            print g.error(err)
+            return 0
+        end if
+
+        print g.const.indent + g.s3("Applied group change to the partial file object.")
+        g.func.partialSync(context)
+        return 1
+    end if
+
+    if args.len < 2 or args.len > 3 then
+        self.help
+        return 0
+    end if
+
+    recurse = 0
+
+    if args.len == 3 then
+        if args[0] != "-r" then
+            print g.error("Invalid argument: " + args[0])
+            return 0
+        end if
+
+        recurse = 1
+        group = args[1]
+        fileName = args[2]
+    else
+        group = args[0]
+        fileName = args[1]
+    end if
+
+    context = g.stack[g.context.index]
+
+    if fileName[0] != "/" then
+        fileName = context.currentPath + "/" + fileName
+    end if
+    fileName = fileName.replace("//", "/")
+    if fileName.len > 1 and fileName[-1] == "/" then fileName = fileName[:-1]
+
+    file = g.func.resolveFile(context.file, fileName)
+
+    if file == null then
+        print g.error("No such file or directory: " + fileName)
+        return 0
+    end if
+
+    if context.user != "root" and file.owner != context.user then
+        print g.error("Permission denied: " + file.path + " is owned by " + file.owner + ", not " + context.user + ".")
+        //return 0
+    end if
+
+    result = file.set_group(group, recurse)
+
+    if typeof(result) == "string" and result.len > 0 then
+        print g.error(g.func.stripError(result))
+        return 0
+    end if
+
+    scope = " (this file only)"
+    if recurse then scope = " (applied recursively)"
+
+    print g.const.indent + g.s3("Group of " + file.path + " is now " + file.group + scope)
+    return 1
+end function
+
+g.fs.chgrp = {
+    "name": "chgrp",
+    "shortDescription": "Change the group of a file or directory.",
+    "exec": @doChgrp,
+    "help": @chgrpHelp,
+}

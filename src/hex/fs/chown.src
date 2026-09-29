@@ -1,0 +1,183 @@
+// Prints usage and flag descriptions for the chown fs command.
+// @return {none}
+chownHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-r] [owner] [file name or path]") + g.l2(" Change the owner of the specified file or directory.  Use -r to apply the change recursively.  The path is treated as relative unless it begins with '/'.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-r] [owner:group] [file name or path]") + g.l2(" Change both the owner and the group.  Use [:group] to change only the group.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+
+
+// Changes the owner (and optionally the group) of a file or directory on the current
+// context's file system.  Accepts [owner], [owner:group], or [:group], and [-r] to apply
+// the change recursively.  Paths are relative to the current directory unless they
+// begin with '/'.  Ownership can only be changed if the current context's user owns
+// the file, or is root.
+// @param {list<string>|null} args - Two or three elements: optional ["-r"], the owner and/or group, and a file name or path.
+// @return {number} - 1 on success, 0 on failure.
+doChown = function(args = null)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 0
+    end if
+
+    // Partial-object context: operate directly on the single partial file object.
+    if g.func.isPartial(g.stack[g.context.index]) then
+        context = g.stack[g.context.index]
+
+        recurse = 0
+        argIdx = 0
+        if args[0] == "-r" then
+            recurse = 1
+            argIdx = 1
+        end if
+
+        if args.len <= argIdx then
+            print g.error("Usage on a partial object: chown {-r} [owner] or [owner:group] or [:group]")
+            return 0
+        end if
+
+        ownerArg = args[argIdx]
+        owner = ownerArg
+        group = ""
+        if ownerArg.indexOf(":") != null then
+            parts = ownerArg.split(":")
+            if parts.len != 2 then
+                print g.error("Invalid owner: " + ownerArg + ".  Use [owner], [owner:group], or [:group].")
+                return 0
+            end if
+            owner = parts[0]
+            group = parts[1]
+        end if
+
+        if context.file == null then
+            print g.error("This partial object has no file component.")
+            return 0
+        end if
+
+        if owner != "" then
+            if not g.func.partialHas(context, "file", "set_owner") then
+                print g.error("set_owner (chown) is not available on this partial file object.  Use 'partial' to see available functions.")
+                return 0
+            end if
+            result = context.file.set_owner(owner, recurse)
+            err = g.func.partialOpError(result)
+            if err != "" then
+                print g.error(err)
+                return 0
+            end if
+        end if
+
+        if group != "" then
+            if not g.func.partialHas(context, "file", "set_group") then
+                print g.error("set_group is not available on this partial file object.  Use 'partial' to see available functions.")
+                return 0
+            end if
+            result = context.file.set_group(group, recurse)
+            err = g.func.partialOpError(result)
+            if err != "" then
+                print g.error(err)
+                return 0
+            end if
+        end if
+
+        print g.const.indent + g.s3("Applied ownership change to the partial file object.")
+        g.func.partialSync(context)
+        return 1
+    end if
+
+    if args.len < 2 or args.len > 3 then
+        self.help
+        return 0
+    end if
+
+    recurse = 0
+
+    if args.len == 3 then
+        if args[0] != "-r" then
+            print g.error("Invalid argument: " + args[0])
+            return 0
+        end if
+
+        recurse = 1
+        ownerArg = args[1]
+        fileName = args[2]
+    else
+        ownerArg = args[0]
+        fileName = args[1]
+    end if
+
+    owner = ownerArg
+    group = ""
+
+    if ownerArg.indexOf(":") != null then
+        parts = ownerArg.split(":")
+
+        if parts.len != 2 then
+            print g.error("Invalid owner: " + ownerArg + ".  Use [owner], [owner:group], or [:group].")
+            return 0
+        end if
+
+        owner = parts[0]
+        group = parts[1]
+    end if
+
+    if owner == "" and group == "" then
+        print g.error("No owner or group specified.")
+        return 0
+    end if
+
+    context = g.stack[g.context.index]
+
+    if fileName[0] != "/" then
+        fileName = context.currentPath + "/" + fileName
+    end if
+    fileName = fileName.replace("//", "/")
+    if fileName.len > 1 and fileName[-1] == "/" then fileName = fileName[:-1]
+
+    file = g.func.resolveFile(context.file, fileName)
+
+    if file == null then
+        print g.error("No such file or directory: " + fileName)
+        return 0
+    end if
+
+    if context.user != "root" and file.owner != context.user then
+        print g.error("Permission denied: " + file.path + " is owned by " + file.owner + ", not " + context.user + ".")
+        //return 0
+    end if
+
+    if owner != "" then
+        result = file.set_owner(owner, recurse)
+
+        if typeof(result) == "string" and result.len > 0 then
+            print g.error(g.func.stripError(result))
+            return 0
+        end if
+    end if
+
+    if group != "" then
+        result = file.set_group(group, recurse)
+
+        if typeof(result) == "string" and result.len > 0 then
+            print g.error(g.func.stripError(result))
+            return 0
+        end if
+    end if
+
+    scope = " (this file only)"
+    if recurse then scope = " (applied recursively)"
+
+    print g.const.indent + g.s3(file.path + " is now owned by " + file.owner + ":" + file.group + scope)
+    return 1
+end function
+
+g.fs.chown = {
+    "name": "chown",
+    "shortDescription": "Change the owner of a file or directory.",
+    "exec": @doChown,
+    "help": @chownHelp,
+}

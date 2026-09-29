@@ -275,6 +275,42 @@ sniffer -h   Display help text
 
 ---
 
+### `zday`
+
+Runs the full zero-day / `debug_tools` workflow against a library. It requests the debug tools with a set of credentials, runs `scan` to retrieve the code challenge, submits the error lines (automatically or manually), and launches the payload. The recovered partial objects are added to the stack as separate `pobject` contexts, one for the partial computer and one for the partial file, since each can carry a different permission level. Any recovered library is scanned and overflowed automatically, with the resulting objects added to the stack. Use `patch` instead to reconstruct the correct code and immunize a library against its current challenge.
+
+```
+zday payload [ip] [port] {creds}    Remote target via net_use, then run the chain
+zday payload [/lib/x.so] {creds}    Local library via load(), then run the chain
+zday patch [/lib/x.so] {creds}      Reconstruct the correct code and apply the patch (local load)
+zday patch [/lib] {creds}           Auto-patch every .so library in a directory, no prompting
+zday check [ip] {port}              Report the patch status of a remote library (no credentials; no port = all open ports)
+zday check [/lib/x.so | /lib]       Report the patch status of a local library, or every .so in a directory
+zday payload {creds}                Re-run using the selected pobject context's recovered library
+zday -h                             Display help text
+```
+
+**Target detection:** a single argument that starts with `/` is treated as a local path and loaded with `load()`. Otherwise the target is a remote `ip` plus `port`. With a `pobject` context selected, omit the target and HEX re-uses that context's recovered library.
+
+**Bulk patching:** if the `patch` target is a directory rather than a single library, HEX auto-patches every `.so` library it contains and does not prompt. Libraries with no current issue are skipped, and any that cannot be reconstructed or patched automatically are reported and skipped rather than halting the run. A per-library result and a final Patched/Skipped/Failed summary are printed.
+
+**Checking patch status:** `zday check` reports whether libraries are patched without needing credentials. It reads each library's `is_patched` status, showing the date a patched library is patched until, or a "Not patched" message otherwise. It accepts a remote `ip` (with an optional port; with no port it checks every open port on the router), a local `.so` path, or a local directory (every `.so` in it). With a partial-object context selected, `zday check` reports on that context's recovered library.
+
+**Credentials:** after the target, two extra parameters are treated as a username and password, one extra parameter is treated as a saved `zcred` keyword, and none prompts you interactively.
+
+**Auto-solving:** at the error-line prompt, enter a comma-separated list of line numbers, or leave it blank to let HEX reconstruct the intended code from the challenge description and detect the error lines for you. The blank (auto) path submits immediately.
+
+**Warning:** a single failed unit test blocks the debug API until the rumor window resets, and three wrong passwords block `debug_tools`. Enter line numbers and credentials carefully.
+
+**Examples:**
+```
+zday payload 203.0.113.5 22 debuguser hunter2
+zday payload 203.0.113.5 22 workkey
+zday patch /lib/init.so workkey
+```
+
+---
+
 ## Utilities
 
 Utilities are helper commands for context management, system operations, and file handling.
@@ -300,6 +336,21 @@ swap {index}    Switch to the context at the given index
 swap            Toggle to the previously active context
 swap -h         Display help text
 ```
+
+---
+
+### `partial`
+
+Lists the functions available on the currently selected partial-object context. Partial objects are produced by `zday payload`, which adds a separate context for the partial computer (type `pcomputer`) and the partial file (type `pfile`), each carrying only a random subset of methods. The listing shows the object and the permission level it operates at, so you can tell whether a function runs as root, a user, or guest. Only functions HEX already implements as commands are shown.
+
+```
+partial      List available functions for the selected pobject context
+partial -h   Display help text
+```
+
+**Supported functions:** every partial function now has a HEX command. On a `pfile`: `chmod`, `chown` (set_owner), `chgrp` (set_group), `mv` (move), `ren` (rename), `rm` (delete). On a `pcomputer`: `mkdir` (create_folder), `touch`, `useradd` (create_user), `userdel` (delete_user), `groupadd` (create_group), `groupdel` (delete_group). Run these commands as usual while a partial context is selected and they operate directly on the partial object, verifying first that the object actually exposes that function (each partial object carries only a random subset).
+
+Because a partial object has only a small subset of methods, most other commands (`tree`, `cat`, `ls`, `scan`, `hack`, and so on) are blocked while a `pcomputer` or `pfile` context is selected, with a message telling you to `swap` to a full context. Stack, config, and recon-only commands (`swap`, `stack`, `help`, `config`, `zcred`, `zday`, `ip`, `hackshop`, `proxy`) remain available.
 
 ---
 
@@ -525,6 +576,28 @@ config -h                                 Display help text
 
 ---
 
+### `zcred`
+
+Manages saved debug (zero-day) credentials used by `zday`, stored encrypted in `/etc/hex.conf` alongside the other `config` settings. Each credential is filed under a keyword identifier. When you add a credential, HEX immediately locks it to your account by loading a local library (`net.so`, falling back to `init.so`, `kernel_module.so`, or `crypto.so`) and calling `debug_tools` once.
+
+```
+zcred                          List saved credentials with an Active/Expired status column
+zcred add [key] [user] [pass]  Save and lock a debug credential under a keyword
+zcred remove [key]             Remove a saved credential by keyword
+zcred -h                       Display help text
+```
+
+Debug credentials are only valid inside the rumor window they were issued in, which is an even in-game month on days 1 through 14. The list view marks each set **Active** or **Expired** based on the current in-game date.
+
+**Examples:**
+```
+zcred add workkey debuguser hunter2
+zcred
+zcred remove workkey
+```
+
+---
+
 ### `ip`
 
 Generates a random IP address, or scans a /24 network block to locate a specific user's neurobox network by sending probe emails.
@@ -553,6 +626,39 @@ Deletes a user account from the current context.
 ```
 userdel [username]    Delete the specified user
 userdel -h            Display help text
+```
+
+---
+
+### `useradd`
+
+Creates a user account on the current context's computer. Works on a shell, computer, or `pcomputer` context (names and passwords must be alphanumeric).
+
+```
+useradd [user] [password]    Create a user account
+useradd -h                   Display help text
+```
+
+---
+
+### `groupadd`
+
+Adds a user to a group on the current context's computer.
+
+```
+groupadd [user] [group]    Add the user to the group
+groupadd -h                Display help text
+```
+
+---
+
+### `groupdel`
+
+Removes a user from a group on the current context's computer.
+
+```
+groupdel [user] [group]    Remove the user from the group
+groupdel -h                Display help text
 ```
 
 ---
@@ -601,6 +707,24 @@ cd [folder]    Change to the specified directory
 cd ..          Go up one level
 cd /           Go to root
 cd -h          Display help text
+```
+
+### `mkdir`
+
+Creates a folder on the current context's computer. Works on a shell, computer, or `pcomputer` context. The path is relative to the current directory unless it begins with `/`.
+
+```
+mkdir [folder name or path]    Create a folder
+mkdir -h                       Display help text
+```
+
+### `touch`
+
+Creates an empty file on the current context's computer. Works on a shell, computer, or `pcomputer` context.
+
+```
+touch [file name or path]    Create an empty file
+touch -h                     Display help text
 ```
 
 ### `rm`
@@ -673,6 +797,8 @@ hex-tool/
 │       ├── fs/                   Filesystem commands
 │       │   ├── cat.src
 │       │   ├── cd.src
+│       │   ├── mkdir.src           Create a folder (create_folder)
+│       │   ├── touch.src           Create an empty file (touch)
 │       │   ├── kill.src
 │       │   ├── ps.src
 │       │   ├── reboot.src
@@ -687,7 +813,8 @@ hex-tool/
 │       │   ├── poison.src
 │       │   ├── rshell.src
 │       │   ├── scan.src
-│       │   └── sniffer.src
+│       │   ├── sniffer.src
+│       │   └── zday.src            Zero-day debug_tools workflow (payload/patch/check)
 │       └── utilities/            Helper utilities
 │           ├── apt-get.src
 │           ├── clear.src
@@ -699,6 +826,7 @@ hex-tool/
 │           ├── jump.src
 │           ├── lockdown.src
 │           ├── log.src
+│           ├── partial.src         Inspect a partial-object (pobject) context
 │           ├── proxy.src
 │           ├── quit.src
 │           ├── config.src
@@ -711,7 +839,11 @@ hex-tool/
 │           ├── terminal.src
 │           ├── tree.src
 │           ├── upload.src
-│           └── userdel.src
+│           ├── userdel.src
+│           ├── useradd.src         Create a user account (create_user)
+│           ├── groupadd.src        Add a user to a group (create_group)
+│           ├── groupdel.src        Remove a user from a group (delete_group)
+│           └── zcred.src           Saved debug (zero-day) credential store
 └── reference/                    Reference scripts and examples
 ```
 
@@ -752,6 +884,7 @@ HEX stores persistent settings in `/etc/hex.conf` on your home computer, encrypt
 - **Proxy list** — proxies are loaded on startup and connected automatically
 - **Rshell server** — the rshell server is initialized on startup if configured
 - **Mail credentials** — mail is logged in on startup if configured
+- **Debug credentials** — zero-day `debug_tools` credentials saved via `zcred` for use with `zday`
 
 This replaces the need to configure environment variables for proxies and rshell in the Greybel transpiler settings, though those environment variables are still supported as a fallback.
 
@@ -769,6 +902,8 @@ The `poison` command uploads files from `/root/InsecureLibs/` on your home compu
 - **Jump libraries first.** If you need to scan or exploit from inside a target, use `jump` to copy metaxploit to the target before proceeding.
 - **Cover your tracks.** Run `log -a` to corrupt logs across all contexts after a session. The `rm` command also uses a log-safe swap technique to avoid leaving traces.
 - **net from the router.** For network-wide operations (`net -n`, `net -l`, `net -z`, etc.) connect to the network's router first — `net` automatically detects router context and targets all LAN devices.
+- **Save debug credentials once.** Store your zero-day `debug_tools` credentials with `zcred add`, which locks them to your account, then reference them by keyword in `zday`. Watch the Active/Expired column, since debug credentials only work during the even-month rumor window (days 1 through 14).
+- **Work partial objects with `partial`.** After `zday payload`, a `pobject` context holds partial computer and file objects. Run `partial` to see which functions are available and at what permission level, then use `chmod`, `chown`, `chgrp`, `mv`, `ren`, `rm`, or `userdel` directly on it.
 
 ---
 

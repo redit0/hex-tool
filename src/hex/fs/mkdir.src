@@ -1,0 +1,60 @@
+// Prints usage and flag descriptions for the mkdir fs command.
+// @return {none}
+mkdirHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [folder name or path]") + g.l2(" Create a folder on the current context's computer.  The path is relative to the current directory unless it begins with '/'.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+// Creates a folder on the current context's computer.  Works on a shell, computer,
+// or partial computer (pcomputer) context; on a pcomputer it requires create_folder
+// to be one of the object's available functions.
+// @param {list<string>|null} args - One element: the folder name or path.
+// @return {number} - 1 on success, 0 on failure.
+doMkdir = function(args = null)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 0
+    end if
+
+    if args.len != 1 then
+        self.help
+        return 0
+    end if
+
+    context = g.stack[g.context.index]
+    if not g.func.partialComputerReady(context, "create_folder") then return 0
+
+    target = args[0]
+    if target[0] != "/" then target = context.currentPath + "/" + target
+    target = target.replace("//", "/")
+    if target.len > 1 and target[-1] == "/" then target = target[:-1]
+
+    segs = target.split("/")
+    name = segs[segs.len - 1]
+    parent = segs[:segs.len - 1].join("/")
+    if parent == "" then parent = "/"
+
+    result = context.computer.create_folder(parent, name)
+    if result == null then
+        print g.error("Failed to create folder.")
+        return 0
+    end if
+    if typeof(result) == "string" and result.len > 0 then
+        print g.error(g.func.stripError(result))
+        return 0
+    end if
+
+    print g.const.indent + g.s3("Created folder " + (parent + "/" + name).replace("//", "/"))
+    g.func.partialSync(context)
+    return 1
+end function
+
+g.fs.mkdir = {
+    "name": "mkdir",
+    "shortDescription": "Create a folder.",
+    "exec": @doMkdir,
+    "help": @mkdirHelp,
+}

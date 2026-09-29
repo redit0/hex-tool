@@ -1,0 +1,54 @@
+// Prints usage and flag descriptions for the groupdel utility.
+// @return {none}
+groupdelHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [user] [group]") + g.l2(" Remove the specified user from the specified group on the current context's computer.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+// Removes a user from a group on the current context's computer.  Works on a shell,
+// computer, or partial computer (pcomputer) context; on a pcomputer it requires
+// delete_group to be one of the object's available functions.
+// @param {list<string>|null} args - Two elements: the username and the group name.
+// @return {number} - 1 on success, 0 on failure.
+doGroupdel = function(args = null)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 0
+    end if
+
+    if args.len != 2 then
+        self.help
+        return 0
+    end if
+
+    context = g.stack[g.context.index]
+    if not g.func.partialComputerReady(context, "delete_group") then return 0
+
+    user = args[0]
+    group = args[1]
+
+    result = context.computer.delete_group(user, group)
+    if result == null then
+        print g.error("Failed to remove group.")
+        return 0
+    end if
+    if typeof(result) == "string" and result.len > 0 then
+        print g.error(g.func.stripError(result))
+        return 0
+    end if
+
+    print g.const.indent + g.s3("Removed user " + user + " from group " + group)
+    g.func.partialSync(context)
+    return 1
+end function
+
+g.util.groupdel = {
+    "name": "groupdel",
+    "shortDescription": "Remove a user from a group.",
+    "exec": @doGroupdel,
+    "help": @groupdelHelp,
+    "data": {}
+}

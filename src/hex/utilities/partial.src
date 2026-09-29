@@ -1,0 +1,113 @@
+// ============================================================================
+//  PARTIAL  —  Inspect a partial-object (pobject) context
+//
+//  Lists the functions available on the currently selected pobject context,
+//  grouped by object (computer / file) with the permission level each runs at.
+//  Only functions HEX already implements are shown; the game intrinsics HEX has
+//  no command for yet are omitted.
+// ============================================================================
+
+// Game intrinsic -> HEX command that implements it (null = not implemented yet).
+g.const.partialMap = {
+    "create_folder": "mkdir",
+    "touch": "touch",
+    "create_user": "useradd",
+    "delete_user": "userdel",
+    "create_group": "groupadd",
+    "delete_group": "groupdel",
+    "move": "mv",
+    "rename": "ren",
+    "delete": "rm",
+    "set_group": "chgrp",
+    "set_owner": "chown",
+    "chmod": "chmod"
+}
+
+// Colors a user/permission level.
+// @param {string} u - The user string.
+// @return {string} - The colored user string.
+g.func.partialUserColor = function(u)
+    if u == "root" then return g.r1(u)
+    if u == "guest" then return g.l3(u)
+    return g.b2(u)
+end function
+
+// Returns 1 if the given intrinsic is available on the pobject's object (computer/file).
+// @param {map} context - The pobject context.
+// @param {string} objKey - "computer" or "file".
+// @param {string} intrinsic - The game intrinsic name.
+// @return {number} - 1 if available, 0 otherwise.
+g.func.partialHas = function(context, objKey, intrinsic)
+    if context == null or not g.func.isPartial(context) then return 0
+    if context.functions == null or not context.functions.hasIndex(objKey) then return 0
+    return context.functions[objKey].fns.indexOf(intrinsic) != null
+end function
+
+// Displays help text for the partial utility.
+// @return {none}
+partialHelp = function()
+    text = g.const.ni + g.l3("Usage:", "u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Lists the HEX-supported functions available on the selected partial-object context, grouped by object and permission level.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text.") + g.const.nl
+
+    print(text)
+end function
+
+// Executes the partial utility.
+// @param {list<string>|null} args - The command arguments.
+// @return {number} - 1 on success, 0 on failure.
+doPartial = function(args = null)
+    if args != null and args.len > 0 and (args[0] == "-h" or args[0] == "help") then
+        self.help
+        return 1
+    end if
+
+    indent = g.const.indent
+    context = g.stack[g.context.index]
+
+    if not g.func.isPartial(context) then
+        print g.error("The current context is not a partial object.  Select one with 'swap'.")
+        return 0
+    end if
+
+    if context.functions == null then
+        print g.error("This partial object has no recorded functions.")
+        return 0
+    end if
+
+    text = g.const.nl
+
+    for objKey in ["computer", "file"]
+        if not context.functions.hasIndex(objKey) then continue
+
+        entry = context.functions[objKey]
+        label = objKey[0].upper + objKey[1:]
+
+        text = text + indent + g.s3(label) + " [" + g.func.partialUserColor(entry.user) + "]:" + g.const.nl
+
+        any = 0
+        for fn in entry.fns
+            cmd = null
+            if g.const.partialMap.hasIndex(fn) then cmd = g.const.partialMap[fn]
+            if cmd != null then
+                text = text + indent + indent + g.l1(fn) + g.d1("  ->  ") + g.g2(cmd) + g.const.nl
+                any = 1
+            end if
+        end for
+
+        if not any then
+            text = text + indent + indent + g.d1("(no HEX-supported functions)") + g.const.nl
+        end if
+    end for
+
+    print(text)
+    return 1
+end function
+
+g.util.partial = {
+    "name": "partial",
+    "shortDescription": "Lists functions available on a partial-object context.",
+    "exec": @doPartial,
+    "help": @partialHelp,
+    "data": {}
+}

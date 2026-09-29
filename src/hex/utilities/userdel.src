@@ -16,6 +16,55 @@ end function
 // @param {list<string>|null} args - One or two elements: optional ["-r"] and a username or ["all"].
 // @return {number} - 1 on success, 0 otherwise.
 doUserdel = function(args = null)
+    // Partial-object context: delete a user via the single partial computer object.
+    if g.func.isPartial(g.stack[g.context.index]) then
+        context = g.stack[g.context.index]
+
+        if args == null or args.len == 0 then
+            print g.error("Usage on a partial object: userdel {-r} [user]")
+            return 0
+        end if
+        if args[0] == "-h" or args[0] == "help" then
+            self.help
+            return 1
+        end if
+
+        deleteHome = 0
+        userArg = null
+        for a in args
+            if a == "-r" then
+                deleteHome = 1
+            else
+                userArg = a
+            end if
+        end for
+
+        if userArg == null or userArg == "-a" or userArg == "all" then
+            print g.error("Deleting all users is not supported on a partial object; specify a username.")
+            return 0
+        end if
+
+        if context.computer == null then
+            print g.error("This partial object has no computer component.")
+            return 0
+        end if
+        if not g.func.partialHas(context, "computer", "delete_user") then
+            print g.error("delete_user (userdel) is not available on this partial computer object.  Use 'partial' to see available functions.")
+            return 0
+        end if
+
+        result = context.computer.delete_user(userArg, deleteHome)
+        err = g.func.partialOpError(result)
+        if err != "" then
+            print g.error(err)
+            return 0
+        end if
+
+        print g.const.indent + g.s3("Deleted user '" + userArg + "' via the partial computer object.")
+        g.func.partialSync(context)
+        return 1
+    end if
+
     if args != null and args isa list and args.len  == 1 then
         if args[0] == "-h" or args[0] == "help" then
             self.help
