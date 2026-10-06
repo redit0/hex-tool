@@ -1,12 +1,12 @@
-g.const.version = "0.0.998"
+g.const.version = "0.0.1000"
 g.const.vhex = "v" + g.const.version
 g.const.indent = "    "
 // Nightly
 //g.const.insecureComp = ["/root/InsecureLibs/init.so", "1.0.2", "0x7D6EE022", "stconobjecttransf"]
 // Multiplayer
-//g.const.insecureComp = ["/root/InsecureLibs/aptclient.so", "1.0.0", "0x236A92E4", "eatlinent"]
+g.const.insecureComp = ["/root/InsecureLibs/aptclient.so", "1.0.0", "0x236A92E4", "eatlinent"]
 // Singleplayer
-g.const.insecureComp = ["/root/InsecureLibs/net.so", "1.0.5", "0x18EBA092", "redit0"]
+//g.const.insecureComp = ["/root/InsecureLibs/net.so", "1.0.5", "0x18EBA092", "redit0"]
 g.const.insecureShell = ["/root/InsecureLibs/init.so", "0x32E65B93", "indopositionx"]
 g.const.nl = char(10)
 g.const.tab = char(9)

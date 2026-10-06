@@ -11,6 +11,25 @@ end function
 
 
 
+// Returns 1 if name contains only ASCII letters and digits, otherwise 0.  An empty
+// string is treated as valid so the caller can decide whether an empty owner or
+// group is meaningful.  The game engine throws a runtime error on non-alphanumeric
+// owner/group names, so callers use this to fail cleanly before that happens.
+// @param {string} name - The owner or group name to check.
+// @return {number} - 1 if alphanumeric or empty, 0 otherwise.
+chownIsAlnum = function(name)
+    for c in name
+        code = c.code
+        isDigit = code >= 48 and code <= 57
+        isUpper = code >= 65 and code <= 90
+        isLower = code >= 97 and code <= 122
+        if not (isDigit or isUpper or isLower) then return 0
+    end for
+    return 1
+end function
+
+
+
 // Changes the owner (and optionally the group) of a file or directory on the current
 // context's file system.  Accepts [owner], [owner:group], or [:group], and [-r] to apply
 // the change recursively.  Paths are relative to the current directory unless they
@@ -51,6 +70,16 @@ doChown = function(args = null)
             end if
             owner = parts[0]
             group = parts[1]
+        end if
+
+        if not chownIsAlnum(owner) then
+            print g.error("Invalid owner name: " + owner + ".  Only alphanumeric characters are allowed.  Did you forget the owner (chown [-r] [owner] [file])?")
+            return 0
+        end if
+
+        if not chownIsAlnum(group) then
+            print g.error("Invalid group name: " + group + ".  Only alphanumeric characters are allowed.")
+            return 0
         end if
 
         if context.file == null then
@@ -106,6 +135,11 @@ doChown = function(args = null)
         ownerArg = args[1]
         fileName = args[2]
     else
+        if args[0] == "-r" then
+            print g.error("No owner or group specified.  Usage: chown [-r] [owner] [file name or path].")
+            return 0
+        end if
+
         ownerArg = args[0]
         fileName = args[1]
     end if
@@ -127,6 +161,16 @@ doChown = function(args = null)
 
     if owner == "" and group == "" then
         print g.error("No owner or group specified.")
+        return 0
+    end if
+
+    if not chownIsAlnum(owner) then
+        print g.error("Invalid owner name: " + owner + ".  Only alphanumeric characters are allowed.")
+        return 0
+    end if
+
+    if not chownIsAlnum(group) then
+        print g.error("Invalid group name: " + group + ".  Only alphanumeric characters are allowed.")
         return 0
     end if
 
