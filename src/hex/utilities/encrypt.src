@@ -1,0 +1,480 @@
+// Prints usage and flag descriptions for the encrypt utility.
+// @return {none}
+encryptHelp = function
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [path or filename] [password]") + g.l2(" Encrypts the specified file with the given password.  Use '*' as a wildcard (unless using a file path instead of a file name).  Requires write permission on the file.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-d] [path or filename] [password]") + g.l2(" Decrypts the specified file using the given password.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-c] [path or filename]") + g.l2(" Checks whether the specified file is encrypted.  Requires read permission on the file.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-b] [-w wordlist] [-n maxlen] [-m] [path or filename]") + g.l2(" Brute-forces the password of an encrypted file by trying candidates against the crypto library until one succeeds (which also decrypts the file).  Needs the crypto context but not read or write permission on the file.") + g.const.ni
+    text = text + g.const.indent + g.l2("Candidates are tried in order of likelihood: target-derived seeds (owner, host, /etc/passwd users, file name), then any custom wordlist, then a curated list of the most common passwords, then the loaded dictionary.  Mangling rules (case, digit/year suffixes, leetspeak) are applied to the seeds, custom words, and common passwords automatically.") + g.const.ni
+    text = text + g.const.indent + g.b3("-w wordlist") + g.l2(" Adds words from a file on the current context (comma- or newline-separated) to the candidate set.") + g.const.ni
+    text = text + g.const.indent + g.b3("-n maxlen") + g.l2(" After the above, exhaustively tries every lowercase+digit string up to maxlen characters (only practical up to ~4).") + g.const.ni
+    text = text + g.const.indent + g.b3("-m") + g.l2(" Also applies the mangling rules to the full dictionary, not just the seeds and custom words (much slower).") + g.const.ni
+    text = text + g.l2("Passwords must be alphanumeric and no longer than 15 characters.  Uses the crypto library attached to the current context (Hint: Use 'jump crypto' on remote targets).") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+// Encrypts, decrypts, checks, or brute-forces the encryption of files on the current
+// context's computer using the crypto library attached to that context.  The crypto
+// library acts on the computer and user of the shell that loaded it, so remote contexts
+// need 'jump crypto'.
+// @param {list<string>|null} args - [file, password], ["-d", file, password], ["-c", file],
+//                                   or ["-b", ...flags, file].
+// @return {number} - 1 if every file was processed successfully, 0 otherwise.
+doEncrypt = function(args = null)
+    if args == null or args == [] or args[0] == "-h" or args[0] == "help" then
+        self.help
+        return 0
+    end if
+
+    mode = "encrypt"
+
+    if args[0] == "-d" then
+        mode = "decrypt"
+        args = args[1:]
+    else if args[0] == "-c" then
+        mode = "check"
+        args = args[1:]
+    else if args[0] == "-b" then
+        mode = "brute"
+        args = args[1:]
+    end if
+
+    context = g.stack[g.context.index]
+
+    if context.crypto == null then
+        print g.error("Context does not contain a crypto library (Hint: Use 'jump crypto').")
+        return 0
+    end if
+
+    // ----- Brute-force mode ------------------------------------------------
+    if mode == "brute" then return g.func.bruteEncrypt(context, args)
+
+    if (mode == "check" and args.len != 1) or (mode != "check" and args.len != 2) then
+        self.help
+        return 0
+    end if
+
+    fileName = args[0]
+    password = null
+    if mode != "check" then password = args[1]
+
+    if password != null and (not password.is_match("^[a-zA-Z0-9]+$") or password.len > 15) then
+        print g.error("Passwords must be alphanumeric and no longer than 15 characters.")
+        return 0
+    end if
+
+    files = []
+
+    if fileName.indexOf("/") == null then
+        currentPath = context.computer.File(context.currentPath)
+
+        pattern = "^" + fileName.replace("\.", "\.").replace("\*", ".*") + "$"
+
+        for f in currentPath.get_files
+            if f.name.is_match(pattern) then files.push(f)
+        end for
+    else
+        if fileName[0] != "/" then
+            fileName = context.currentPath + "/" + fileName
+        end if
+        fileName = fileName.replace("//", "/")
+
+        file = context.computer.File(fileName)
+
+        if file and not file.is_folder then
+            files.push(file)
+        end if
+    end if
+
+    if files.len == 0 then
+        print g.error("No such file.")
+        return 0
+    end if
+
+    success = 1
+
+    for f in files
+        if mode == "encrypt" then
+            result = context.crypto.encrypt(f.path, password)
+        else if mode == "decrypt" then
+            result = context.crypto.decrypt(f.path, password)
+        else
+            result = context.crypto.is_encrypted(f.path)
+        end if
+
+        if result == null then
+            print g.error("Unknown error processing " + f.path)
+            success = 0
+        else if typeof(result) == "string" then
+            print g.error(g.func.stripError(result) + " (" + f.path + ")")
+            success = 0
+        else if mode == "encrypt" then
+            print g.const.indent + g.s3("Encrypted " + f.path)
+        else if mode == "decrypt" then
+            print g.const.indent + g.s3("Decrypted " + f.path)
+        else if result then
+            print g.const.indent + g.s3(f.path + ": ") + g.y1("encrypted")
+        else
+            print g.const.indent + g.s3(f.path + ": ") + g.l2("not encrypted")
+        end if
+    end for
+
+    return success
+end function
+
+// Resolves a single target file for brute-force mode from a path or bare file name on the
+// current context.  Unlike encrypt's wildcard resolution, brute-force needs exactly one
+// file, so a bare name is matched against the current directory and must be unambiguous.
+// @param {map} context - The active context.
+// @param {string} fileName - A path or file name.
+// @return {file|null} - The resolved file, or null if not found / ambiguous (prints why).
+g.func.bruteResolveFile = function(context, fileName)
+    if fileName.indexOf("/") == null then
+        currentPath = context.computer.File(context.currentPath)
+        matches = []
+        for f in currentPath.get_files
+            if f.name == fileName then matches.push(f)
+        end for
+        if matches.len == 0 then
+            print g.error("No such file.")
+            return null
+        end if
+        if matches.len > 1 then
+            print g.error("Ambiguous file name; use a full path.")
+            return null
+        end if
+        return matches[0]
+    end if
+
+    if fileName[0] != "/" then fileName = context.currentPath + "/" + fileName
+    fileName = fileName.replace("//", "/")
+
+    file = context.computer.File(fileName)
+    if file == null or file.is_folder then
+        print g.error("No such file.")
+        return null
+    end if
+    return file
+end function
+
+// Collects target-derived seed words that a player is likely to have used as a password:
+// the context user, the host IPs' digits, every user listed in /etc/passwd, and the file
+// name (with and without extension).  These are cheap and high-yield relative to the
+// generic dictionary.
+// @param {map} context - The active context.
+// @param {file} file - The file being attacked.
+// @return {list<string>} - Raw seed words (unmangled, not yet validated).
+g.func.bruteSeeds = function(context, file)
+    seeds = []
+
+    if context.user != null then seeds.push(context.user)
+
+    name = file.name
+    seeds.push(name)
+    if name.indexOf(".") != null then seeds.push(name.split("\.")[0])
+
+    // Usernames from /etc/passwd (owner names are common password choices).
+    passwd = context.computer.File("/etc/passwd")
+    if passwd != null and not passwd.is_folder and not passwd.is_binary and passwd.has_permission("r") then
+        for line in passwd.get_content.split(char(10))
+            line = line.trim
+            if line == "" then continue
+            seeds.push(line.split(":")[0])
+        end for
+    end if
+
+    return seeds
+end function
+
+// Returns a small curated list of the most common human-chosen passwords, ordered roughly
+// by real-world prevalence (breach-frequency lists).  These are tried before the large
+// generated dictionary so the highest-probability guesses come first and cost the fewest
+// server calls.  Kept to a few hundred entries to respect GreyScript's file-size limit;
+// broader coverage comes from the mangling rules and the dictionary.  All entries are
+// alphanumeric and <= 15 chars (anything else is rejected by crypto anyway).
+// @return {list<string>} - Curated candidate passwords.
+g.func.bruteTopList = function
+    list = "123456,password,123456789,12345678,12345,1234567,qwerty,abc123,1234567890,000000,111111,123123,admin,1234,iloveyou,qwerty123,1q2w3e4r,password1,qwertyuiop,monkey,dragon,123321,654321,666666,123,666,696969,112233,121212,qwe123,1q2w3e,aa123456,a123456,password123,admin123,root,toor,pass,passw0rd,welcome,welcome1,login,letmein,abcd1234,qwerty1,1qaz2wsx,zaq12wsx,asdfgh,asdfghjkl,asdf,zxcvbnm,qazwsx,159753,147258369,789456123,159357,987654321,222222,333333,444444,555555,777777,888888,999999,101010,11111111,00000000,123qwe,master,hello,hello123,freedom,whatever,trustno1,sunshine,princess,shadow,superman,batman,starwars,computer,internet,secret,access,test,test123,changeme,default,guest,user,michael,jennifer,jordan,michelle,daniel,jessica,charlie,thomas,hunter,harley,robert,matthew,andrew,joshua,anthony,william,david,george,ashley,amanda,nicole,maggie,jackson,justin,joseph,brandon,mustang,ginger,hannah,samantha,summer,baseball,football,soccer,hockey,basketball,steelers,cowboys,yankees,lakers,raiders,eagles,chelsea,arsenal,liverpool,barcelona,juventus,ferrari,porsche,corvette,camaro,mercedes,honda,toyota,babygirl,loveme,fuckyou,fuckoff,asshole,pokemon,naruto,chocolate,cheese,cookie,pepper,flower,orange,purple,yellow,silver,golden,diamond,ninja,maverick,phoenix,tigger,ranger,buster,soccer1,harley1,jordan23,hottie,lovely,naughty,snoopy,cookie1,bailey,angel,angels,cameron,taylor,matrix,falcon,corvette1,gandalf,hahaha,chicken,maria,andrea,joshua1,melissa,robert1,daniel1,michael1,jordan1,jessica1,charlie1,minecraft,fortnite,blink182,metallica,nirvana,slipknot,greenday,eminem,rockstar,gamer,xbox,playstation,google,samsung,apple,android,bitcoin,summer2023,summer2024,summer2025,winter2023,winter2024,winter2025,spring2024,spring2025,autumn2024,password12,admin1234,root123,qwerty12,trustno1,iloveyou1,princess1,sunshine1,football1,superman1,babygirl1,welcome123,p4ssw0rd,passw0rd1,qweasdzxc,qweasd,asdqwe,killer,jesus,jesus1,heaven,angel1,love,lovers,forever,forever1,family,mother,father,sister,brother,money,money1,soccer123,hockey1,baseball1,buddy,buddy1,sparky,bandit,smokey,midnight,jasmine,amanda1,sweetie,booboo,prince,queen,king,kitty,tigger1,peanut,scooter,snickers,oreo,bella,lucky,shadow1,dragon1,master1"
+    return list.split(",")
+end function
+
+// Applies mangling rules to a base word, returning likely human variants: the word as-is,
+// Capitalized and UPPER case, each of those with a common suffix appended, and a full
+// leetspeak substitution.  Only shapes that could be real passwords are produced; the
+// caller still validates alphanumeric/length before use.
+// @param {string} word - The base word.
+// @return {list<string>} - Mangled candidate variants (may contain duplicates/invalids).
+g.func.bruteMangle = function(word)
+    word = word.lower
+    if word == "" then return []
+
+    // Ordered by rough real-world likelihood.
+    suffixes = ["", "1", "123", "12", "2", "3", "01", "11", "13", "69", "007", "321", "1234", "99", "00", "2025", "2024", "2026", "2023"]
+
+    cap = word[:1].upper + word[1:]
+    upper = word.upper
+
+    bases = [word, cap, upper]
+
+    out = []
+    for b in bases
+        for s in suffixes
+            out.push(b + s)
+        end for
+    end for
+
+    // Full leetspeak substitution of the lowercase word (alphanumeric-safe swaps only).
+    leet = word.replace("a", "4").replace("e", "3").replace("i", "1").replace("o", "0").replace("s", "5").replace("t", "7").replace("b", "8").replace("g", "9")
+    if leet != word then out.push(leet)
+
+    return out
+end function
+
+// Brute-forces the password of one encrypted file by trying candidate passwords against
+// crypto.decrypt until one succeeds.  A successful decrypt also removes the encryption,
+// so the file is left decrypted.  Candidates are generated and tried in phases ordered by
+// likelihood so the cheapest hits come first; each attempt is a server call, so ordering
+// matters more than total list size.
+// @param {map} context - The active context (must have a crypto library).
+// @param {list<string>} args - Remaining args after "-b": optional -w/-n/-m flags and the file.
+// @return {number} - 1 on success, 0 otherwise.
+g.func.bruteEncrypt = function(context, args)
+    // --- Parse flags ---
+    wordlistPath = null
+    maxLen = 0
+    mangleDict = false
+    positional = []
+
+    i = 0
+    while i < args.len
+        a = args[i]
+        if a == "-w" then
+            i = i + 1
+            if i >= args.len then
+                print g.error("-w requires a wordlist file path.")
+                return 0
+            end if
+            wordlistPath = args[i]
+        else if a == "-n" then
+            i = i + 1
+            if i >= args.len then
+                print g.error("-n requires a maximum length.")
+                return 0
+            end if
+            maxLen = args[i].to_int
+        else if a == "-m" then
+            mangleDict = true
+        else
+            positional.push(a)
+        end if
+        i = i + 1
+    end while
+
+    if positional.len != 1 then
+        print g.error("Brute-force needs exactly one file.  See 'encrypt -h'.")
+        return 0
+    end if
+
+    file = g.func.bruteResolveFile(context, positional[0])
+    if file == null then return 0
+
+    // --- Confirm it is encrypted (decrypt needs no read permission, so a permission error
+    //     on is_encrypted is not fatal; we proceed anyway). ---
+    encState = context.crypto.is_encrypted(file.path)
+    if encState == false then
+        print g.const.indent + g.s3(file.path + ": ") + g.l2("not encrypted")
+        return 0
+    else if typeof(encState) == "string" then
+        print g.const.indent + g.o1("Note: " + g.func.stripError(encState) + " (continuing; decrypt does not need read permission).")
+    end if
+
+    // --- Shared state (map so inner helpers can mutate it across scopes). ---
+    state = {}
+    state.found = false
+    state.password = null
+    state.count = 0
+    state.seen = {}
+
+    // Attempts a single candidate.  Returns 1 on success, -1 on fatal error, 0 otherwise.
+    // Reads context/file/state from the enclosing scope; mutates the state map.
+    tryCand = function(cand)
+        if state.found then return 1
+        if cand == null then return 0
+        if cand.len == 0 or cand.len > 15 then return 0
+        if not cand.is_match("^[a-zA-Z0-9]+$") then return 0
+        if state.seen.hasIndex(cand) then return 0
+        state.seen[cand] = 1
+
+        state.count = state.count + 1
+        if state.count % 100 == 0 then
+            print g.const.indent + g.o1("...tried " + state.count + " candidates (last: " + cand + ")")
+        end if
+
+        result = context.crypto.decrypt(file.path, cand)
+        if result == true then
+            state.found = true
+            state.password = cand
+            return 1
+        else if result == null then
+            print g.error("Unknown error from crypto.decrypt; aborting.")
+            return -1
+        else if typeof(result) == "string" then
+            // "Incorrect password" is the expected miss; anything else is fatal.
+            if result.indexOf("Incorrect password") == null then
+                print g.error(g.func.stripError(result) + "; aborting.")
+                return -1
+            end if
+        end if
+        return 0
+    end function
+
+    // Runs tryCand over a list of candidates, honouring found/fatal.  Returns 0 to stop
+    // the whole run (found or fatal), 1 to keep going to the next phase.
+    runList = function(cands)
+        for c in cands
+            r = tryCand(c)
+            if r != 0 then return 0
+        end for
+        return 1
+    end function
+
+    start = time
+
+    // --- Phase 1: target-derived seeds (plain + mangled). ---
+    print g.const.indent + g.o1("Phase 1: target-derived seeds...")
+    seeds = g.func.bruteSeeds(context, file)
+    if runList(seeds) then
+        mangled = []
+        for s in seeds
+            for v in g.func.bruteMangle(s)
+                mangled.push(v)
+            end for
+        end for
+        runList(mangled)
+    end if
+
+    // --- Phase 2: custom wordlist (plain + mangled). ---
+    if not state.found and wordlistPath != null then
+        print g.const.indent + g.o1("Phase 2: custom wordlist...")
+        wl = context.computer.File(wordlistPath)
+        if wl == null or wl.is_folder then
+            print g.error("Wordlist not found: " + wordlistPath)
+        else if wl.is_binary or not wl.has_permission("r") then
+            print g.error("Cannot read wordlist: " + wordlistPath)
+        else
+            raw = wl.get_content.replace(char(10), ",").replace(char(13), ",")
+            words = []
+            for w in raw.split(",")
+                w = w.trim
+                if w != "" then words.push(w)
+            end for
+            if runList(words) then
+                mangled = []
+                for w in words
+                    for v in g.func.bruteMangle(w)
+                        mangled.push(v)
+                    end for
+                end for
+                runList(mangled)
+            end if
+        end if
+    end if
+
+    // --- Phase 3: curated common passwords (plain + mangled), tried before the big
+    //     dictionary so the most probable guesses come first. ---
+    if not state.found then
+        print g.const.indent + g.o1("Phase 3: common passwords...")
+        top = g.func.bruteTopList
+        if runList(top) then
+            mangled = []
+            for t in top
+                for v in g.func.bruteMangle(t)
+                    mangled.push(v)
+                end for
+            end for
+            runList(mangled)
+        end if
+    end if
+
+    // --- Phase 4: loaded dictionary (plain; optionally mangled with -m). ---
+    if not state.found then
+        if g.hasIndex("rt") and len(g.rt) > 0 then
+            print g.const.indent + g.o1("Phase 4: dictionary (" + len(g.rt) + " words)...")
+            dictWords = g.rt.values
+            if runList(dictWords) then
+                if mangleDict then
+                    print g.const.indent + g.o1("Phase 4b: dictionary + rules (this can take a while)...")
+                    for w in dictWords
+                        if state.found then break
+                        if not runList(g.func.bruteMangle(w)) then break
+                    end for
+                end if
+            end if
+        else
+            print g.const.indent + g.o1("Phase 4: no dictionary loaded; skipping.  (Load passwords on startup or run rtgen.)")
+        end if
+    end if
+
+    // --- Phase 5: incremental brute-force up to maxLen (lowercase + digits). ---
+    if not state.found and maxLen > 0 then
+        print g.const.indent + g.o1("Phase 5: incremental brute-force up to " + maxLen + " chars...")
+        if maxLen > 4 then
+            print g.const.indent + g.o1("Warning: lengths above 4 are not practical at server-call speed; continuing anyway.")
+        end if
+        charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+        chars = []
+        for ci in range(0, charset.len - 1)
+            chars.push(charset[ci])
+        end for
+        g.func.bruteIncremental(chars, maxLen, @tryCand, state)
+    end if
+
+    duration = time - start
+
+    // --- Report ---
+    if state.found then
+        print g.const.ni + g.s3("Password found: ") + g.y1(state.password)
+        print g.const.indent + g.s3("File is now decrypted: ") + g.l2(file.path)
+        print g.const.indent + g.l2("(" + state.count + " attempts in " + round(duration, 1) + "s)")
+        return 1
+    end if
+
+    print g.const.ni + g.error("Exhausted all candidates without success (" + state.count + " attempts in " + round(duration, 1) + "s).")
+    return 0
+end function
+
+// Recursively tries every string over the given character set from length 1 up to maxLen,
+// feeding each to the supplied attempt function.  Stops as soon as the attempt function
+// reports success or a fatal error (via the shared state map).
+// @param {list<string>} chars - The character set.
+// @param {number} maxLen - Maximum candidate length.
+// @param {funcRef} attempt - Attempt function (candidate -> 1 found / -1 fatal / 0 continue).
+// @param {map} state - Shared state; the recursion halts when state.found is true.
+// @return {none}
+g.func.bruteIncremental = function(chars, maxLen, attempt, state)
+    build = function(prefix, depth)
+        if state.found then return
+        for c in chars
+            cand = prefix + c
+            if attempt(cand) == -1 then
+                state.found = true
+                return
+            end if
+            if state.found then return
+            if depth < maxLen then build(cand, depth + 1)
+            if state.found then return
+        end for
+    end function
+    build("", 1)
+end function
+
+g.util.encrypt = {
+    "name": "encrypt",
+    "shortDescription": "Encrypts, decrypts, or brute-forces files using crypto.so.",
+    "exec": @doEncrypt,
+    "help": @encryptHelp,
+    "data": {}
+}

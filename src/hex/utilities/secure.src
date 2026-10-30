@@ -1,0 +1,202 @@
+// Prints usage and flag descriptions for the secure utility.
+// @return {none}
+secureHelp = function(self)
+    text = g.const.ni + g.l3("Usage:","u") + g.const.ni
+    text = text + g.g2(self.name) + g.l2(" Hardens the current context's device.  Replaces every library in /lib with the matching one from /root/SecureLibs (when a match exists), uploads /root/share/system.log to /var/system.log, then runs lockdown.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-a/all]") + g.l2(" Applies the same routine to every shell context in the stack, continuing past any context it cannot complete because of permissions.") + g.const.ni
+    text = text + g.g2(self.name) + g.b3(" [-h/help]") + g.l2(" Displays this help text") + g.const.nl
+
+    print(text)
+end function
+
+// Entry point for the secure utility.  With no flag, hardens the current context; with
+// [-a/all], hardens every shell context in the stack.
+// @param {list<string>|null} args - Optional flag: ["-a"]/["all"] or ["-h"]/["help"].
+// @return {number} - 1 if every attempted context succeeded, 0 if any step failed.
+doSecure = function(args = null)
+    if args != null and args.len > 0 then
+        if args[0] == "help" or args[0] == "-h" then
+            self.help
+            return 1
+        else if args[0] == "all" or args[0] == "-a" then
+            keys = g.stack.indexes
+            keys.sort
+
+            secured = 0
+            attempted = 0
+
+            for i in keys
+                if not i.to_int isa number then continue
+
+                context = g.stack[i]
+
+                if context.type != "shell" then continue
+
+                attempted = attempted + 1
+
+                print(g.const.ni + g.b4("Securing context " + i + " (" + context.public + " / " + context.local + ", " + context.user + ")..."))
+
+                if g.func.secure(context) then secured = secured + 1
+            end for
+
+            if attempted == 0 then
+                print(g.const.ni + g.error("No shell contexts in the stack to secure."))
+                return 0
+            end if
+
+            print(g.const.ni + g.g2("Secured " + secured + " of " + attempted + " shell context(s)."))
+
+            if secured == attempted then return 1
+            return 0
+        else
+            self.help
+            return 0
+        end if
+    end if
+
+    context = g.stack[g.context.index]
+
+    print(g.const.ni + g.b4("Securing context " + g.context.index + " (" + context.public + " / " + context.local + ", " + context.user + ")..."))
+
+    if g.func.secure(context) then
+        print(g.const.ni + g.g2("Secure routine complete."))
+        return 1
+    else
+        print(g.const.ni + g.error("Secure routine completed with errors."))
+        return 0
+    end if
+end function
+
+// Hardens a single shell context.  Runs three steps in order and continues to the next
+// step even if one fails, so a partial result still applies as much hardening as possible:
+//   1. Replaces each file in the target's /lib with the matching file from /root/SecureLibs
+//      on the home computer, when a same-named secure library exists.
+//   2. Uploads /root/share/system.log from the home computer to /var/system.log on the target.
+//   3. Runs lockdown on the target to strip permissions and remove sensitive files.
+// Source files on the home computer are temporarily granted rwx for the transfer and locked
+// back down to no permissions afterwards, mirroring g.func.put.
+// @param {g.Target} context - The shell context to harden.
+// @param {number} silent - If 1, suppresses per-step detail messages.
+// @return {number} - 1 if every step succeeded, 0 if any step failed or was skipped.
+g.func.secure = function(context, silent = 0)
+    home = g.stack["0"]
+
+    if context == null or context.type != "shell" then
+        print(g.error("Context is not a shell."))
+        return 0
+    end if
+
+    if context.computer == null or context.shell == null or context.file == null then
+        print(g.error("Context is missing a shell, computer, or file object."))
+        return 0
+    end if
+
+    ok = 1
+
+    // --- Step 1: replace libraries from /root/SecureLibs ---
+    secureDir = home.computer.File("/root/SecureLibs")
+
+    if secureDir == null or not secureDir.is_folder then
+        print(g.error("/root/SecureLibs not found on the home computer.  Skipping library replacement."))
+        ok = 0
+    else
+        libFolder = context.computer.File("/lib")
+
+        if libFolder == null or not libFolder.is_folder then
+            print(g.error("/lib not found on the target.  Skipping library replacement."))
+            ok = 0
+        else if not libFolder.has_permission("w") then
+            print(g.error("No write permission in /lib on the target.  Skipping library replacement."))
+            ok = 0
+        else
+            // Index the available secure libraries by filename for quick lookup.
+            secureLibs = {}
+            for sfile in secureDir.get_files
+                secureLibs[sfile.name] = sfile
+            end for
+
+            replaced = 0
+
+            for libFile in libFolder.get_files
+                if not secureLibs.hasIndex(libFile.name) then continue
+
+                src = secureLibs[libFile.name]
+
+                src.chmod("u+rwx")
+                src.chmod("g+rwx")
+                src.chmod("o+rwx")
+
+                result = g.func.transfer(home.shell, src.path, context.shell, libFolder.path)
+
+                src.chmod("u-rwx")
+                src.chmod("g-rwx")
+                src.chmod("o-rwx")
+
+                if result then
+                    replaced = replaced + 1
+                    if not silent then print(g.const.indent + g.g2("Replaced library: ") + g.l2(libFolder.path + "/" + libFile.name))
+                else
+                    ok = 0
+                end if
+            end for
+
+            if not silent then print(g.const.indent + g.l2("Replaced " + replaced + " librar(y/ies) from /root/SecureLibs."))
+        end if
+    end if
+
+    // --- Step 2: upload /root/share/system.log -> /var/system.log ---
+    logFile = home.computer.File("/root/share/system.log")
+
+    if logFile == null then
+        print(g.error("/root/share/system.log not found on the home computer.  Skipping log upload."))
+        ok = 0
+    else
+        varFolder = context.computer.File("/var")
+
+        if varFolder == null or not varFolder.is_folder then
+            print(g.error("/var not found on the target.  Skipping log upload."))
+            ok = 0
+        else if not varFolder.has_permission("w") then
+            print(g.error("No write permission in /var on the target.  Skipping log upload."))
+            ok = 0
+        else
+            logFile.chmod("u+rwx")
+            logFile.chmod("g+rwx")
+            logFile.chmod("o+rwx")
+
+            result = g.func.transfer(home.shell, logFile.path, context.shell, varFolder.path)
+
+            logFile.chmod("u-rwx")
+            logFile.chmod("g-rwx")
+            logFile.chmod("o-rwx")
+
+            if result then
+                if not silent then print(g.const.indent + g.g2("Uploaded system log to ") + g.l2(varFolder.path + "/system.log"))
+            else
+                ok = 0
+            end if
+        end if
+    end if
+
+    // --- Step 3: lockdown ---
+    if g.func.lockdown(context.file, context.computer, silent) then
+        if not silent then print(g.const.indent + g.g2("System locked down."))
+    else
+        print(g.error("Failed to lock down the system."))
+        ok = 0
+    end if
+
+    return ok
+end function
+
+// Fill out the parts of this template, and then place it in the a folder called 'tools' in the same directory as the main hex binary file.
+// You can leave it as src code (name it with a .src file extension), otherwise hex will attempt to load it as a binary file that has been built with the
+// 'allow import' flag set.
+
+g.util.secure = {
+    "name": "secure",
+    "shortDescription": "Hardens the current context: secure libraries, system log, and lockdown.",
+    "exec": @doSecure,
+    "help": @secureHelp,
+    "data": {}
+}

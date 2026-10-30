@@ -440,6 +440,25 @@ lockdown -h   Display help text
 
 ---
 
+### `secure`
+
+Hardens a context in one pass by swapping in known-good libraries, planting a baseline system log, and then locking the system down. Library and log sources are read from the home computer and are briefly granted read/write/execute for each transfer, then stripped back to no permissions.
+
+```
+secure         Harden the current context
+secure -a/all  Harden every shell context in the stack
+secure -h      Display help text
+```
+
+**Actions (in order):**
+- Replaces each file in the target's `/lib` with the same-named file from `/root/SecureLibs` on the home computer, when a match exists
+- Uploads `/root/share/system.log` from the home computer to `/var/system.log` on the target
+- Runs `lockdown` on the target
+
+Each step runs even if an earlier one is skipped (missing source folder, missing target directory, or no write permission), so a context still receives as much hardening as its permissions allow. With `-a`, every shell context in the stack is processed in turn, including the home computer at index `0`, and a per-context summary reports how many succeeded.
+
+---
+
 ### `apt-get`
 
 Manages package repositories and library installation via the in-game aptclient.
@@ -663,6 +682,19 @@ groupdel -h                Display help text
 
 ---
 
+### `encrypt`
+
+Encrypts, decrypts, or checks the encryption status of files on the current context using `crypto.so`. The crypto library acts as the user of the shell that loaded it, so remote contexts need `jump crypto` first. Encrypting requires write permission on the file and checking requires read permission. Passwords must be alphanumeric and no longer than 15 characters.
+
+```
+encrypt [path or filename] [password]       Encrypt the file (use * as a wildcard)
+encrypt -d [path or filename] [password]    Decrypt the file
+encrypt -c [path or filename]               Check whether the file is encrypted
+encrypt -h                                  Display help text
+```
+
+---
+
 ### `clear`
 
 Clears the screen and re-displays the HEX banner.
@@ -819,6 +851,7 @@ hex-tool/
 │           ├── apt-get.src
 │           ├── clear.src
 │           ├── download.src
+│           ├── encrypt.src         Encrypt/decrypt files (crypto.so)
 │           ├── hackshop.src
 │           ├── help.src
 │           ├── htop.src
