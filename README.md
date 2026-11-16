@@ -1,4 +1,4 @@
-# HEX — Grey Hack Penetration Testing Framework
+# (Deprecated - Will Not Be Maintained) HEX — Grey Hack Penetration Testing Framework
 
 > **DISCLAIMER**: HEX is designed exclusively for the video game **Grey Hack** and operates entirely within its simulated hacking environment. This is not a real hacking tool and must never be used for any malicious or illegal purpose. Grey Hack is a sandbox hacking simulator where players learn cybersecurity concepts in a safe, virtual environment.
 
